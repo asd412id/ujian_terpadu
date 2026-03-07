@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Str;
+
+class Peserta extends Authenticatable
+{
+    use HasFactory, HasUuids, SoftDeletes;
+
+    protected $table = 'peserta';
+
+    protected $fillable = [
+        'sekolah_id', 'nisn', 'nis', 'nama', 'kelas', 'jurusan',
+        'jenis_kelamin', 'tanggal_lahir', 'tempat_lahir', 'foto',
+        'username_ujian', 'password_ujian', 'password_plain', 'is_active',
+    ];
+
+    protected $hidden = ['password_ujian', 'password_plain'];
+
+    protected $casts = [
+        'is_active'     => 'boolean',
+        'tanggal_lahir' => 'date',
+    ];
+
+    public function sekolah()
+    {
+        return $this->belongsTo(Sekolah::class);
+    }
+
+    public function sesiPeserta()
+    {
+        return $this->hasMany(SesiPeserta::class);
+    }
+
+    // Generate username dari NIS (prioritas) > NISN > auto
+    public static function generateUsername(string $nis = null, string $nisn = null, ?string $sekolahId = null): string
+    {
+        if ($nis && $nis !== '') {
+            $base = $nis;
+        } elseif ($nisn && $nisn !== '') {
+            $base = $nisn;
+        } else {
+            $base = strtoupper(Str::random(8));
+        }
+
+        // Pastikan unik — tambah suffix jika perlu
+        $username = $base;
+        $counter  = 1;
+        while (static::where('username_ujian', $username)->exists()) {
+            $username = $base . $counter;
+            $counter++;
+        }
+
+        return $username;
+    }
+
+    // Generate password acak yang mudah dibaca
+    public static function generatePassword(int $length = 8): string
+    {
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // hindari karakter mirip (0,O,1,I)
+        $password = '';
+        for ($i = 0; $i < $length; $i++) {
+            $password .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+        return $password;
+    }
+}

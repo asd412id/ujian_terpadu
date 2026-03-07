@@ -1,0 +1,66 @@
+<?php
+
+namespace App\Http\Controllers\Dinas;
+
+use App\Http\Controllers\Controller;
+use App\Models\KategoriSoal;
+use Illuminate\Http\Request;
+
+class KategoriSoalController extends Controller
+{
+    public function index()
+    {
+        $kategoris = KategoriSoal::withCount('soal')->orderBy('urutan')->paginate(30);
+        return view('dinas.kategori.index', compact('kategoris'));
+    }
+
+    public function create()
+    {
+        return view('dinas.kategori.form');
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'nama'       => 'required|string|max:100',
+            'kode'       => 'nullable|string|max:20|unique:kategori_soal',
+            'jenjang'    => 'required|in:SD,SMP,SMA,SMK,MA,MTs,MI,SEMUA',
+            'kelompok'   => 'nullable|string|max:50',
+            'kurikulum'  => 'required|string|max:50',
+            'urutan'     => 'integer|min:0',
+        ]);
+
+        KategoriSoal::create($data);
+        return redirect()->route('dinas.kategori.index')
+                         ->with('success', 'Kategori berhasil ditambahkan.');
+    }
+
+    public function edit(KategoriSoal $kategori)
+    {
+        return view('dinas.kategori.form', compact('kategori'));
+    }
+
+    public function update(Request $request, KategoriSoal $kategori)
+    {
+        $data = $request->validate([
+            'nama'       => 'required|string|max:100',
+            'kode'       => 'nullable|string|max:20|unique:kategori_soal,kode,' . $kategori->id,
+            'jenjang'    => 'required|in:SD,SMP,SMA,SMK,MA,MTs,MI,SEMUA',
+            'kelompok'   => 'nullable|string|max:50',
+            'kurikulum'  => 'required|string|max:50',
+            'urutan'     => 'integer|min:0',
+            'is_active'  => 'boolean',
+        ]);
+
+        $kategori->update($data);
+        return redirect()->route('dinas.kategori.index')
+                         ->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function destroy(KategoriSoal $kategori)
+    {
+        $kategori->update(['is_active' => false]);
+        return redirect()->route('dinas.kategori.index')
+                         ->with('success', 'Kategori dinonaktifkan.');
+    }
+}

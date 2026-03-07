@@ -1,0 +1,135 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\SesiPeserta;
+use App\Models\JawabanPeserta;
+
+class PenilaianService
+{
+    public function hitungNilai(SesiPeserta $sesiPeserta): array
+    {
+        $sesiPeserta->load(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal']);
+        $paket = $sesiPeserta->sesi->paket;
+
+        $jumlahBenar  = 0;
+        $jumlahSalah  = 0;
+        $jumlahKosong = 0;
+        $totalBobot   = 0;
+        $nilaiBenar   = 0;
+
+        foreach ($sesiPeserta->jawaban as $jawaban) {
+            $soal  = $jawaban->soal;
+            $bobot = $jawaban->soal->paketSoal->where('soal_id', $soal->id)->first()?->bobot_override
+                  ?? $soal->bobot;
+            $totalBobot += $bobot;
+
+            if (! $jawaban->is_terjawab) {
+                $jumlahKosong++;
+                continue;
+            }
+
+            $skor = $this->hitungSkorSatu($jawaban, $bobot);
+
+            if ($jawaban->soal->tipe_soal === 'essay') {
+                // Essay dihitung manual — skip auto
+                $jawaban->update(['skor_auto' => 0]);
+                continue;
+            }
+
+            $jawaban->update(['skor_auto' => $skor]);
+
+            if ($skor >= $bobot) {
+                $jumlahBenar++;
+                $nilaiBenar += $skor;
+            } else {
+                $jumlahSalah++;
+            }
+        }
+
+        $totalSoal    = $paket->paketSoal()->count();
+        $jumlahKosong = $totalSoal - $jumlahBenar - $jumlahSalah;
+        $nilaiAkhir   = $totalBobot > 0 ? round(($nilaiBenar / $totalBobot) * 100, 2) : 0;
+
+        return [
+            'nilai_akhir'  => $nilaiAkhir,
+            'nilai_benar'  => $nilaiBenar,
+            'jumlah_benar' => $jumlahBenar,
+            'jumlah_salah' => $jumlahSalah,
+            'jumlah_kosong'=> $jumlahKosong,
+            'status'       => 'submit',
+        ];
+    }
+
+    private function hitungSkorSatu(JawabanPeserta $jawaban, float $bobot): float
+    {
+        $soal = $jawaban->soal;
+
+        return match ($soal->tipe_soal) {
+            'pg'          => $this->skorPG($jawaban, $bobot),
+            'pg_kompleks' => $this->skorPGKompleks($jawaban, $bobot),
+            'menjodohkan' => $this->skorMenjodohkan($jawaban, $bobot),
+            'isian'       => $this->skorIsian($jawaban, $bobot),
+            default       => 0,
+        };
+    }
+
+    private function skorPG(JawabanPeserta $jawaban, float $bobot): float
+    {
+        $benar = $jawaban->soal->opsiJawaban->where('is_benar', true)->pluck('label')->first();
+        $pilihan = $jawaban->jawaban_pg[0] ?? null;
+        return $pilihan === $benar ? $bobot : 0;
+    }
+
+    private function skorPGKompleks(JawabanPeserta $jawaban, float $bobot): float
+    {
+        $jawabanBenar = $jawaban->soal->opsiJawaban
+            ->where('is_benar', true)
+            ->pluck('label')
+            ->sort()
+            ->values()
+            ->toArray();
+
+        $pilihan = collect($jawaban->jawaban_pg ?? [])->sort()->values()->toArray();
+
+        if ($pilihan === $jawabanBenar) return $bobot;
+
+        // Partial scoring: 50% jika sebagian benar
+        $benarCount = count(array_intersect($pilihan, $jawabanBenar));
+        $totalBenar = count($jawabanBenar);
+        if ($benarCount > 0 && count($pilihan) <= $totalBenar) {
+            return round(($benarCount / $totalBenar) * $bobot * 0.5, 2);
+        }
+
+        return 0;
+    }
+
+    private function skorMenjodohkan(JawabanPeserta $jawaban, float $bobot): float
+    {
+        $pasanganBenar = $jawaban->soal->pasangan->map(fn ($p) => [$p->id => $p->id])->collapse()->toArray();
+        $pasanganPilihan = collect($jawaban->jawaban_pasangan ?? []);
+
+        $benar = 0;
+        $total = count($pasanganBenar);
+
+        foreach ($pasanganPilihan as $pair) {
+            if (is_array($pair) && count($pair) === 2) {
+                [$kiri, $kanan] = $pair;
+                $benar++;
+            }
+        }
+
+        return $total > 0 ? round(($benar / $total) * $bobot, 2) : 0;
+    }
+
+    private function skorIsian(JawabanPeserta $jawaban, float $bobot): float
+    {
+        $kunciJawaban = $jawaban->soal->opsiJawaban->where('is_benar', true)->pluck('teks')->first();
+        if (! $kunciJawaban) return 0;
+
+        $jawab = strtolower(trim($jawaban->jawaban_teks ?? ''));
+        $kunci = strtolower(trim($kunciJawaban));
+
+        return $jawab === $kunci ? $bobot : 0;
+    }
+}

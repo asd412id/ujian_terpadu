@@ -1,0 +1,182 @@
+@extends('layouts.admin')
+
+@section('title', 'Detail Monitoring — ' . $sesi->nama_sesi)
+@section('polling', true)
+
+@section('breadcrumb')
+    <a href="{{ route('dinas.monitoring') }}" class="text-gray-500 hover:text-blue-600">Monitoring</a>
+    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-gray-800 font-semibold truncate">{{ $sesi->nama_sesi }}</span>
+@endsection
+
+@section('page-content')
+<div class="space-y-6" x-data="sesiMonitoringApp()" x-init="init()">
+
+    {{-- Header --}}
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <h1 class="text-xl font-bold text-gray-900">{{ $sesi->nama_sesi }}</h1>
+                @if($sesi->status === 'berlangsung')
+                    <span class="inline-flex items-center gap-1 text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        LIVE
+                    </span>
+                @endif
+            </div>
+            <p class="text-sm text-gray-500 mt-0.5">
+                {{ $sesi->paket->nama }} · {{ $sesi->paket->sekolah->nama ?? '—' }}
+            </p>
+        </div>
+
+        {{-- Kontrol Sesi --}}
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-semibold px-3 py-1 rounded-full
+                {{ $sesi->status === 'berlangsung' ? 'bg-green-100 text-green-800' : ($sesi->status === 'selesai' ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800') }}">
+                {{ ucfirst($sesi->status) }}
+            </span>
+            <span class="text-xs text-gray-400">Terakhir: <span x-text="lastUpdate">{{ now()->format('H:i:s') }}</span></span>
+        </div>
+    </div>
+
+    {{-- Stats --}}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="card p-5 text-center">
+            <p class="text-2xl font-bold text-gray-900" x-text="stats.total ?? {{ $stats['total'] }}">{{ $stats['total'] }}</p>
+            <p class="text-sm text-gray-500 mt-1">Total Peserta</p>
+        </div>
+        <div class="card p-5 text-center">
+            <p class="text-2xl font-bold text-green-600" x-text="stats.online ?? {{ $stats['online'] }}">{{ $stats['online'] }}</p>
+            <p class="text-sm text-gray-500 mt-1">Sedang Mengerjakan</p>
+        </div>
+        <div class="card p-5 text-center">
+            <p class="text-2xl font-bold text-blue-600" x-text="stats.submit ?? {{ $stats['submit'] }}">{{ $stats['submit'] }}</p>
+            <p class="text-sm text-gray-500 mt-1">Sudah Submit</p>
+        </div>
+        <div class="card p-5 text-center">
+            <p class="text-2xl font-bold text-gray-400" x-text="stats.belum_mulai ?? {{ $stats['belum_mulai'] }}">{{ $stats['belum_mulai'] }}</p>
+            <p class="text-sm text-gray-500 mt-1">Belum Mulai</p>
+        </div>
+    </div>
+
+    {{-- Progress Bar --}}
+    <div class="card">
+        <div class="flex items-center justify-between mb-2 text-sm">
+            <span class="font-medium text-gray-700">Progress Submit</span>
+            <span class="text-gray-500">
+                <span x-text="stats.submit ?? {{ $stats['submit'] }}">{{ $stats['submit'] }}</span> /
+                <span x-text="stats.total ?? {{ $stats['total'] }}">{{ $stats['total'] }}</span> peserta
+            </span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div class="h-3 bg-blue-600 rounded-full transition-all duration-500"
+                 :style="`width: ${stats.total > 0 ? Math.round((stats.submit / stats.total) * 100) : 0}%`"
+                 style="width: {{ $stats['total'] > 0 ? round(($stats['submit'] / $stats['total']) * 100) : 0 }}%">
+            </div>
+        </div>
+    </div>
+
+    {{-- Tabel Peserta --}}
+    <div class="card overflow-hidden p-0">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-gray-900">Daftar Peserta</h2>
+            <input type="text" placeholder="Cari nama / NIS..."
+                   x-model="searchPeserta"
+                   class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                    <tr>
+                        <th class="px-5 py-3 text-left">Peserta</th>
+                        <th class="px-5 py-3 text-left hidden sm:table-cell">Kelas</th>
+                        <th class="px-5 py-3 text-center">Status</th>
+                        <th class="px-5 py-3 text-center">Jawab</th>
+                        <th class="px-5 py-3 text-center">Ragu</th>
+                        <th class="px-5 py-3 text-center hidden md:table-cell">Sisa Waktu</th>
+                        <th class="px-5 py-3 text-center hidden lg:table-cell">Login</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100" id="peserta-tbody">
+                    @forelse($pesertaList as $sp)
+                    <tr class="hover:bg-gray-50"
+                        x-show="!searchPeserta || '{{ strtolower($sp->peserta->nama . ' ' . $sp->peserta->nis) }}'.includes(searchPeserta.toLowerCase())">
+                        <td class="px-5 py-3">
+                            <p class="font-medium text-gray-900">{{ $sp->peserta->nama }}</p>
+                            <p class="text-xs text-gray-500">{{ $sp->peserta->nis ?? $sp->peserta->nisn }}</p>
+                        </td>
+                        <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $sp->peserta->kelas ?? '—' }}</td>
+                        <td class="px-5 py-3 text-center">
+                            @if($sp->status === 'submit')
+                                <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
+                            @elseif($sp->status === 'mengerjakan')
+                                <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                                    Online
+                                </span>
+                            @else
+                                <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Belum</span>
+                            @endif
+                        </td>
+                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->jumlah_terjawab ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center text-amber-600 font-medium">{{ $sp->jumlah_ragu ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center hidden md:table-cell">
+                            @if($sp->status === 'mengerjakan' && $sp->getSisaWaktuDetikAttribute() !== null)
+                                @php $sisa = $sp->getSisaWaktuDetikAttribute(); @endphp
+                                <span class="{{ $sisa < 600 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
+                                    {{ floor($sisa / 60) }}:{{ str_pad($sisa % 60, 2, '0', STR_PAD_LEFT) }}
+                                </span>
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
+                        </td>
+                        <td class="px-5 py-3 text-center hidden lg:table-cell text-xs text-gray-500">
+                            {{ $sp->mulai_at ? \Carbon\Carbon::parse($sp->mulai_at)->format('H:i:s') : '—' }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada peserta yang login.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function sesiMonitoringApp() {
+    return {
+        searchPeserta: '',
+        lastUpdate: '{{ now()->format("H:i:s") }}',
+        stats: {
+            total: {{ $stats['total'] }},
+            online: {{ $stats['online'] }},
+            submit: {{ $stats['submit'] }},
+            belum_mulai: {{ $stats['belum_mulai'] }},
+        },
+
+        init() {
+            setInterval(() => this.loadStats(), 5000);
+        },
+
+        async loadStats() {
+            try {
+                const res = await fetch('{{ route('dinas.monitoring.sesi.api', $sesi->id) }}', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.stats = data.stats ?? this.stats;
+                    this.lastUpdate = new Date().toLocaleTimeString('id-ID');
+                }
+            } catch (e) { /* offline */ }
+        }
+    };
+}
+</script>
+@endsection
