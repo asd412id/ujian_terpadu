@@ -3,7 +3,7 @@
 @section('title', isset($soal) ? 'Edit Soal' : 'Tambah Soal')
 
 @section('breadcrumb')
-    <a href="{{ route('dinas.dinas.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
+    <a href="{{ route('dinas.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -12,7 +12,7 @@
 
 @section('page-content')
 <div x-data="soalForm()" x-init="init()">
-<form action="{{ isset($soal) ? route('dinas.dinas.soal.update', $soal->id) : route('dinas.dinas.soal.store') }}"
+<form action="{{ isset($soal) ? route('dinas.soal.update', $soal->id) : route('dinas.soal.store') }}"
       method="POST" enctype="multipart/form-data" class="space-y-5">
     @csrf
     @if(isset($soal)) @method('PUT') @endif
@@ -272,7 +272,7 @@
                     </svg>
                     {{ isset($soal) ? 'Simpan Perubahan' : 'Simpan Soal' }}
                 </button>
-                <a href="{{ route('dinas.dinas.soal.index') }}"
+                <a href="{{ route('dinas.soal.index') }}"
                    class="w-full text-center border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium py-2.5 rounded-xl transition-colors">
                     Batal
                 </a>

@@ -82,7 +82,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::resource('sekolah', \App\Http\Controllers\Dinas\SekolahController::class)->names('sekolah');
 
     // Bank Soal (dinas bisa kelola semua soal)
-    Route::resource('soal', \App\Http\Controllers\Dinas\SoalController::class)->names('dinas.soal');
+    Route::resource('soal', \App\Http\Controllers\Dinas\SoalController::class)->names('soal');
 
     // Kategori Soal
     Route::resource('kategori', \App\Http\Controllers\Dinas\KategoriSoalController::class)->names('kategori');

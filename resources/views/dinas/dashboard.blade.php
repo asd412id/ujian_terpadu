@@ -161,7 +161,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             @foreach([
                 ['route' => 'dinas.paket.create', 'label' => 'Buat Paket Ujian', 'icon' => 'plus', 'color' => 'blue'],
-                ['route' => 'dinas.dinas.soal.create', 'label' => 'Tambah Soal', 'icon' => 'pencil', 'color' => 'purple'],
+                ['route' => 'dinas.soal.create', 'label' => 'Tambah Soal', 'icon' => 'pencil', 'color' => 'purple'],
                 ['route' => 'dinas.sekolah.create', 'label' => 'Tambah Sekolah', 'icon' => 'office', 'color' => 'green'],
                 ['route' => 'dinas.laporan', 'label' => 'Unduh Laporan', 'icon' => 'download', 'color' => 'amber'],
             ] as $qa)

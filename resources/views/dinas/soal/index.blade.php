@@ -12,7 +12,7 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Bank Soal</h1>
-        <a href="{{ route('dinas.dinas.soal.create') }}"
+        <a href="{{ route('dinas.soal.create') }}"
            class="btn-primary inline-flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -22,7 +22,7 @@
     </div>
 
     {{-- Filter --}}
-    <form method="GET" action="{{ route('dinas.dinas.soal.index') }}"
+    <form method="GET" action="{{ route('dinas.soal.index') }}"
           class="card flex flex-col sm:flex-row gap-3 p-4">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari soal..."
                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -56,7 +56,7 @@
             Cari
         </button>
         @if(request()->hasAny(['search', 'kategori', 'tipe', 'kesulitan']))
-        <a href="{{ route('dinas.dinas.soal.index') }}"
+        <a href="{{ route('dinas.soal.index') }}"
            class="border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium px-4 py-2 rounded-lg transition-colors text-center">
             Reset
         </a>
@@ -122,9 +122,9 @@
                         <td class="px-5 py-3 text-center hidden md:table-cell font-medium text-gray-900">{{ $item->bobot }}</td>
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('dinas.dinas.soal.edit', $item->id) }}"
+                                <a href="{{ route('dinas.soal.edit', $item->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
-                                <form action="{{ route('dinas.dinas.soal.destroy', $item->id) }}" method="POST"
+                                <form action="{{ route('dinas.soal.destroy', $item->id) }}" method="POST"
                                       onsubmit="return confirm('Hapus soal ini?')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
@@ -138,7 +138,7 @@
                             <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
-                            Belum ada soal. <a href="{{ route('dinas.dinas.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
+                            Belum ada soal. <a href="{{ route('dinas.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
                         </td>
                     </tr>
                     @endforelse

@@ -46,7 +46,7 @@
                         ['route' => 'dinas.dashboard',         'icon' => 'grid',     'label' => 'Dashboard'],
                         ['route' => 'dinas.monitoring',        'icon' => 'eye',      'label' => 'Monitoring Ujian', 'badge' => 'LIVE'],
                         ['route' => 'dinas.paket.index',       'icon' => 'document', 'label' => 'Paket Ujian'],
-                        ['route' => 'dinas.dinas.soal.index',  'icon' => 'pencil',   'label' => 'Bank Soal'],
+                        ['route' => 'dinas.soal.index',       'icon' => 'pencil',   'label' => 'Bank Soal'],
                         ['route' => 'dinas.kategori.index',    'icon' => 'tag',      'label' => 'Kategori Soal'],
                         ['route' => 'dinas.sekolah.index',     'icon' => 'office',   'label' => 'Sekolah'],
                         ['route' => 'dinas.grading',           'icon' => 'star',     'label' => 'Penilaian Essay'],
@@ -194,6 +194,7 @@
         </main>
     </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>

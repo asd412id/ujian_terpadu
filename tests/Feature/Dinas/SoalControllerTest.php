@@ -22,7 +22,7 @@ class SoalControllerTest extends TestCase
         $user = $this->dinasUser();
         Soal::factory()->count(3)->create();
 
-        $response = $this->actingAs($user)->get(route('dinas.dinas.soal.index'));
+        $response = $this->actingAs($user)->get(route('dinas.soal.index'));
 
         $response->assertStatus(200);
         $response->assertViewIs('dinas.soal.index');
@@ -36,7 +36,7 @@ class SoalControllerTest extends TestCase
         Soal::factory()->count(3)->create();
 
         $response = $this->actingAs($user)
-            ->get(route('dinas.dinas.soal.index', ['kategori' => $kategori->id]));
+            ->get(route('dinas.soal.index', ['kategori' => $kategori->id]));
 
         $response->assertStatus(200);
     }
@@ -48,7 +48,7 @@ class SoalControllerTest extends TestCase
         Soal::factory()->essay()->count(1)->create();
 
         $response = $this->actingAs($user)
-            ->get(route('dinas.dinas.soal.index', ['tipe' => 'pg']));
+            ->get(route('dinas.soal.index', ['tipe' => 'pg']));
 
         $response->assertStatus(200);
     }
@@ -56,7 +56,7 @@ class SoalControllerTest extends TestCase
     public function test_create_page(): void
     {
         $user = $this->dinasUser();
-        $response = $this->actingAs($user)->get(route('dinas.dinas.soal.create'));
+        $response = $this->actingAs($user)->get(route('dinas.soal.create'));
         $response->assertStatus(200);
     }
 
@@ -65,7 +65,7 @@ class SoalControllerTest extends TestCase
         $user = $this->dinasUser();
         $kategori = KategoriSoal::factory()->create();
 
-        $response = $this->actingAs($user)->post(route('dinas.dinas.soal.store'), [
+        $response = $this->actingAs($user)->post(route('dinas.soal.store'), [
             'kategori_soal_id'  => $kategori->id,
             'jenis_soal'        => 'pilihan_ganda',
             'pertanyaan'        => 'Berapa 1+1?',
@@ -75,7 +75,7 @@ class SoalControllerTest extends TestCase
             'opsi_benar'        => ['B'],
         ]);
 
-        $response->assertRedirect(route('dinas.dinas.soal.index'));
+        $response->assertRedirect(route('dinas.soal.index'));
         $this->assertDatabaseHas('soal', ['pertanyaan' => 'Berapa 1+1?', 'tipe_soal' => 'pg']);
     }
 
@@ -84,7 +84,7 @@ class SoalControllerTest extends TestCase
         $user = $this->dinasUser();
         $kategori = KategoriSoal::factory()->create();
 
-        $response = $this->actingAs($user)->post(route('dinas.dinas.soal.store'), [
+        $response = $this->actingAs($user)->post(route('dinas.soal.store'), [
             'kategori_soal_id'  => $kategori->id,
             'jenis_soal'        => 'essay',
             'pertanyaan'        => 'Jelaskan proses fotosintesis.',
@@ -92,7 +92,7 @@ class SoalControllerTest extends TestCase
             'bobot'             => 5,
         ]);
 
-        $response->assertRedirect(route('dinas.dinas.soal.index'));
+        $response->assertRedirect(route('dinas.soal.index'));
         $this->assertDatabaseHas('soal', ['tipe_soal' => 'essay']);
     }
 
@@ -100,7 +100,7 @@ class SoalControllerTest extends TestCase
     {
         $user = $this->dinasUser();
 
-        $response = $this->actingAs($user)->post(route('dinas.dinas.soal.store'), [
+        $response = $this->actingAs($user)->post(route('dinas.soal.store'), [
             'pertanyaan' => 'No category',
         ]);
 
@@ -112,7 +112,7 @@ class SoalControllerTest extends TestCase
         $user = $this->dinasUser();
         $soal = Soal::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('dinas.dinas.soal.edit', $soal));
+        $response = $this->actingAs($user)->get(route('dinas.soal.edit', $soal));
         $response->assertStatus(200);
     }
 
@@ -121,8 +121,8 @@ class SoalControllerTest extends TestCase
         $user = $this->dinasUser();
         $soal = Soal::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($user)->delete(route('dinas.dinas.soal.destroy', $soal));
+        $response = $this->actingAs($user)->delete(route('dinas.soal.destroy', $soal));
 
-        $response->assertRedirect(route('dinas.dinas.soal.index'));
+        $response->assertRedirect(route('dinas.soal.index'));
     }
 }

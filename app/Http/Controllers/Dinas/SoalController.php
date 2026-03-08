@@ -51,7 +51,7 @@ class SoalController extends Controller
 
         $this->soalService->createSoal($validated, $request);
 
-        return redirect()->route('dinas.dinas.soal.index')
+        return redirect()->route('dinas.soal.index')
                          ->with('success', 'Soal berhasil ditambahkan.');
     }
 
@@ -77,7 +77,7 @@ class SoalController extends Controller
 
         $this->soalService->updateSoal($soal, $validated, $request);
 
-        return redirect()->route('dinas.dinas.soal.index')
+        return redirect()->route('dinas.soal.index')
                          ->with('success', 'Soal berhasil diperbarui.');
     }
 
@@ -91,7 +91,7 @@ class SoalController extends Controller
     {
         $this->soalService->deleteSoal($soal);
 
-        return redirect()->route('dinas.dinas.soal.index')
+        return redirect()->route('dinas.soal.index')
                          ->with('success', 'Soal berhasil dihapus.');
     }
 }
