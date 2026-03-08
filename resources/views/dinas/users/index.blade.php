@@ -62,7 +62,7 @@
                         </span>
                     </td>
                     <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">
-                        {{ $user->sekolah->nama_sekolah ?? '—' }}
+                        {{ $user->sekolah?->nama ?? '—' }}
                     </td>
                     <td class="px-5 py-3 text-center">
                         @if($user->is_active)

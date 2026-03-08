@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Kartu Login — {{ $peserta->nama_lengkap }}</title>
+    <title>Kartu Login — {{ $peserta->nama }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, Helvetica, sans-serif; background: white; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
@@ -51,10 +51,10 @@
                 </div>
                 <div class="kartu-logo-text">UJIAN<br>TERPADU</div>
             </div>
-            <div class="kartu-sekolah">{{ $peserta->sekolah->nama_sekolah }}</div>
+            <div class="kartu-sekolah">{{ $peserta->sekolah?->nama }}</div>
         </div>
 
-        <div class="kartu-nama">{{ $peserta->nama_lengkap }}</div>
+        <div class="kartu-nama">{{ $peserta->nama }}</div>
         <div class="kartu-kelas">
             {{ $peserta->kelas ?? 'Kelas —' }}
             @if($peserta->nis) · NIS: {{ $peserta->nis }}@elseif($peserta->nisn) · NISN: {{ $peserta->nisn }}@endif
@@ -66,7 +66,7 @@
         </div>
         <div class="kartu-row">
             <span class="kartu-label">Password</span>
-            <span class="kartu-value">{{ $peserta->password_plain ?? '(lihat admin)' }}</span>
+            <span class="kartu-value">{{ $passwordKartu ?? '(lihat admin)' }}</span>
         </div>
         <div class="kartu-row">
             <span class="kartu-label">URL Login</span>

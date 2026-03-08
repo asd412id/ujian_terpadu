@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kartu Login Ujian — {{ auth()->user()->sekolah->nama_sekolah }}</title>
+    <title>Kartu Login Ujian — {{ auth()->user()->sekolah?->nama }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -144,7 +144,7 @@
 
     <div style="padding: 0 24px 24px;">
         <p class="page-title">KARTU LOGIN UJIAN TERPADU</p>
-        <p class="page-subtitle">{{ auth()->user()->sekolah->nama_sekolah }} · Tahun Pelajaran {{ date('Y') }}/{{ date('Y') + 1 }}</p>
+        <p class="page-subtitle">{{ auth()->user()->sekolah?->nama }} · Tahun Pelajaran {{ date('Y') }}/{{ date('Y') + 1 }}</p>
 
         <div class="card-grid">
             @foreach($pesertaList as $p)
@@ -158,10 +158,10 @@
                         </div>
                         <div class="kartu-logo-text">UJIAN<br>TERPADU</div>
                     </div>
-                    <div class="kartu-logo-sekolah">{{ auth()->user()->sekolah->nama_sekolah }}</div>
+                    <div class="kartu-logo-sekolah">{{ auth()->user()->sekolah?->nama }}</div>
                 </div>
 
-                <div class="kartu-nama">{{ $p->nama_lengkap }}</div>
+                <div class="kartu-nama">{{ $p->nama }}</div>
                 <div class="kartu-kelas">{{ $p->kelas ?? 'Kelas —' }} · {{ $p->nis ? 'NIS: ' . $p->nis : ($p->nisn ? 'NISN: ' . $p->nisn : '') }}</div>
 
                 <div class="kartu-row">
@@ -170,7 +170,7 @@
                 </div>
                 <div class="kartu-row">
                     <span class="kartu-label">Password</span>
-                    <span class="kartu-value">{{ $p->password_plain ?? '(lihat admin)' }}</span>
+                    <span class="kartu-value">{{ $p->password_kartu ?? '(lihat admin)' }}</span>
                 </div>
                 <div class="kartu-row">
                     <span class="kartu-label">URL Login</span>

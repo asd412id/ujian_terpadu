@@ -4,24 +4,25 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Sekolah;
+use App\Services\UserService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    public function __construct(
+        protected UserService $userService
+    ) {}
+
     public function index()
     {
-        $users = User::with('sekolah')
-            ->orderBy('role')
-            ->paginate(20);
+        $users = $this->userService->getAllPaginated(20);
 
         return view('dinas.users.index', compact('users'));
     }
 
     public function create()
     {
-        $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get();
+        $sekolahList = $this->userService->getActiveSekolahs();
         return view('dinas.users.form', compact('sekolahList'));
     }
 
@@ -35,8 +36,7 @@ class UserController extends Controller
             'sekolah_id' => 'nullable|exists:sekolah,id',
         ]);
 
-        $data['password'] = Hash::make($data['password']);
-        User::create($data);
+        $this->userService->createUser($data);
 
         return redirect()->route('dinas.users.index')
                          ->with('success', 'Pengguna berhasil ditambahkan.');
@@ -44,7 +44,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get();
+        $sekolahList = $this->userService->getActiveSekolahs();
         return view('dinas.users.form', compact('user', 'sekolahList'));
     }
 
@@ -59,20 +59,16 @@ class UserController extends Controller
             'password'   => 'nullable|string|min:8|confirmed',
         ]);
 
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']);
-        }
+        $this->userService->updateUser($user, $data);
 
-        $user->update($data);
         return redirect()->route('dinas.users.index')
                          ->with('success', 'Data pengguna diperbarui.');
     }
 
     public function destroy(User $user)
     {
-        $user->update(['is_active' => false]);
+        $this->userService->deleteUser($user);
+
         return redirect()->route('dinas.users.index')
                          ->with('success', 'Pengguna dinonaktifkan.');
     }

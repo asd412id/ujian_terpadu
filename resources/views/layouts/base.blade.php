@@ -69,7 +69,7 @@
             deferredPrompt = e;
             const banner = document.getElementById('pwa-install-banner');
             if (banner && ! localStorage.getItem('pwa-dismissed')) {
-                banner.classList.remove('hidden');
+                setTimeout(() => banner.classList.remove('hidden'), 5000);
                 banner.classList.add('flex');
             }
         });

@@ -4,13 +4,18 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\KategoriSoal;
+use App\Services\KategoriSoalService;
 use Illuminate\Http\Request;
 
 class KategoriSoalController extends Controller
 {
+    public function __construct(
+        protected KategoriSoalService $kategoriSoalService
+    ) {}
+
     public function index()
     {
-        $kategoris = KategoriSoal::withCount('soal')->orderBy('urutan')->paginate(30);
+        $kategoris = $this->kategoriSoalService->getAllPaginated(30);
         return view('dinas.kategori.index', compact('kategoris'));
     }
 
@@ -30,7 +35,8 @@ class KategoriSoalController extends Controller
             'urutan'     => 'integer|min:0',
         ]);
 
-        KategoriSoal::create($data);
+        $this->kategoriSoalService->createKategori($data);
+
         return redirect()->route('dinas.kategori.index')
                          ->with('success', 'Kategori berhasil ditambahkan.');
     }
@@ -52,14 +58,16 @@ class KategoriSoalController extends Controller
             'is_active'  => 'boolean',
         ]);
 
-        $kategori->update($data);
+        $this->kategoriSoalService->updateKategori($kategori, $data);
+
         return redirect()->route('dinas.kategori.index')
                          ->with('success', 'Kategori berhasil diperbarui.');
     }
 
     public function destroy(KategoriSoal $kategori)
     {
-        $kategori->update(['is_active' => false]);
+        $this->kategoriSoalService->deleteKategori($kategori);
+
         return redirect()->route('dinas.kategori.index')
                          ->with('success', 'Kategori dinonaktifkan.');
     }

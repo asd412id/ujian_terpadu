@@ -39,7 +39,7 @@
                     ];
                 } elseif ($userRole === 'pengawas') {
                     $navItems = [
-                        ['route' => 'dinas.monitoring',     'icon' => 'eye',      'label' => 'Monitoring Ujian', 'badge' => 'LIVE'],
+                        ['route' => 'pengawas.dashboard',   'icon' => 'grid',     'label' => 'Dashboard'],
                     ];
                 } else {
                     $navItems = [

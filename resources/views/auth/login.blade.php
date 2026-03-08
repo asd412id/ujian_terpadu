@@ -71,29 +71,10 @@
                 <p class="text-gray-500 text-sm mt-1">Masuk ke akun Anda untuk melanjutkan</p>
             </div>
 
-            {{-- Role Tabs --}}
-            <div x-data="{ role: '{{ old('role', 'admin_sekolah') }}' }" class="mb-6">
-                <div class="flex bg-gray-100 rounded-xl p-1 gap-1">
-                    @foreach([
-                        ['admin_sekolah', 'Admin Sekolah'],
-                        ['admin_dinas',   'Dinas Pendidikan'],
-                        ['pengawas',      'Pengawas'],
-                    ] as [$val, $label])
-                    <button type="button"
-                            @click="role = '{{ $val }}'"
-                            :class="role === '{{ $val }}'
-                                ? 'bg-white shadow text-blue-700 font-semibold'
-                                : 'text-gray-500 hover:text-gray-700'"
-                            class="flex-1 text-xs sm:text-sm py-2 px-1 rounded-lg transition-all duration-150">
-                        {{ $label }}
-                    </button>
-                    @endforeach
-                </div>
-
-                {{-- Login Form --}}
-                <form action="{{ route('login.post') }}" method="POST" class="mt-6 space-y-4">
+            {{-- Login Form --}}
+            <div class="mb-6">
+                <form action="{{ route('login.post') }}" method="POST" class="space-y-4">
                     @csrf
-                    <input type="hidden" name="role" :value="role">
 
                     <div>
                         <label class="form-label">Email</label>

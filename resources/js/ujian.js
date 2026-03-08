@@ -224,7 +224,8 @@ function ujianApp() {
             this.isSaving = true;
 
             const existing = await db.exam_answers
-                .where({ sesiPesertaId: cfg.sesiPesertaId, soalId })
+                .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                .and(item => item.soalId === soalId)
                 .first();
 
             if (existing) {
@@ -278,7 +279,8 @@ function ujianApp() {
 
             const cfg     = window.UJIAN_CONFIG;
             const pending = await db.exam_answers
-                .where({ sesiPesertaId: cfg.sesiPesertaId, synced: false })
+                .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                .and(item => !item.synced)
                 .toArray();
 
             if (pending.length === 0) {

@@ -81,6 +81,16 @@
 
             {{-- Aksi --}}
             <div class="flex items-center gap-2 flex-shrink-0">
+                @if($item->status === 'draft')
+                <form action="{{ route('dinas.paket.publish', $item->id) }}" method="POST"
+                      onsubmit="return confirm('Publikasikan paket ujian ini?')">
+                    @csrf
+                    <button type="submit"
+                            class="border border-green-300 hover:bg-green-50 text-green-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                        Publish
+                    </button>
+                </form>
+                @endif
                 <a href="{{ route('dinas.paket.show', $item->id) }}"
                    class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
                     Kelola Soal

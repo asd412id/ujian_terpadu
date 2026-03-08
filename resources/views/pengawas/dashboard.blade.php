@@ -12,7 +12,7 @@
     <div>
         <h1 class="text-xl font-bold text-gray-900">Dashboard Pengawas</h1>
         <p class="text-sm text-gray-500 mt-0.5">
-            {{ auth()->user()->sekolah->nama_sekolah ?? '' }} · {{ now()->isoFormat('dddd, D MMMM Y, HH:mm') }}
+            {{ auth()->user()->sekolah?->nama ?? '' }} · {{ now()->isoFormat('dddd, D MMMM Y, HH:mm') }}
         </p>
     </div>
 
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-4 py-3 border-b border-gray-100 last:border-0">
             <div class="flex-1 min-w-0">
                 <p class="font-medium text-gray-900 text-sm">{{ $sesi->nama_sesi }}</p>
-                <p class="text-xs text-gray-500">{{ $sesi->paket->nama ?? '—' }} · {{ $sesi->paket->durasi_menit ?? 0 }} menit</p>
+                <p class="text-xs text-gray-500">{{ $sesi->paket?->nama ?? '—' }} · {{ $sesi->paket?->durasi_menit ?? 0 }} menit</p>
             </div>
             <div class="text-right flex-shrink-0">
                 @if($sesi->status === 'berlangsung')

@@ -4,32 +4,30 @@ namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaketUjian;
-use App\Models\SesiUjian;
-use App\Models\SesiPeserta;
-use App\Models\Peserta;
+use App\Services\PaketUjianService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PaketUjianController extends Controller
 {
+    public function __construct(
+        protected PaketUjianService $paketUjianService
+    ) {}
+
     public function index()
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $paketList = PaketUjian::with(['sesi.sesiPeserta', 'paketSoal'])
-            ->where(fn ($q) => $q->where('sekolah_id', $user->sekolah_id)
-                                 ->orWhereNull('sekolah_id'))
-            ->where('status', 'aktif')
-            ->latest()
-            ->paginate(20);
+        $paketList = $this->paketUjianService->getForSekolah($user->sekolah_id);
 
         return view('sekolah.paket.index', compact('paketList'));
     }
 
     public function show(PaketUjian $paket)
     {
-        $paket->load(['sesi.sesiPeserta.peserta', 'paketSoal']);
+        $paket = $this->paketUjianService->getDetail($paket->id);
+
         return view('sekolah.paket.show', compact('paket'));
     }
 
@@ -41,18 +39,12 @@ class PaketUjianController extends Controller
             'peserta_ids.*'=> 'exists:peserta,id',
         ]);
 
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        $sesi = SesiUjian::findOrFail($request->sesi_id);
+        $created = $this->paketUjianService->registerPeserta(
+            $request->sesi_id,
+            $request->peserta_ids
+        );
 
-        $created = 0;
-        foreach ($request->peserta_ids as $pesertaId) {
-            SesiPeserta::firstOrCreate(
-                ['sesi_id' => $sesi->id, 'peserta_id' => $pesertaId],
-                ['status' => 'belum_login']
-            );
-            $created++;
-        }
+        $sesi = \App\Models\SesiUjian::findOrFail($request->sesi_id);
 
         return back()->with('success', "$created peserta berhasil didaftarkan ke sesi {$sesi->nama_sesi}.");
     }

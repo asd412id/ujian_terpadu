@@ -104,10 +104,10 @@
                             {{ $item->kategori->nama ?? '—' }}
                         </td>
                         <td class="px-5 py-3 text-center hidden sm:table-cell">
-                            @php
+                             @php
                                 $tipeLabel = [
-                                    'pilihan_ganda' => ['PG', 'blue'],
-                                    'pilihan_ganda_kompleks' => ['PGK', 'purple'],
+                                    'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
+                                    'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
                                     'isian' => ['Isian', 'green'],
                                     'essay' => ['Essay', 'amber'],
                                     'menjodohkan' => ['Jodoh', 'pink'],
@@ -118,7 +118,7 @@
                                 {{ $label }}
                             </span>
                         </td>
-                        <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ $item->tingkat_kesulitan ?? '—' }}</td>
+                        <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ ucfirst($item->tingkat_kesulitan ?? '—') }}</td>
                         <td class="px-5 py-3 text-center hidden md:table-cell font-medium text-gray-900">{{ $item->bobot }}</td>
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-2">

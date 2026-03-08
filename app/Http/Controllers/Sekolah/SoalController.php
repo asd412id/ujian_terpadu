@@ -3,33 +3,32 @@
 namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
-use App\Models\Soal;
-use App\Models\KategoriSoal;
+use App\Models\ImportJob;
 use App\Models\OpsiJawaban;
 use App\Models\PasanganSoal;
-use App\Models\ImportJob;
-use App\Jobs\ImportSoalExcelJob;
-use App\Jobs\ImportSoalWordJob;
+use App\Models\Soal;
+use App\Services\SoalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SoalController extends Controller
 {
+    public function __construct(
+        protected SoalService $soalService
+    ) {}
+
     public function index(Request $request)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $soals = Soal::with('kategori')
-            ->where('sekolah_id', $user->sekolah_id)
-            ->when($request->q, fn ($q) => $q->where('pertanyaan', 'like', "%{$request->q}%"))
-            ->when($request->kategori, fn ($q) => $q->where('kategori_id', $request->kategori))
-            ->when($request->jenis, fn ($q) => $q->where('tipe_soal', $request->jenis))
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
+        $soals = $this->soalService->getBySekolah($user->sekolah_id, [
+            'q'        => $request->q,
+            'kategori' => $request->kategori,
+            'jenis'    => $request->jenis,
+        ]);
 
-        $kategori = KategoriSoal::where('is_active', true)->orderBy('urutan')->get();
+        $kategori = $this->soalService->getActiveKategori();
 
         return view('sekolah.soal.index', compact('soals', 'kategori'));
     }
@@ -44,7 +43,7 @@ class SoalController extends Controller
 
     public function create()
     {
-        $kategoris = KategoriSoal::where('is_active', true)->orderBy('urutan')->get();
+        $kategoris = $this->soalService->getActiveKategori();
         return view('sekolah.soal.form', compact('kategoris'));
     }
 
@@ -95,7 +94,7 @@ class SoalController extends Controller
     public function edit(Soal $soal)
     {
         $soal->load(['opsiJawaban', 'pasangan']);
-        $kategoris = KategoriSoal::where('is_active', true)->orderBy('urutan')->get();
+        $kategoris = $this->soalService->getActiveKategori();
         return view('sekolah.soal.form', compact('soal', 'kategoris'));
     }
 
@@ -142,7 +141,8 @@ class SoalController extends Controller
 
     public function destroy(Soal $soal)
     {
-        $soal->delete();
+        $this->soalService->deleteSoal($soal);
+
         return redirect()->route('sekolah.soal.index')
                          ->with('success', 'Soal dihapus.');
     }
@@ -151,12 +151,10 @@ class SoalController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $jobs = ImportJob::where('sekolah_id', $user->sekolah_id)
-                         ->whereIn('tipe', ['soal_excel', 'soal_word'])
-                         ->latest()
-                         ->take(10)
-                         ->get();
-        $kategoris = KategoriSoal::where('is_active', true)->orderBy('urutan')->get();
+
+        $jobs = $this->soalService->getImportJobs($user->sekolah_id);
+        $kategoris = $this->soalService->getActiveKategori();
+
         return view('sekolah.soal.import', compact('jobs', 'kategoris'));
     }
 
@@ -169,7 +167,7 @@ class SoalController extends Controller
         $path     = $request->file('file')->store('imports', 'local');
         $filename = $request->file('file')->getClientOriginalName();
 
-        $job = ImportJob::create([
+        $job = $this->soalService->createImportJob([
             'created_by' => $user->id,
             'sekolah_id' => $user->sekolah_id,
             'tipe'       => 'soal_excel',
@@ -177,8 +175,6 @@ class SoalController extends Controller
             'filepath'   => $path,
             'status'     => 'pending',
         ]);
-
-        dispatch(new ImportSoalExcelJob($job));
 
         return response()->json(['job_id' => $job->id, 'message' => 'Import dimulai']);
     }
@@ -192,7 +188,7 @@ class SoalController extends Controller
         $path     = $request->file('file')->store('imports', 'local');
         $filename = $request->file('file')->getClientOriginalName();
 
-        $job = ImportJob::create([
+        $job = $this->soalService->createImportJob([
             'created_by' => $user->id,
             'sekolah_id' => $user->sekolah_id,
             'tipe'       => 'soal_word',
@@ -200,8 +196,6 @@ class SoalController extends Controller
             'filepath'   => $path,
             'status'     => 'pending',
         ]);
-
-        dispatch(new ImportSoalWordJob($job));
 
         return response()->json(['job_id' => $job->id, 'message' => 'Import dimulai']);
     }

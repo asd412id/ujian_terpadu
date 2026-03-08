@@ -3,17 +3,20 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
+    public function __construct(
+        protected AuthService $authService
+    ) {}
+
     public function showLogin()
     {
         if (Auth::guard('web')->check()) {
-            /** @var User $user */
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             return redirect()->route($user->getDashboardRoute());
         }
@@ -25,34 +28,24 @@ class LoginController extends Controller
         $request->validate([
             'email'    => 'required|string',
             'password' => 'required|string',
-            'role'     => 'required|in:admin_dinas,admin_sekolah,pengawas',
+            'role'     => 'nullable|string|in:super_admin,admin_dinas,admin_sekolah,pengawas',
         ]);
 
-        $credentials = [
+        $result = $this->authService->loginUser([
             'email'    => $request->email,
             'password' => $request->password,
             'role'     => $request->role,
-            'is_active'=> true,
-        ];
-
-        if (! Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
-            throw ValidationException::withMessages([
-                'email' => 'Email/password salah atau akun tidak aktif.',
-            ]);
-        }
+            'remember' => $request->boolean('remember'),
+        ]);
 
         $request->session()->regenerate();
 
-        /** @var User $user */
-        $user = Auth::user();
-        $user->update(['last_login_at' => now()]);
-
-        return redirect()->route($user->getDashboardRoute());
+        return redirect()->route($result['dashboard_route']);
     }
 
     public function logout(Request $request)
     {
-        Auth::guard('web')->logout();
+        $this->authService->logout('web');
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('login');

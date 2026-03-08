@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
-use App\Models\Peserta;
-use App\Models\SesiUjian;
+use App\Services\DashboardService;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        protected DashboardService $dashboardService
+    ) {}
+
     public function index()
     {
         /** @var \App\Models\User $user */
@@ -20,22 +23,12 @@ class DashboardController extends Controller
             return redirect()->route('dinas.dashboard');
         }
 
-        $paketIds = $sekolah->paketUjian()->pluck('id');
+        $data = $this->dashboardService->getSekolahDashboard($sekolah->id);
 
-        $stats = [
-            'total_peserta' => Peserta::where('sekolah_id', $sekolah->id)->count(),
-            'total_paket'   => $paketIds->count(),
-            'sesi_aktif'    => SesiUjian::whereIn('paket_id', $paketIds)->where('status', 'berlangsung')->count(),
-            'total_soal'    => $sekolah->soal()->count(),
-        ];
-
-        $sesiMendatang = SesiUjian::whereIn('paket_id', $paketIds)
-            ->whereIn('status', ['menunggu', 'berlangsung'])
-            ->with('paket')
-            ->orderBy('waktu_mulai')
-            ->limit(5)
-            ->get();
-
-        return view('sekolah.dashboard', compact('sekolah', 'stats', 'sesiMendatang'));
+        return view('sekolah.dashboard', [
+            'sekolah'       => $data['sekolah'],
+            'stats'         => $data['stats'],
+            'sesiMendatang' => $data['sesiMendatang'],
+        ]);
     }
 }

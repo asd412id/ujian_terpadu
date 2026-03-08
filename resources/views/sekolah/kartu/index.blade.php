@@ -56,7 +56,7 @@
                     @forelse($peserta as $p)
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3">
-                            <p class="font-medium text-gray-900">{{ $p->nama_lengkap }}</p>
+                            <p class="font-medium text-gray-900">{{ $p->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $p->nis ?? $p->nisn }}</p>
                         </td>
                         <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $p->kelas ?? '—' }}</td>

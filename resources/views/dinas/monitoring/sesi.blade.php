@@ -27,7 +27,7 @@
                 @endif
             </div>
             <p class="text-sm text-gray-500 mt-0.5">
-                {{ $sesi->paket->nama }} · {{ $sesi->paket->sekolah->nama ?? '—' }}
+                {{ $sesi->paket?->nama ?? '—' }} · {{ $sesi->paket?->sekolah?->nama ?? 'Semua Sekolah' }}
             </p>
         </div>
 

@@ -90,8 +90,15 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     // Paket Ujian
     Route::resource('paket', \App\Http\Controllers\Dinas\PaketUjianController::class)->names('paket');
     Route::post('/paket/{paket}/publish', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'publish'])->name('paket.publish');
+    Route::post('/paket/{paket}/draft', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'draft'])->name('paket.draft');
     Route::post('/paket/{paket}/soal/add', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalAdd'])->name('paket.soal.add');
     Route::delete('/paket/{paket}/soal/{soal}', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalRemove'])->name('paket.soal.remove');
+
+    // Sesi Ujian CRUD (nested under paket)
+    Route::post('/paket/{paket}/sesi', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'store'])->name('paket.sesi.store');
+    Route::get('/paket/{paket}/sesi/{sesi}/edit', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'edit'])->name('paket.sesi.edit');
+    Route::put('/paket/{paket}/sesi/{sesi}', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'update'])->name('paket.sesi.update');
+    Route::delete('/paket/{paket}/sesi/{sesi}', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'destroy'])->name('paket.sesi.destroy');
 
     // Grading Essay
     Route::get('/grading', [\App\Http\Controllers\Dinas\GradingController::class, 'index'])->name('grading');

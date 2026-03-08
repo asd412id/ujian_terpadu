@@ -1,59 +1,174 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Ujian Terpadu
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara daring dengan dukungan multi-role, monitoring real-time, dan mode offline (PWA).
 
-## About Laravel
+## Fitur Utama
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Dinas Pendidikan (Admin)
+- Dashboard statistik seluruh sekolah
+- Manajemen sekolah, user, dan kategori soal
+- Bank soal terpusat & paket ujian (publish/unpublish)
+- Monitoring ujian real-time (per sekolah & per sesi)
+- Grading essay manual
+- Laporan & export nilai
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Admin Sekolah
+- Dashboard statistik sekolah
+- Manajemen peserta (CRUD + import Excel)
+- Input soal (manual, import Excel/Word)
+- Pendaftaran peserta ke paket ujian
+- Cetak kartu login peserta (per sesi / per peserta / semua)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Pengawas
+- Dashboard pengawasan
+- Monitoring ruang ujian per sesi
 
-## Learning Laravel
+### Peserta Ujian
+- Login terpisah dengan token
+- Lobby ujian (daftar sesi tersedia)
+- Pengerjaan ujian dengan timer
+- Auto-save jawaban (offline sync via API)
+- Submit & halaman selesai
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Teknis
+- PWA support (offline fallback)
+- API offline sync untuk jawaban
+- Docker-ready deployment
+- 232 automated tests (unit + feature)
+- SQLite default, MySQL supported
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Tech Stack
 
-## Laravel Sponsors
+| Layer | Technology |
+|-------|-----------|
+| Framework | Laravel 12 |
+| PHP | 8.3+ |
+| Database | SQLite (default) / MySQL |
+| Frontend | Blade + Tailwind CSS + Vite |
+| Queue | Database driver |
+| Import | Maatwebsite/Excel 3.1, PhpWord |
+| Testing | PHPUnit (232 tests) |
+| Container | Docker + Nginx |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Persyaratan
 
-### Premium Partners
+- PHP 8.3+
+- Composer 2.x
+- Node.js 18+ & npm
+- SQLite3 atau MySQL 8.0+
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Instalasi
 
-## Contributing
+### Lokal
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+# Clone repository
+git clone <repository-url>
+cd ujian_terpadu
 
-## Code of Conduct
+# Install dependencies
+composer install
+npm install
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Setup environment
+cp .env.example .env
+php artisan key:generate
 
-## Security Vulnerabilities
+# Database (SQLite default)
+touch database/database.sqlite
+php artisan migrate --seed
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Build assets
+npm run build
 
-## License
+# Jalankan server
+php artisan serve
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Docker
+
+```bash
+docker-compose up -d --build
+docker-compose exec app php artisan migrate --seed
+```
+
+Akses aplikasi di `http://localhost:8080`
+
+## Akun Default (Seeder)
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin Dinas | `admin@dinas.test` | `password` |
+| Operator Sekolah | `operator01@sekolah.test` | `password` |
+| Pengawas | `pengawas@sekolah.test` | `password` |
+
+> Peserta login menggunakan token yang tercetak di kartu login.
+
+## Struktur Aplikasi
+
+```
+app/
+├── Http/Controllers/
+│   ├── Auth/              # Login admin & peserta
+│   ├── Dinas/             # Dashboard, monitoring, soal, paket, grading, laporan
+│   ├── Sekolah/           # Peserta, soal, paket, kartu login
+│   ├── Pengawas/          # Dashboard & monitoring ruang
+│   └── Ujian/             # Lobby, pengerjaan ujian, jawaban API
+├── Models/                # Eloquent models
+├── Imports/               # Excel/Word import classes
+└── Services/              # Business logic services
+
+database/
+├── migrations/            # Schema migrations
+├── factories/             # Model factories
+└── seeders/               # Dinas, sekolah, user, kategori seeders
+
+resources/views/
+├── dinas/                 # Views admin dinas
+├── sekolah/               # Views admin sekolah
+├── pengawas/              # Views pengawas
+├── ujian/                 # Views peserta ujian
+├── auth/                  # Login pages
+├── components/            # Blade components
+└── layouts/               # Layout templates
+
+tests/
+├── Unit/                  # Unit tests
+└── Feature/               # Feature tests (controllers, auth, API)
+```
+
+## Testing
+
+```bash
+# Jalankan semua test
+php artisan test
+
+# Dengan coverage
+php artisan test --coverage
+
+# Filter test tertentu
+php artisan test --filter=NamaTest
+```
+
+## API Endpoints
+
+### Offline Sync (tanpa CSRF, rate-limited 200/menit)
+
+| Method | Endpoint | Keterangan |
+|--------|----------|------------|
+| POST | `/api/ujian/sync-jawaban` | Sync jawaban offline |
+| GET | `/api/ujian/status/{token}` | Cek status ujian peserta |
+| POST | `/api/ujian/submit/{token}` | Submit ujian via API |
+
+## Roles & Middleware
+
+| Role | Middleware | Prefix URL |
+|------|-----------|------------|
+| `admin_dinas` / `super_admin` | `auth`, `role:super_admin,admin_dinas` | `/dinas` |
+| `admin_sekolah` | `auth`, `role:admin_sekolah,super_admin,admin_dinas` | `/sekolah` |
+| `pengawas` | `auth`, `role:pengawas,admin_sekolah,admin_dinas,super_admin` | `/pengawas` |
+| Peserta | `peserta` (guard terpisah) | `/ujian` |
+
+## Lisensi
+
+MIT

@@ -3,19 +3,19 @@
 namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
-use App\Models\DinasPendidikan;
 use App\Models\Sekolah;
+use App\Services\SekolahService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class SekolahController extends Controller
 {
+    public function __construct(
+        protected SekolahService $sekolahService
+    ) {}
+
     public function index()
     {
-        $sekolahList = Sekolah::with('dinas')
-            ->withCount(['peserta', 'soal'])
-            ->orderBy('nama')
-            ->paginate(20);
+        $sekolahList = $this->sekolahService->getAllPaginated(20);
 
         return view('dinas.sekolah.index', compact('sekolahList'));
     }
@@ -38,14 +38,9 @@ class SekolahController extends Controller
             'kepala_sekolah'  => 'nullable|string|max:200',
         ]);
 
-        /** @var \App\Models\User $authUser */
-        $authUser = Auth::user();
-        $dinas = DinasPendidikan::first();
+        $data['is_active'] = $request->boolean('is_active');
 
-        Sekolah::create(array_merge($data, [
-            'dinas_id'  => $dinas->id,
-            'is_active' => $request->boolean('is_active'),
-        ]));
+        $this->sekolahService->createSekolah($data);
 
         return redirect()->route('dinas.sekolah.index')
                          ->with('success', 'Sekolah berhasil ditambahkan.');
@@ -77,7 +72,8 @@ class SekolahController extends Controller
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
-        $sekolah->update($data);
+
+        $this->sekolahService->updateSekolah($sekolah, $data);
 
         return redirect()->route('dinas.sekolah.index')
                          ->with('success', 'Data sekolah berhasil diperbarui.');
@@ -85,7 +81,8 @@ class SekolahController extends Controller
 
     public function destroy(Sekolah $sekolah)
     {
-        $sekolah->update(['is_active' => false]);
+        $this->sekolahService->deleteSekolah($sekolah);
+
         return redirect()->route('dinas.sekolah.index')
                          ->with('success', 'Sekolah berhasil dinonaktifkan.');
     }

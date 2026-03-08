@@ -4,34 +4,28 @@ namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
 use App\Models\Peserta;
-use App\Models\ImportJob;
-use App\Jobs\ImportPesertaJob;
+use App\Services\PesertaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 
 class PesertaController extends Controller
 {
+    public function __construct(
+        protected PesertaService $pesertaService
+    ) {}
+
     public function index(Request $request)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $peserta = Peserta::where('sekolah_id', $user->sekolah_id)
-            ->when($request->q, fn ($q) => $q->where('nama', 'like', "%{$request->q}%")
-                ->orWhere('nis', 'like', "%{$request->q}%")
-                ->orWhere('nisn', 'like', "%{$request->q}%"))
-            ->when($request->kelas, fn ($q) => $q->where('kelas', $request->kelas))
-            ->when($request->jurusan, fn ($q) => $q->where('jurusan', $request->jurusan))
-            ->orderBy('nama')
-            ->paginate(25)
-            ->withQueryString();
+        $peserta = $this->pesertaService->getBySekolah($user->sekolah_id, [
+            'q'       => $request->q,
+            'kelas'   => $request->kelas,
+            'jurusan' => $request->jurusan,
+        ]);
 
-        $kelasList = Peserta::where('sekolah_id', $user->sekolah_id)
-            ->whereNotNull('kelas')
-            ->distinct()
-            ->orderBy('kelas')
-            ->pluck('kelas');
+        $kelasList = $this->pesertaService->getKelasList($user->sekolah_id);
 
         return view('sekolah.peserta.index', compact('peserta', 'kelasList'));
     }
@@ -57,18 +51,16 @@ class PesertaController extends Controller
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $data['sekolah_id'] = $user->sekolah_id;
 
         if ($request->hasFile('foto')) {
             $data['foto'] = $request->file('foto')->store('peserta/foto', 'public');
         }
 
-        $password = Peserta::generatePassword();
-        $data['username_ujian'] = Peserta::generateUsername($data['nis'] ?? null, $data['nisn'] ?? null, $user->sekolah_id);
-        $data['password_ujian'] = Hash::make($password);
-        $data['password_plain'] = encrypt($password);
+        $plainPassword = $request->filled('password_ujian')
+            ? $request->input('password_ujian')
+            : null;
 
-        Peserta::create($data);
+        $this->pesertaService->createForSekolah($data, $user->sekolah_id, $plainPassword);
 
         return redirect()->route('sekolah.peserta.index')
                          ->with('success', 'Peserta berhasil ditambahkan.');
@@ -99,12 +91,11 @@ class PesertaController extends Controller
             $data['foto'] = $request->file('foto')->store('peserta/foto', 'public');
         }
 
-        // Update username_ujian jika NIS berubah
-        if (isset($data['nis']) && $data['nis'] !== $peserta->nis) {
-            $data['username_ujian'] = Peserta::generateUsername($data['nis'], $data['nisn'] ?? null, $peserta->sekolah_id);
-        }
+        $plainPassword = $request->filled('password_ujian')
+            ? $request->input('password_ujian')
+            : null;
 
-        $peserta->update($data);
+        $this->pesertaService->updateForSekolah($peserta->id, $data, $plainPassword);
 
         return redirect()->route('sekolah.peserta.index')
                          ->with('success', 'Data peserta berhasil diperbarui.');
@@ -113,7 +104,9 @@ class PesertaController extends Controller
     public function destroy(Peserta $peserta)
     {
         $this->authorizeSekolah($peserta);
-        $peserta->delete();
+
+        $this->pesertaService->delete($peserta->id);
+
         return redirect()->route('sekolah.peserta.index')
                          ->with('success', 'Peserta berhasil dihapus.');
     }
@@ -134,7 +127,7 @@ class PesertaController extends Controller
         $path     = $request->file('file')->store('imports', 'local');
         $filename = $request->file('file')->getClientOriginalName();
 
-        $job = ImportJob::create([
+        $job = $this->pesertaService->createImportJob([
             'created_by' => $user->id,
             'sekolah_id' => $user->sekolah_id,
             'tipe'       => 'peserta_excel',
@@ -142,8 +135,6 @@ class PesertaController extends Controller
             'filepath'   => $path,
             'status'     => 'pending',
         ]);
-
-        dispatch(new ImportPesertaJob($job));
 
         return redirect()->route('sekolah.peserta.import')
                          ->with('job_id', $job->id)

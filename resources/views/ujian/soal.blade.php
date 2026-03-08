@@ -26,8 +26,8 @@
     <script>
         window.UJIAN_CONFIG = {
             sesiToken:      "{{ $sesiPeserta->token_ujian }}",
-            sesiPesertaId:  {{ $sesiPeserta->id }},
-            paketId:        {{ $paket->id }},
+            sesiPesertaId:  "{{ $sesiPeserta->id }}",
+            paketId:        "{{ $paket->id }}",
             sisaWaktuDetik: {{ $sisaWaktu }},
             mulaiAt:        {{ $sesiPeserta->mulai_at?->timestamp ?? 'null' }},
             durasiMenit:    {{ $paket->durasi_menit }},
@@ -46,7 +46,7 @@
       @visibilitychange.window="onVisibilityChange()"
       @online.window="onOnline()"
       @offline.window="onOffline()"
-      @keydown.window.prevent.f5="return false"
+      @keydown.window.f5.prevent
       @contextmenu.window.prevent="logCheating('klik_kanan')">
 
     {{-- ===== OFFLINE BANNER ===== --}}
@@ -186,14 +186,14 @@
                                 </div>
                             </div>
                             {{-- Tandai --}}
-                            <button @click="toggleTandai({{ $soal['id'] }})"
-                                    :class="isTandai({{ $soal['id'] }}) ? 'text-amber-500 bg-amber-50' : 'text-gray-400 hover:text-amber-400'"
+                            <button @click="toggleTandai('{{ $soal['id'] }}')"
+                                    :class="isTandai('{{ $soal['id'] }}') ? 'text-amber-500 bg-amber-50' : 'text-gray-400 hover:text-amber-400'"
                                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs
                                            transition-colors flex-shrink-0">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                                 </svg>
-                                <span x-text="isTandai({{ $soal['id'] }}) ? 'Ditandai' : 'Tandai'"></span>
+                                <span x-text="isTandai('{{ $soal['id'] }}') ? 'Ditandai' : 'Tandai'"></span>
                             </button>
                         </div>
 
@@ -229,11 +229,11 @@
                             @if(in_array($soal['tipe_soal'], ['pg', 'pg_kompleks']))
                             @foreach($soal['opsi_jawaban'] as $opsi)
                             <label class="soal-option"
-                                   :class="isSelected({{ $soal['id'] }}, '{{ $opsi['label'] }}') ? 'selected' : ''"
-                                   @click="selectOpsi({{ $soal['id'] }}, '{{ $opsi['label'] }}', '{{ $soal['tipe_soal'] }}')">
+                                   :class="isSelected('{{ $soal['id'] }}', '{{ $opsi['label'] }}') ? 'selected' : ''"
+                                   @click="selectOpsi('{{ $soal['id'] }}', '{{ $opsi['label'] }}', '{{ $soal['tipe_soal'] }}')">
                                 <div class="flex-shrink-0 w-9 h-9 rounded-lg border-2 flex items-center justify-center
                                             font-bold text-sm transition-colors"
-                                     :class="isSelected({{ $soal['id'] }}, '{{ $opsi['label'] }}')
+                                     :class="isSelected('{{ $soal['id'] }}', '{{ $opsi['label'] }}')
                                              ? 'border-blue-600 bg-blue-600 text-white'
                                              : 'border-gray-300 text-gray-500'">
                                     {{ $opsi['label'] }}
@@ -263,8 +263,8 @@
                             <div class="card p-5">
                                 <label class="form-label">Jawaban:</label>
                                 <input type="text"
-                                       :value="getJawabanTeks({{ $soal['id'] }})"
-                                       @input.debounce.500ms="saveIsian({{ $soal['id'] }}, $event.target.value)"
+                                       :value="getJawabanTeks('{{ $soal['id'] }}')"
+                                       @input.debounce.500ms="saveIsian('{{ $soal['id'] }}', $event.target.value)"
                                        class="form-input text-base"
                                        placeholder="Ketikkan jawaban Anda di sini...">
                             </div>
@@ -274,8 +274,8 @@
                             <div class="card p-5">
                                 <label class="form-label">Jawaban Essay:</label>
                                 <textarea rows="6"
-                                          :value="getJawabanTeks({{ $soal['id'] }})"
-                                          @input.debounce.500ms="saveEssay({{ $soal['id'] }}, $event.target.value)"
+                                          :value="getJawabanTeks('{{ $soal['id'] }}')"
+                                          @input.debounce.500ms="saveEssay('{{ $soal['id'] }}', $event.target.value)"
                                           class="form-input resize-none"
                                           placeholder="Tuliskan jawaban Anda secara lengkap..."></textarea>
                                 <p class="text-xs text-gray-400 mt-2">Essay akan dinilai oleh guru/pengawas</p>
@@ -301,12 +301,12 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                         </svg>
                                         <div class="flex-1">
-                                            <select @change="savePasangan({{ $soal['id'] }}, {{ $i }}, $event.target.value)"
+                                            <select @change="savePasangan('{{ $soal['id'] }}', {{ $i }}, $event.target.value)"
                                                     class="form-input text-sm">
                                                 <option value="">— Pilih —</option>
                                                 @foreach($soal['pasangan'] as $j => $opt)
                                                 <option value="{{ $j }}"
-                                                        :selected="getPasanganJawaban({{ $soal['id'] }}, {{ $i }}) === {{ $j }}">
+                                                        :selected="getPasanganJawaban('{{ $soal['id'] }}', {{ $i }}) === {{ $j }}">
                                                     {{ $opt['kanan_teks'] }}
                                                 </option>
                                                 @endforeach
@@ -348,9 +348,9 @@
                         @foreach($soalList as $i => $s)
                         <button @click="goToSoal({{ $i }})"
                                 :class="{
-                                    'bg-blue-600 text-white border-blue-600': isAnswered({{ $s['id'] }}) && !isTandai({{ $s['id'] }}),
-                                    'bg-amber-400 text-white border-amber-400': isTandai({{ $s['id'] }}),
-                                    'bg-gray-100 text-gray-600 border-gray-200': !isAnswered({{ $s['id'] }}) && !isTandai({{ $s['id'] }}),
+                                    'bg-blue-600 text-white border-blue-600': isAnswered('{{ $s['id'] }}') && !isTandai('{{ $s['id'] }}'),
+                                    'bg-amber-400 text-white border-amber-400': isTandai('{{ $s['id'] }}'),
+                                    'bg-gray-100 text-gray-600 border-gray-200': !isAnswered('{{ $s['id'] }}') && !isTandai('{{ $s['id'] }}'),
                                     'ring-2 ring-offset-1 ring-blue-400': currentIndex === {{ $i }}
                                 }"
                                 class="w-full aspect-square rounded-lg border text-xs font-semibold
@@ -448,9 +448,9 @@
                 @foreach($soalList as $i => $s)
                 <button @click="goToSoal({{ $i }}); showNavigator = false"
                         :class="{
-                            'bg-blue-600 text-white': isAnswered({{ $s['id'] }}) && !isTandai({{ $s['id'] }}),
-                            'bg-amber-400 text-white': isTandai({{ $s['id'] }}),
-                            'bg-gray-100 text-gray-600': !isAnswered({{ $s['id'] }}) && !isTandai({{ $s['id'] }}),
+                            'bg-blue-600 text-white': isAnswered('{{ $s['id'] }}') && !isTandai('{{ $s['id'] }}'),
+                            'bg-amber-400 text-white': isTandai('{{ $s['id'] }}'),
+                            'bg-gray-100 text-gray-600': !isAnswered('{{ $s['id'] }}') && !isTandai('{{ $s['id'] }}'),
                             'ring-2 ring-blue-400': currentIndex === {{ $i }}
                         }"
                         class="aspect-square rounded-lg text-xs font-bold

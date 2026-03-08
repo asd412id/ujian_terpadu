@@ -4,37 +4,26 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\JawabanPeserta;
-use App\Models\PaketUjian;
-use App\Models\Sekolah;
-use App\Models\SesiPeserta;
+use App\Services\GradingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class GradingController extends Controller
 {
+    public function __construct(
+        protected GradingService $gradingService
+    ) {}
+
     public function index(Request $request)
     {
-        $query = JawabanPeserta::with(['soal.kategori', 'sesiPeserta.peserta.sekolah', 'sesiPeserta.sesi.paket'])
-            ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-            ->whereNull('skor_manual')
-            ->whereNotNull('jawaban_teks');
+        $data = $this->gradingService->getPendingGrading($request->all());
 
-        if ($request->paket_id) {
-            $query->whereHas('sesiPeserta.sesi', fn ($q) => $q->where('paket_id', $request->paket_id));
-        }
-        if ($request->sekolah_id) {
-            $query->whereHas('sesiPeserta.peserta', fn ($q) => $q->where('sekolah_id', $request->sekolah_id));
-        }
-
-        $jawabans = $query->latest()->paginate(15);
-
-        $totalBelumDinilai = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-            ->whereNull('skor_manual')->whereNotNull('jawaban_teks')->count();
-
-        $paketList = PaketUjian::orderBy('nama')->get();
-        $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get();
-
-        return view('dinas.grading.index', compact('jawabans', 'totalBelumDinilai', 'paketList', 'sekolahList'));
+        return view('dinas.grading.index', [
+            'jawabans'          => $data['jawabans'],
+            'totalBelumDinilai' => $data['totalBelumDinilai'],
+            'paketList'         => $data['paketList'],
+            'sekolahList'       => $data['sekolahList'],
+        ]);
     }
 
     public function nilai(Request $request, JawabanPeserta $jawaban)
@@ -47,12 +36,12 @@ class GradingController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $jawaban->update([
-            'skor_manual'     => $request->skor_manual,
-            'catatan_penilai' => $request->catatan_penilai,
-            'dinilai_oleh'    => $user->id,
-            'dinilai_at'      => now(),
-        ]);
+        $this->gradingService->gradeJawaban(
+            jawabanId: $jawaban->id,
+            nilai: $request->skor_manual,
+            catatan: $request->catatan_penilai,
+            dinilaiOleh: $user->id,
+        );
 
         return back()->with('success', 'Nilai essay berhasil disimpan.');
     }

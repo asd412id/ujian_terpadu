@@ -105,7 +105,7 @@
             @foreach($sesiSelesai as $sp)
             <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
                 <div>
-                    <p class="text-white text-sm font-medium">{{ $sp->sesi->paket->nama }}</p>
+                    <p class="text-white text-sm font-medium">{{ $sp->sesi->paket?->nama ?? '—' }}</p>
                     <p class="text-blue-300 text-xs">{{ $sp->sesi->nama_sesi }}</p>
                 </div>
                 <div class="text-right">

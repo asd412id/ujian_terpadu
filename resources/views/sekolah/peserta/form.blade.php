@@ -29,7 +29,7 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap <span class="text-red-500">*</span></label>
-            <input type="text" name="nama_lengkap" value="{{ old('nama_lengkap', $peserta->nama_lengkap ?? '') }}" required
+            <input type="text" name="nama" value="{{ old('nama', $peserta->nama ?? '') }}" required
                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                    placeholder="Nama lengkap peserta">
         </div>

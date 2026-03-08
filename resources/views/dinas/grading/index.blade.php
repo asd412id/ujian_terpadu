@@ -86,11 +86,11 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">
                     Nilai (0 – <span x-text="maks">{{ $jawaban->soal->bobot }}</span>)
                 </label>
-                <div class="flex items-center gap-3">
-                    <input type="range" x-model="nilai"
-                           :min="0" :max="maks" step="1"
-                           class="flex-1 accent-blue-600">
-                    <span class="w-10 text-center font-bold text-lg text-blue-700" x-text="nilai"></span>
+                    <div class="flex items-center gap-3">
+                        <input type="range" x-model="nilai"
+                               :min="0" :max="maks" :step="maks > 10 ? 1 : 0.5"
+                               class="flex-1 accent-blue-600">
+                        <span class="w-10 text-center font-bold text-lg text-blue-700" x-text="nilai"></span>
                     <input type="hidden" name="skor_manual" :value="nilai">
                 </div>
             </div>
