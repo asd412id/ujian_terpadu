@@ -53,7 +53,7 @@
                     <td class="px-5 py-3 text-center font-medium text-gray-700">{{ $kat->soal_count ?? 0 }}</td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <button @click="editKategori({{ $kat->id }}, '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
+                            <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
                                     class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
                             <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
                                   onsubmit="return confirm('Hapus kategori ini?')">
