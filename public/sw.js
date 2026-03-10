@@ -1,4 +1,4 @@
-// Service Worker — Ujian Terpadu TKA
+// Service Worker — Ujian Terpadu
 // Strategy: CacheFirst untuk assets, NetworkFirst untuk halaman, BackgroundSync untuk jawaban
 
 const CACHE_VERSION    = 'v1';
