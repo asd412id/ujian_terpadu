@@ -15,13 +15,31 @@ class LobbyService
 
     /**
      * Get available ujian (active sessions) for a peserta.
+     * Only shows sesi that are 'berlangsung' and within schedule window.
      */
     public function getAvailableUjian(string $pesertaId): mixed
     {
         return SesiPeserta::with(['sesi.paket'])
             ->where('peserta_id', $pesertaId)
             ->whereIn('status', ['terdaftar', 'belum_login', 'login', 'mengerjakan'])
-            ->get();
+            ->whereHas('sesi', function ($q) {
+                $q->where('status', 'berlangsung');
+            })
+            ->get()
+            ->map(function ($sp) {
+                // Add schedule info for display
+                $sesi = $sp->sesi;
+                $now = now();
+                $sp->schedule_status = 'open'; // default: can start
+
+                if ($sesi->waktu_mulai && $now->lt($sesi->waktu_mulai)) {
+                    $sp->schedule_status = 'belum_mulai';
+                } elseif ($sesi->waktu_selesai && $now->gt($sesi->waktu_selesai)) {
+                    $sp->schedule_status = 'sudah_selesai';
+                }
+
+                return $sp;
+            });
     }
 
     /**

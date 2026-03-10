@@ -74,11 +74,72 @@ function ujianApp() {
 
         // ===== RESTORE STATE =====
         async restoreState(sesiPesertaId) {
+            const cfg = window.UJIAN_CONFIG;
+
             // Muat jawaban dari IndexedDB
             const localAnswers = await db.exam_answers
                 .where('sesiPesertaId').equals(sesiPesertaId)
                 .toArray();
 
+            // Seed from server data first (jawabanExisting), then overlay IndexedDB
+            if (cfg.jawabanExisting?.length > 0) {
+                cfg.jawabanExisting.forEach(j => {
+                    const soalId = String(j.soal_id);
+                    const ans = { pg: [], teks: '', pasangan: {}, benarSalah: {}, terjawab: !!j.is_terjawab };
+
+                    if (j.jawaban_pg) {
+                        if (Array.isArray(j.jawaban_pg)) {
+                            ans.pg = j.jawaban_pg;
+                        } else if (typeof j.jawaban_pg === 'object') {
+                            // Benar/Salah: {"A":"benar","B":"salah"}
+                            ans.benarSalah = j.jawaban_pg;
+                        }
+                    }
+                    if (j.jawaban_teks) {
+                        ans.teks = j.jawaban_teks;
+                    }
+                    if (j.jawaban_pasangan && Array.isArray(j.jawaban_pasangan)) {
+                        const map = {};
+                        j.jawaban_pasangan.forEach(pair => {
+                            if (Array.isArray(pair) && pair.length === 2) {
+                                map[pair[0]] = pair[1];
+                            }
+                        });
+                        ans.pasangan = map;
+                    }
+
+                    this.answers[soalId] = ans;
+
+                    // Also seed into IndexedDB if no local record exists
+                    if (!localAnswers.find(a => String(a.soalId) === soalId)) {
+                        const jawData = {};
+                        if (ans.pg.length > 0) { jawData.pg = ans.pg; jawData.terjawab = ans.terjawab; }
+                        else if (Object.keys(ans.benarSalah).length > 0) { jawData.benarSalah = ans.benarSalah; jawData.terjawab = ans.terjawab; }
+                        else if (Object.keys(ans.pasangan).length > 0) { jawData.pasangan = ans.pasangan; jawData.terjawab = ans.terjawab; }
+                        else if (ans.teks) { jawData.teks = ans.teks; jawData.terjawab = ans.terjawab; }
+                        else { jawData.terjawab = false; }
+
+                        db.exam_answers.add({
+                            sesiPesertaId,
+                            soalId,
+                            jawaban: jawData,
+                            synced: true,
+                            idempotencyKey: `server-${sesiPesertaId}-${soalId}`,
+                            updatedAt: Date.now(),
+                        }).catch(() => {});
+                    }
+                });
+
+                // Restore tandai from server data
+                const serverTandai = cfg.jawabanExisting
+                    .filter(j => j.is_ditandai)
+                    .map(j => String(j.soal_id));
+                if (serverTandai.length > 0) {
+                    this.tandaiList = serverTandai;
+                }
+            }
+
+            // Overlay with IndexedDB data (more recent, takes priority)
             localAnswers.forEach(ans => {
                 this.answers[ans.soalId] = {
                     pg:         ans.jawaban?.pg         ?? [],
@@ -91,11 +152,13 @@ function ujianApp() {
 
             this.pendingSync = localAnswers.filter(a => !a.synced).length;
 
-            // Muat state (posisi, tandai)
+            // Muat state (posisi, tandai) — IndexedDB tandaiList takes priority if exists
             const state = await db.exam_state.get(sesiPesertaId);
             if (state) {
                 this.currentIndex = state.currentIndex ?? 0;
-                this.tandaiList   = state.tandaiList   ?? [];
+                if (state.tandaiList?.length > 0) {
+                    this.tandaiList = state.tandaiList;
+                }
             }
         },
 
@@ -330,6 +393,7 @@ function ujianApp() {
                         sesi_token: cfg.sesiToken,
                         answers,
                         soal_ditandai: this.tandaiList.length,
+                        tandai_list: this.tandaiList,
                     }),
                 });
 
@@ -359,8 +423,8 @@ function ujianApp() {
         formatJawabanForApi(jawaban) {
             if (jawaban.pg?.length > 0)                        return jawaban.pg;
             if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
-            if (jawaban.pasangan)                               return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
-            if (jawaban.teks !== undefined)                     return jawaban.teks;
+            if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0)     return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
+            if (jawaban.teks !== undefined && jawaban.teks !== '')                 return jawaban.teks;
             return null;
         },
 

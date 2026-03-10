@@ -51,7 +51,7 @@ class SesiUjianService
     /**
      * Get peserta for a sesi with their sesi_peserta status.
      */
-    public function getPesertaSesi(SesiUjian $sesi, ?string $search = null)
+    public function getPesertaSesi(SesiUjian $sesi, ?string $search = null, int $perPage = 50)
     {
         return $sesi->peserta()
             ->when($search, fn($q) => $q->where(function ($q) use ($search) {
@@ -60,14 +60,14 @@ class SesiUjianService
             }))
             ->with('sekolah')
             ->orderBy('nama')
-            ->get();
+            ->paginate($perPage, ['*'], 'enrolled_page');
     }
 
     /**
      * Get all eligible peserta based on paket filter (jenjang + sekolah).
      * Returns peserta NOT yet in sesi.
      */
-    public function getAvailablePeserta(SesiUjian $sesi, ?string $search = null, ?string $sekolahId = null)
+    public function getAvailablePeserta(SesiUjian $sesi, ?string $search = null, ?string $sekolahId = null, int $perPage = 50)
     {
         $paket = $sesi->paket;
         $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
@@ -91,7 +91,36 @@ class SesiUjianService
             }))
             ->with('sekolah')
             ->orderBy('nama')
-            ->get();
+            ->paginate($perPage, ['*'], 'available_page');
+    }
+
+    /**
+     * Count enrolled peserta for stats (not affected by pagination).
+     */
+    public function countEnrolled(SesiUjian $sesi): int
+    {
+        return $sesi->sesiPeserta()->count();
+    }
+
+    /**
+     * Count available peserta for stats (not affected by pagination).
+     */
+    public function countAvailable(SesiUjian $sesi): int
+    {
+        $paket = $sesi->paket;
+        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
+
+        return Peserta::where('is_active', true)
+            ->whereNotIn('id', $existingIds)
+            ->whereHas('sekolah', function ($q) use ($paket) {
+                if ($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA') {
+                    $q->where('jenjang', $paket->jenjang);
+                }
+                if ($paket->sekolah_id) {
+                    $q->where('id', $paket->sekolah_id);
+                }
+            })
+            ->count();
     }
 
     /**

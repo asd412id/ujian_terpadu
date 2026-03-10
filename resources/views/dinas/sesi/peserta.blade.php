@@ -50,11 +50,11 @@
     {{-- Info Bar --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="bg-blue-50 rounded-xl px-4 py-3 text-center">
-            <p class="text-2xl font-bold text-blue-700">{{ $enrolled->count() }}</p>
+            <p class="text-2xl font-bold text-blue-700">{{ $totalEnrolled }}</p>
             <p class="text-xs text-blue-600">Terdaftar</p>
         </div>
         <div class="bg-green-50 rounded-xl px-4 py-3 text-center">
-            <p class="text-2xl font-bold text-green-700">{{ $available->count() }}</p>
+            <p class="text-2xl font-bold text-green-700">{{ $totalAvailable }}</p>
             <p class="text-xs text-green-600">Tersedia</p>
         </div>
         <div class="bg-gray-50 rounded-xl px-4 py-3 text-center">
@@ -101,7 +101,7 @@
         {{-- Peserta Terdaftar --}}
         <div class="card">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-semibold text-gray-900">Peserta Terdaftar ({{ $enrolled->count() }})</h2>
+                <h2 class="font-semibold text-gray-900">Peserta Terdaftar ({{ $totalEnrolled }})</h2>
                 @if($enrolled->where('pivot.status', 'terdaftar')->count() > 0)
                 <button type="button" @click="selectAllEnrolled()" class="text-xs text-red-600 hover:text-red-800 font-medium">
                     <span x-text="allEnrolledSelected ? 'Batal Pilih' : 'Pilih Semua'"></span>
@@ -159,13 +159,18 @@
                     </button>
                 </div>
             </form>
+            @if($enrolled->hasPages())
+            <div class="mt-3 pt-3 border-t">
+                {{ $enrolled->appends(request()->query())->fragment('enrolled')->links() }}
+            </div>
+            @endif
             @endif
         </div>
 
         {{-- Peserta Tersedia --}}
         <div class="card">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-semibold text-gray-900">Peserta Tersedia ({{ $available->count() }})</h2>
+                <h2 class="font-semibold text-gray-900">Peserta Tersedia ({{ $totalAvailable }})</h2>
                 @if($available->count() > 0)
                 <button type="button" @click="selectAllAvailable()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
                     <span x-text="allAvailableSelected ? 'Batal Pilih' : 'Pilih Semua'"></span>
@@ -205,6 +210,11 @@
                     </button>
                 </div>
             </form>
+            @if($available->hasPages())
+            <div class="mt-3 pt-3 border-t">
+                {{ $available->appends(request()->query())->fragment('available')->links() }}
+            </div>
+            @endif
             @endif
         </div>
     </div>
@@ -223,7 +233,7 @@
 @push('scripts')
 <script>
 function pesertaSesiApp() {
-    const enrolledRemovable = @json($enrolled->where('pivot.status', 'terdaftar')->pluck('id')->values());
+    const enrolledRemovable = @json($enrolled->filter(fn($p) => $p->pivot->status === 'terdaftar')->pluck('id')->values());
     const availableIds = @json($available->pluck('id')->values());
 
     return {

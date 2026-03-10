@@ -38,6 +38,14 @@
             statusUrl:      "{{ route('api.ujian.status', $sesiPeserta->token_ujian) }}",
             submitUrl:      "{{ route('api.ujian.submit', $sesiPeserta->token_ujian) }}",
             soalList:       @json($soalListJs),
+            jawabanExisting: @json($jawabanExisting->map(fn($j) => [
+                'soal_id'          => $j->soal_id,
+                'jawaban_pg'       => $j->jawaban_pg,
+                'jawaban_teks'     => $j->jawaban_teks,
+                'jawaban_pasangan' => $j->jawaban_pasangan,
+                'is_terjawab'      => $j->is_terjawab,
+                'is_ditandai'      => $j->is_ditandai,
+            ])->values()),
         };
     </script>
 </head>

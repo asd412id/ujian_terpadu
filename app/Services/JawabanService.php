@@ -112,6 +112,20 @@ class JawabanService
             }
             $sesiPeserta->update($updateData);
 
+            // Update per-soal is_ditandai based on tandai_list
+            if (isset($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
+                $tandaiIds = $requestMeta['tandai_list'];
+                // Reset all to false first
+                JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
+                    ->update(['is_ditandai' => false]);
+                // Set marked ones to true
+                if (!empty($tandaiIds)) {
+                    JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
+                        ->whereIn('soal_id', $tandaiIds)
+                        ->update(['is_ditandai' => true]);
+                }
+            }
+
             DB::commit();
 
             LogAktivitasUjian::create([

@@ -25,6 +25,27 @@ class LaporanController extends Controller
         ]);
     }
 
+    public function analisisSoal(Request $request, string $paketId)
+    {
+        $data = $this->laporanService->getAnalisisSoal($paketId);
+
+        return view('dinas.laporan.analisis-soal', [
+            'paket'    => $data['paket'],
+            'analisis' => $data['analisis'],
+            'summary'  => $data['summary'],
+        ]);
+    }
+
+    public function detailSiswa(string $sesiPesertaId)
+    {
+        $data = $this->laporanService->getDetailSiswa($sesiPesertaId);
+
+        return view('dinas.laporan.detail-siswa', [
+            'sesiPeserta' => $data['sesiPeserta'],
+            'detail'      => $data['detail'],
+        ]);
+    }
+
     public function export(Request $request)
     {
         $exportData = $this->laporanService->exportHasil($request->all());

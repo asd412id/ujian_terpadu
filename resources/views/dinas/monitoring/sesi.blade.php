@@ -82,10 +82,17 @@
     <div class="card overflow-hidden p-0">
         <div class="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 class="font-semibold text-gray-900">Daftar Peserta</h2>
-            <form method="GET" action="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="flex items-center gap-2">
+            <form method="GET" action="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="flex items-center gap-2 flex-wrap">
                 <input type="text" name="search" placeholder="Cari nama / NIS..."
                        value="{{ $filters['search'] ?? '' }}"
                        class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select name="sekolah_id" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
+                    <option value="">Semua Sekolah</option>
+                    @foreach($sekolahList as $sekolah)
+                    <option value="{{ $sekolah->id }}" {{ ($filters['sekolah_id'] ?? '') == $sekolah->id ? 'selected' : '' }}>{{ $sekolah->nama }}</option>
+                    @endforeach
+                </select>
                 <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onchange="this.form.submit()">
                     <option value="">Semua Status</option>
@@ -94,7 +101,7 @@
                     <option value="belum" {{ ($filters['status'] ?? '') === 'belum' ? 'selected' : '' }}>Belum Mulai</option>
                 </select>
                 <button type="submit" class="btn-primary">Cari</button>
-                @if(!empty($filters['search']) || !empty($filters['status']))
+                @if(!empty($filters['search']) || !empty($filters['status']) || !empty($filters['sekolah_id']))
                 <a href="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="text-xs text-gray-500 hover:text-red-500">Reset</a>
                 @endif
             </form>
@@ -104,10 +111,12 @@
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left">Peserta</th>
+                        <th class="px-5 py-3 text-left hidden sm:table-cell">Sekolah</th>
                         <th class="px-5 py-3 text-left hidden sm:table-cell">Kelas</th>
                         <th class="px-5 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-center">Jawab</th>
                         <th class="px-5 py-3 text-center">Ragu</th>
+                        <th class="px-5 py-3 text-center">Nilai</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Sisa Waktu</th>
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Login</th>
                     </tr>
@@ -119,6 +128,7 @@
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->nis ?? $sp->peserta->nisn }}</p>
                         </td>
+                        <td class="px-5 py-3 hidden sm:table-cell text-xs text-gray-600">{{ $sp->peserta->sekolah?->nama ?? '—' }}</td>
                         <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $sp->peserta->kelas ?? '—' }}</td>
                         <td class="px-5 py-3 text-center">
                             @if($sp->status === 'submit' || $sp->status === 'dinilai')
@@ -134,6 +144,15 @@
                         </td>
                         <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->soal_terjawab ?? 0 }}</td>
                         <td class="px-5 py-3 text-center text-amber-600 font-medium">{{ $sp->soal_ditandai ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center">
+                            @if(in_array($sp->status, ['submit', 'dinilai']) && $sp->nilai_akhir !== null)
+                                <span class="font-bold {{ $sp->nilai_akhir >= 70 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ number_format($sp->nilai_akhir, 1) }}
+                                </span>
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
+                        </td>
                         <td class="px-5 py-3 text-center hidden md:table-cell">
                             @if($sp->status === 'mengerjakan' && $sp->getSisaWaktuDetikAttribute() !== null)
                                 @php $sisa = $sp->getSisaWaktuDetikAttribute(); @endphp
@@ -150,7 +169,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-5 py-10 text-center text-gray-400">
+                        <td colspan="9" class="px-5 py-10 text-center text-gray-400">
                             @if(!empty($filters['search']) || !empty($filters['status']))
                                 Tidak ada peserta yang cocok dengan filter.
                             @else

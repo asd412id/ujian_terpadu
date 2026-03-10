@@ -36,7 +36,7 @@ class MonitoringController extends Controller
 
     public function sesi(Request $request, SesiUjian $sesi)
     {
-        $filters = $request->only(['search', 'status', 'per_page']);
+        $filters = $request->only(['search', 'status', 'per_page', 'sekolah_id']);
         $data = $this->monitoringService->getPesertaStatus($sesi->id, $filters);
 
         return view('dinas.monitoring.sesi', [
@@ -44,6 +44,7 @@ class MonitoringController extends Controller
             'alerts'      => $data['alerts'],
             'pesertaList' => $data['pesertaList'],
             'stats'       => $data['stats'],
+            'sekolahList' => $data['sekolahList'],
             'filters'     => $filters,
         ]);
     }

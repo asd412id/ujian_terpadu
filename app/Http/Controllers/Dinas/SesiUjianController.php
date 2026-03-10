@@ -81,11 +81,20 @@ class SesiUjianController extends Controller
     {
         abort_unless($sesi->paket_id === $paket->id, 404);
 
+        // Re-sync peserta jika masih mode auto dan sesi belum berlangsung
+        if (!$sesi->is_peserta_override && $sesi->status === 'persiapan') {
+            $this->service->autoSyncPeserta($sesi);
+        }
+
         $search = $request->get('search');
         $sekolahFilter = $request->get('sekolah_id');
 
         $enrolled = $this->service->getPesertaSesi($sesi, $search);
         $available = $this->service->getAvailablePeserta($sesi, $search, $sekolahFilter);
+
+        // Stats (aggregate, unaffected by pagination/search)
+        $totalEnrolled = $this->service->countEnrolled($sesi);
+        $totalAvailable = $this->service->countAvailable($sesi);
 
         $sekolahList = Sekolah::when($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA',
                 fn($q) => $q->where('jenjang', $paket->jenjang))
@@ -94,7 +103,8 @@ class SesiUjianController extends Controller
             ->get();
 
         return view('dinas.sesi.peserta', compact(
-            'paket', 'sesi', 'enrolled', 'available', 'sekolahList', 'search', 'sekolahFilter'
+            'paket', 'sesi', 'enrolled', 'available', 'sekolahList',
+            'search', 'sekolahFilter', 'totalEnrolled', 'totalAvailable'
         ));
     }
 

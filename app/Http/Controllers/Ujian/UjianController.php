@@ -33,6 +33,18 @@ class UjianController extends Controller
 
         $sesiPeserta->load(['sesi.paket']);
         $paket = $sesiPeserta->sesi->paket;
+        $sesi  = $sesiPeserta->sesi;
+
+        // Schedule enforcement — block if outside time window
+        $now = now();
+        if ($sesi->waktu_mulai && $now->lt($sesi->waktu_mulai)) {
+            return redirect()->route('ujian.lobby')
+                ->with('warning', 'Ujian belum dimulai. Jadwal mulai: ' . $sesi->waktu_mulai->format('d/m/Y H:i'));
+        }
+        if ($sesi->waktu_selesai && $now->gt($sesi->waktu_selesai)) {
+            return redirect()->route('ujian.lobby')
+                ->with('warning', 'Waktu ujian sudah berakhir.');
+        }
 
         return view('ujian.konfirmasi', compact('peserta', 'sesiPeserta', 'paket'));
     }

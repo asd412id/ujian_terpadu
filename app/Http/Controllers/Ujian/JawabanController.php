@@ -27,6 +27,8 @@ class JawabanController extends Controller
             'answers.*.idempotency_key' => 'required|string|max:128',
             'answers.*.client_timestamp' => 'nullable|integer',
             'soal_ditandai'      => 'nullable|integer|min:0',
+            'tandai_list'        => 'nullable|array',
+            'tandai_list.*'      => 'string',
         ]);
 
         try {
@@ -36,6 +38,7 @@ class JawabanController extends Controller
                 requestMeta: [
                     'ip_address'     => $request->ip(),
                     'soal_ditandai'  => $data['soal_ditandai'] ?? null,
+                    'tandai_list'    => $data['tandai_list'] ?? null,
                 ]
             );
 

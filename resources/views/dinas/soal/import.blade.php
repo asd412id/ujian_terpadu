@@ -212,6 +212,10 @@
                     <p class="pl-4 text-amber-600">b. Indonesia | gambar: bendera_id.png</p>
                     <p class="pl-4 text-amber-600">c. Thailand | gambar: bendera_th.png</p>
                     <p class="pl-4">Jawaban: B</p>
+                    <p class="mt-2 text-gray-500 italic">Opsi hanya gambar (tanpa teks):</p>
+                    <p class="pl-4 text-amber-600">a. | gambar: gambar1.png</p>
+                    <p class="pl-4 text-amber-600">b. gambar: gambar2.png</p>
+                    <p class="pl-4 text-gray-500">c. <em>(atau sisipkan gambar langsung)</em></p>
                 </div>
             </div>
 
@@ -296,7 +300,8 @@
                 <strong>Soal Bergambar (format ZIP):</strong>
                 <ul class="list-disc list-inside mt-1 space-y-0.5">
                     <li>Gambar soal: tulis <code class="bg-amber-100 px-1 rounded">[gambar: namafile.png]</code> di baris pertanyaan.</li>
-                    <li>Gambar opsi: tulis <code class="bg-amber-100 px-1 rounded">a. Teks opsi | gambar: namafile.png</code></li>
+                    <li>Gambar opsi (dengan teks): tulis <code class="bg-amber-100 px-1 rounded">a. Teks opsi | gambar: namafile.png</code></li>
+                    <li>Gambar opsi (tanpa teks): tulis <code class="bg-amber-100 px-1 rounded">a. | gambar: namafile.png</code> atau <code class="bg-amber-100 px-1 rounded">a. gambar: namafile.png</code> atau sisipkan gambar langsung di Word.</li>
                     <li>Masukkan file gambar ke folder <code class="bg-amber-100 px-1 rounded">gambar/</code> dalam ZIP.</li>
                     <li>Struktur ZIP: <code class="bg-amber-100 px-1 rounded">soal.zip > template_soal.docx + gambar/...</code></li>
                 </ul>

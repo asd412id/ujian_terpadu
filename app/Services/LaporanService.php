@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\JawabanPeserta;
 use App\Models\PaketUjian;
 use App\Models\Sekolah;
+use App\Models\Soal;
 use App\Models\SesiPeserta;
 use App\Repositories\LaporanRepository;
 
@@ -247,6 +249,180 @@ class LaporanService
         }
 
         return $result;
+    }
+
+    /**
+     * Get analisis soal (item analysis) for a specific paket.
+     * Returns: per-soal stats including difficulty index, discrimination index, distractor effectiveness.
+     */
+    public function getAnalisisSoal(string $paketId): array
+    {
+        $paket = PaketUjian::with('soal.opsiJawaban')->findOrFail($paketId);
+
+        // Get all sesi_peserta that completed this paket
+        $sesiPesertaIds = SesiPeserta::whereHas('sesi', fn ($q) => $q->where('paket_id', $paketId))
+            ->whereIn('status', ['submit', 'dinilai'])
+            ->pluck('id');
+
+        if ($sesiPesertaIds->isEmpty()) {
+            return ['paket' => $paket, 'analisis' => [], 'summary' => []];
+        }
+
+        $totalPeserta = $sesiPesertaIds->count();
+
+        // Get all jawaban for these peserta
+        $jawaban = JawabanPeserta::whereIn('sesi_peserta_id', $sesiPesertaIds)
+            ->get()
+            ->groupBy('soal_id');
+
+        // Get all nilai_akhir for top/bottom group analysis
+        $nilaiList = SesiPeserta::whereIn('id', $sesiPesertaIds)
+            ->orderByDesc('nilai_akhir')
+            ->pluck('nilai_akhir', 'id');
+
+        $topCount = max(1, (int) ceil($totalPeserta * 0.27));
+        $topIds = $nilaiList->take($topCount)->keys();
+        $bottomIds = $nilaiList->reverse()->take($topCount)->keys();
+
+        $analisis = [];
+        $totalDifficulty = 0;
+        $countAnalyzed = 0;
+
+        foreach ($paket->soal->sortBy('urutan') as $idx => $soal) {
+            $soalJawaban = $jawaban->get($soal->id, collect());
+            $totalMenjawab = $soalJawaban->count();
+
+            if ($totalMenjawab === 0) {
+                $analisis[] = [
+                    'nomor' => $idx + 1,
+                    'soal_id' => $soal->id,
+                    'tipe' => $soal->tipe_soal,
+                    'pertanyaan' => mb_substr(strip_tags($soal->pertanyaan ?? ''), 0, 100),
+                    'tingkat_kesulitan' => null,
+                    'daya_beda' => null,
+                    'pct_benar' => 0,
+                    'pct_salah' => 0,
+                    'pct_kosong' => 0,
+                    'total_menjawab' => 0,
+                    'distractors' => [],
+                    'kategori_kesulitan' => '-',
+                    'kategori_daya_beda' => '-',
+                ];
+                continue;
+            }
+
+            // Count benar/salah/kosong
+            $benar = $soalJawaban->filter(fn ($j) => $j->is_terjawab && (($j->skor_auto ?? 0) > 0 || ($j->skor_manual ?? 0) > 0))->count();
+            $salah = $soalJawaban->filter(fn ($j) => $j->is_terjawab && ($j->skor_auto ?? 0) == 0 && ($j->skor_manual ?? 0) == 0)->count();
+            $kosong = $soalJawaban->filter(fn ($j) => !$j->is_terjawab)->count();
+
+            // Tingkat kesulitan (difficulty index) = benar / total
+            $difficulty = $totalMenjawab > 0 ? round($benar / $totalMenjawab, 3) : 0;
+
+            // Daya beda (discrimination index) = (benar_atas - benar_bawah) / n_group
+            $topJawaban = $soalJawaban->whereIn('sesi_peserta_id', $topIds);
+            $bottomJawaban = $soalJawaban->whereIn('sesi_peserta_id', $bottomIds);
+            $topBenar = $topJawaban->filter(fn ($j) => $j->is_terjawab && (($j->skor_auto ?? 0) > 0 || ($j->skor_manual ?? 0) > 0))->count();
+            $bottomBenar = $bottomJawaban->filter(fn ($j) => $j->is_terjawab && (($j->skor_auto ?? 0) > 0 || ($j->skor_manual ?? 0) > 0))->count();
+            $discrimination = $topCount > 0 ? round(($topBenar - $bottomBenar) / $topCount, 3) : 0;
+
+            // Distractor analysis for PG types
+            $distractors = [];
+            if (in_array($soal->tipe_soal, ['pilihan_ganda', 'pilihan_ganda_kompleks'])) {
+                foreach ($soal->opsiJawaban as $opsi) {
+                    $chosen = $soalJawaban->filter(function ($j) use ($opsi) {
+                        $pg = $j->jawaban_pg;
+                        if (is_array($pg)) {
+                            return in_array($opsi->label, $pg);
+                        }
+                        return false;
+                    })->count();
+                    $distractors[] = [
+                        'label' => $opsi->label,
+                        'teks' => mb_substr($opsi->teks ?? '', 0, 40),
+                        'is_benar' => $opsi->is_benar,
+                        'dipilih' => $chosen,
+                        'pct' => $totalMenjawab > 0 ? round(($chosen / $totalMenjawab) * 100, 1) : 0,
+                    ];
+                }
+            }
+
+            // Kategorisasi
+            $katKesulitan = match (true) {
+                $difficulty >= 0.7 => 'Mudah',
+                $difficulty >= 0.3 => 'Sedang',
+                default => 'Sulit',
+            };
+            $katDayaBeda = match (true) {
+                $discrimination >= 0.4 => 'Sangat Baik',
+                $discrimination >= 0.3 => 'Baik',
+                $discrimination >= 0.2 => 'Cukup',
+                default => 'Buruk',
+            };
+
+            $totalDifficulty += $difficulty;
+            $countAnalyzed++;
+
+            $analisis[] = [
+                'nomor' => $idx + 1,
+                'soal_id' => $soal->id,
+                'tipe' => $soal->tipe_soal,
+                'pertanyaan' => mb_substr(strip_tags($soal->pertanyaan ?? ''), 0, 100),
+                'tingkat_kesulitan' => $difficulty,
+                'daya_beda' => $discrimination,
+                'pct_benar' => $totalMenjawab > 0 ? round(($benar / $totalMenjawab) * 100, 1) : 0,
+                'pct_salah' => $totalMenjawab > 0 ? round(($salah / $totalMenjawab) * 100, 1) : 0,
+                'pct_kosong' => $totalMenjawab > 0 ? round(($kosong / $totalMenjawab) * 100, 1) : 0,
+                'total_menjawab' => $totalMenjawab,
+                'distractors' => $distractors,
+                'kategori_kesulitan' => $katKesulitan,
+                'kategori_daya_beda' => $katDayaBeda,
+            ];
+        }
+
+        $summary = [
+            'total_soal' => count($analisis),
+            'total_peserta' => $totalPeserta,
+            'rata_kesulitan' => $countAnalyzed > 0 ? round($totalDifficulty / $countAnalyzed, 3) : 0,
+            'soal_mudah' => collect($analisis)->where('kategori_kesulitan', 'Mudah')->count(),
+            'soal_sedang' => collect($analisis)->where('kategori_kesulitan', 'Sedang')->count(),
+            'soal_sulit' => collect($analisis)->where('kategori_kesulitan', 'Sulit')->count(),
+            'daya_beda_baik' => collect($analisis)->filter(fn ($a) => in_array($a['kategori_daya_beda'], ['Sangat Baik', 'Baik']))->count(),
+            'daya_beda_buruk' => collect($analisis)->where('kategori_daya_beda', 'Buruk')->count(),
+        ];
+
+        return ['paket' => $paket, 'analisis' => $analisis, 'summary' => $summary];
+    }
+
+    /**
+     * Get detail jawaban per siswa for a specific sesi_peserta.
+     */
+    public function getDetailSiswa(string $sesiPesertaId): array
+    {
+        $sp = SesiPeserta::with(['peserta.sekolah', 'sesi.paket.soal.opsiJawaban', 'jawaban'])
+            ->findOrFail($sesiPesertaId);
+
+        $jawabanMap = $sp->jawaban->keyBy('soal_id');
+        $detail = [];
+
+        foreach ($sp->sesi->paket->soal->sortBy('urutan') as $idx => $soal) {
+            $j = $jawabanMap->get($soal->id);
+            $detail[] = [
+                'nomor' => $idx + 1,
+                'tipe' => $soal->tipe_soal,
+                'pertanyaan' => mb_substr(strip_tags($soal->pertanyaan ?? ''), 0, 120),
+                'jawaban' => $j ? ($j->jawaban_pg ?? $j->jawaban_teks ?? '-') : '-',
+                'is_terjawab' => $j?->is_terjawab ?? false,
+                'skor' => $j ? round(($j->skor_auto ?? 0) + ($j->skor_manual ?? 0), 2) : 0,
+                'bobot' => $soal->bobot ?? 1,
+                'is_benar' => $j && $j->is_terjawab && (($j->skor_auto ?? 0) > 0 || ($j->skor_manual ?? 0) > 0),
+            ];
+        }
+
+        return [
+            'sesiPeserta' => $sp,
+            'detail' => $detail,
+        ];
     }
 
     /**

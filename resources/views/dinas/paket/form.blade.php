@@ -118,21 +118,9 @@
     {{-- Pengaturan Waktu / Sesi --}}
     <div class="card space-y-5">
         <h2 class="font-semibold text-gray-900">Pengaturan Sesi</h2>
-        <p class="text-sm text-gray-500 -mt-3">Atur jadwal pelaksanaan ujian dan batasan peserta.</p>
+        <p class="text-sm text-gray-500 -mt-3">Atur batasan peserta. Jadwal pelaksanaan diatur per sesi ujian.</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tanggal & Waktu Mulai</label>
-                <input type="datetime-local" name="tanggal_mulai"
-                       value="{{ old('tanggal_mulai', isset($paket) && $paket->tanggal_mulai ? $paket->tanggal_mulai->format('Y-m-d\TH:i') : '') }}"
-                       class="form-input">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tanggal & Waktu Selesai</label>
-                <input type="datetime-local" name="tanggal_selesai"
-                       value="{{ old('tanggal_selesai', isset($paket) && $paket->tanggal_selesai ? $paket->tanggal_selesai->format('Y-m-d\TH:i') : '') }}"
-                       class="form-input">
-            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Maks. Peserta</label>
                 <input type="number" name="max_peserta" min="1"

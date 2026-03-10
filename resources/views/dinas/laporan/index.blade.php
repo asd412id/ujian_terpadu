@@ -59,6 +59,15 @@
             @endif
             {{-- Export --}}
             <div class="ml-auto flex items-center gap-2">
+                @if(request('paket_id'))
+                <a href="{{ route('dinas.laporan.analisis-soal', request('paket_id')) }}"
+                   class="btn-secondary inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Analisis Soal
+                </a>
+                @endif
                 <a href="{{ route('dinas.laporan.export', request()->query()) }}"
                    class="btn-success inline-flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -117,8 +126,10 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3 text-gray-400 text-xs">{{ $data->firstItem() + $loop->index }}</td>
                         <td class="px-5 py-3">
-                            <p class="font-medium text-gray-900">{{ $hasil->peserta->nama ?? '—' }}</p>
-                            <p class="text-xs text-gray-500">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn ?? '—' }}</p>
+                            <a href="{{ route('dinas.laporan.detail-siswa', $hasil->id) }}" class="hover:text-blue-600">
+                                <p class="font-medium text-gray-900 hover:text-blue-600">{{ $hasil->peserta->nama }}</p>
+                                <p class="text-xs text-gray-400">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }}</p>
+                            </a>
                         </td>
                         <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">{{ $hasil->peserta->sekolah->nama ?? '—' }}</td>
                         <td class="px-5 py-3 text-center hidden sm:table-cell text-gray-600">{{ $hasil->peserta->kelas ?? '—' }}</td>

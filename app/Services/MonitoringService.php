@@ -89,7 +89,7 @@ class MonitoringService
         ];
 
         // Paginated peserta list with optional search/filter
-        $query = SesiPeserta::with(['peserta', 'jawaban'])
+        $query = SesiPeserta::with(['peserta.sekolah', 'jawaban'])
             ->where('sesi_id', $sesi->id);
 
         if (!empty($filters['search'])) {
@@ -110,11 +110,22 @@ class MonitoringService
             }
         }
 
+        if (!empty($filters['sekolah_id'])) {
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+        }
+
         $perPage = $filters['per_page'] ?? 50;
         $pesertaList = $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
             ->paginate($perPage);
 
-        return compact('sesi', 'alerts', 'pesertaList', 'stats');
+        // Get sekolah list that have peserta in this sesi
+        $sekolahIds = SesiPeserta::where('sesi_id', $sesi->id)
+            ->join('peserta', 'sesi_peserta.peserta_id', '=', 'peserta.id')
+            ->distinct()
+            ->pluck('peserta.sekolah_id');
+        $sekolahList = Sekolah::whereIn('id', $sekolahIds)->orderBy('nama')->get();
+
+        return compact('sesi', 'alerts', 'pesertaList', 'stats', 'sekolahList');
     }
 
     /**
@@ -260,14 +271,17 @@ class MonitoringService
      */
     public function getSesiDetail(string $sesiId): array
     {
-        $sesi = SesiUjian::with(['paket', 'sesiPeserta' => fn ($q) => $q->with('peserta')->orderBy('updated_at', 'desc')])
+        $sesi = SesiUjian::with(['paket', 'sesiPeserta' => fn ($q) => $q->with('peserta.sekolah')->orderBy('updated_at', 'desc')])
             ->findOrFail($sesiId);
 
         $data = $sesi->sesiPeserta->map(fn ($sp) => [
             'nama'          => $sp->peserta->nama ?? '–',
             'no_peserta'    => $sp->peserta->no_peserta ?? '–',
+            'sekolah'       => $sp->peserta->sekolah?->nama ?? '–',
+            'kelas'         => $sp->peserta->kelas ?? '–',
             'status'        => $sp->status,
             'soal_dijawab'  => $sp->jawaban()->count(),
+            'nilai_akhir'   => $sp->nilai_akhir,
             'last_aktif'    => $sp->updated_at?->diffForHumans(),
         ]);
 
