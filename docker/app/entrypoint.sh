@@ -4,13 +4,11 @@ set -e
 echo "[entrypoint] Starting Ujian Terpadu setup..."
 
 # --- Initialize storage structure (named volume may be empty on first run) ---
-for dir in app/public framework/cache framework/sessions framework/testing framework/views logs; do
-    mkdir -p /app/storage/$dir
-done
+mkdir -p /app/storage/{app/public,framework/{cache,sessions,testing,views},logs}
 touch /app/storage/logs/laravel.log
 
 # --- Generate APP_KEY if empty ---
-if [ -z "$(grep '^APP_KEY=base64:' /app/.env 2>/dev/null)" ]; then
+if ! grep -q '^APP_KEY=base64:' /app/.env 2>/dev/null; then
     echo "[entrypoint] Generating APP_KEY..."
     NEW_KEY=$(php artisan key:generate --show --no-interaction 2>/dev/null)
     if [ -n "$NEW_KEY" ]; then
@@ -20,35 +18,32 @@ if [ -z "$(grep '^APP_KEY=base64:' /app/.env 2>/dev/null)" ]; then
     fi
 fi
 
-# --- Run migrations (retry until MySQL is ready) ---
+# --- Run migrations (DB already healthy from depends_on, minimal retries) ---
 echo "[entrypoint] Running database migrations..."
-for i in $(seq 1 30); do
+for i in 1 2 3 4 5; do
     if php artisan migrate --force --no-interaction 2>&1; then
         echo "[entrypoint] Migrations complete."
         break
     fi
-    echo "[entrypoint] Waiting for database... (attempt $i/30)"
+    echo "[entrypoint] Waiting for database... (attempt $i/5)"
     sleep 2
 done
 
-# --- Seed admin user if ADMIN_EMAIL is set ---
-if [ -n "${ADMIN_EMAIL:-}" ]; then
-    echo "[entrypoint] Seeding admin user..."
-    php artisan db:seed --class=AdminSeeder --force --no-interaction 2>&1 || true
+# --- First-run tasks (seed admin, create storage symlink) ---
+FIRST_RUN_FLAG="/app/storage/.setup_done"
+if [ ! -f "$FIRST_RUN_FLAG" ]; then
+    if [ -n "${ADMIN_EMAIL:-}" ]; then
+        echo "[entrypoint] Seeding admin user..."
+        php artisan db:seed --class=AdminSeeder --force --no-interaction 2>&1 || true
+    fi
+    php artisan storage:link --no-interaction 2>/dev/null || true
+    touch "$FIRST_RUN_FLAG"
 fi
 
-# --- Publish Horizon assets ---
-php artisan horizon:publish --no-interaction 2>/dev/null || true
-
-# --- Create storage symlink ---
-php artisan storage:link --no-interaction 2>/dev/null || true
-
-# --- Cache config/routes/views for performance ---
-echo "[entrypoint] Caching config, routes, views..."
+# --- Cache config & routes (depend on runtime .env) ---
+echo "[entrypoint] Caching config & routes..."
 php artisan config:cache --no-interaction
 php artisan route:cache --no-interaction
-php artisan view:cache --no-interaction
-php artisan event:cache --no-interaction
 
 # --- Fix permissions ---
 chown -R www-data:www-data /app/storage /app/bootstrap/cache 2>/dev/null || true

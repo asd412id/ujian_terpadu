@@ -7,7 +7,7 @@
 # admin seeder all run automatically via entrypoint.
 # =================================================================
 
-FROM dunglas/frankenphp:latest-php8.3 AS base
+FROM dunglas/frankenphp:1.12-php8.3 AS base
 
 # Install system dependencies + Node.js 20
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -45,13 +45,16 @@ RUN composer install --no-scripts --no-autoloader --no-dev --prefer-dist
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
 
-# Restore the base image FrankenPHP binary (Octane/Composer downloads an
-# incompatible newer version to /app/frankenphp — overwrite it)
-RUN cp /usr/local/bin/frankenphp /app/frankenphp \
-    && chmod +x /app/frankenphp
-
 # Install npm dependencies and build frontend assets
 RUN npm ci --ignore-scripts && npm run build && rm -rf node_modules
+
+# Pre-cache views, events, and publish Horizon assets at build time
+# (these don't depend on runtime .env values)
+RUN cp .env.example .env \
+    && php artisan view:cache --no-interaction \
+    && php artisan event:cache --no-interaction \
+    && php artisan horizon:publish --no-interaction \
+    && rm .env
 
 # Copy configs
 COPY docker/app/php.ini      /usr/local/etc/php/conf.d/99-custom.ini
@@ -66,7 +69,7 @@ RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
 # FrankenPHP serves HTTP directly on port 8000 (Octane)
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=60s \
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=20s \
     CMD curl -f http://localhost:8000/up || exit 1
 
 ENTRYPOINT ["entrypoint.sh"]
