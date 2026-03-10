@@ -122,6 +122,11 @@ class SoalService
                 }
                 $data['gambar_soal'] = $request->file('gambar_pertanyaan')
                     ->store('soal/gambar', 'public');
+            } elseif ($request->boolean('hapus_gambar_pertanyaan')) {
+                if ($soal->gambar_soal) {
+                    Storage::disk('public')->delete($soal->gambar_soal);
+                }
+                $data['gambar_soal'] = null;
             }
 
             $this->repository->update($soal, $data);

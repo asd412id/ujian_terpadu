@@ -39,9 +39,9 @@
                 {{-- Gambar Pertanyaan --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Gambar Pertanyaan (opsional)</label>
-                    @if(isset($soal) && $soal->gambar_pertanyaan)
+                    @if(isset($soal) && $soal->gambar_soal)
                     <div class="mb-2 flex items-center gap-3">
-                        <img src="{{ Storage::url($soal->gambar_pertanyaan) }}" alt="Gambar soal"
+                        <img src="{{ Storage::url($soal->gambar_soal) }}" alt="Gambar soal"
                              class="h-20 w-auto rounded-lg border border-gray-200 object-contain">
                         <label class="flex items-center gap-1.5 text-xs text-red-600 cursor-pointer">
                             <input type="checkbox" name="hapus_gambar_pertanyaan" value="1">
