@@ -1,7 +1,7 @@
 #!/bin/bash
 # =================================================================
 # deploy.sh — Ujian Terpadu Production Deployment
-# Laravel Octane + FrankenPHP + Horizon
+# Laravel Octane + FrankenPHP + Horizon + Cloudflare Tunnel
 # Usage: ./deploy.sh [--fresh] [--build]
 #   --fresh : Run fresh migration + seed (WARNING: destroys data)
 #   --build : Force rebuild Docker image (no cache)
@@ -36,12 +36,23 @@ if [ ! -f .env ]; then
     if [ -f .env.production ]; then
         warn ".env not found, copying from .env.production"
         cp .env.production .env
-        warn "Please edit .env and set APP_URL, DB passwords, ADMIN_EMAIL/ADMIN_PASSWORD"
+        warn "Please edit .env and set:"
+        warn "  - APP_URL"
+        warn "  - DB_PASSWORD / DB_ROOT_PASSWORD"
+        warn "  - ADMIN_EMAIL / ADMIN_PASSWORD"
+        warn "  - CLOUDFLARE_TUNNEL_TOKEN"
         warn "Then re-run: ./deploy.sh --build"
         exit 1
     else
         err ".env file not found. Copy .env.production to .env and configure it."
     fi
+fi
+
+# --- Validate tunnel token ---
+source .env 2>/dev/null || true
+if [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+    warn "CLOUDFLARE_TUNNEL_TOKEN is not set in .env"
+    warn "Tunnel container will fail to start without it."
 fi
 
 # --- Pull latest code ---
@@ -63,9 +74,9 @@ log "Starting services..."
 docker compose up -d
 
 # --- Wait for app to be ready (entrypoint handles migrations, caching, etc.) ---
-log "Waiting for app to be ready (entrypoint running migrations, caching)..."
+log "Waiting for app to be ready..."
 for i in $(seq 1 60); do
-    if curl -sf http://localhost:${APP_PORT:-80}/up > /dev/null 2>&1; then
+    if docker compose exec app curl -sf http://localhost:8000/up > /dev/null 2>&1; then
         break
     fi
     sleep 3
@@ -93,11 +104,17 @@ docker compose exec app php artisan horizon:terminate 2>/dev/null || true
 # --- Health check ---
 log "Running health check..."
 sleep 3
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${APP_PORT:-80}/up || echo "000")
-if [ "$HTTP_CODE" = "200" ]; then
-    log "Health check passed (HTTP $HTTP_CODE)"
+if docker compose exec app curl -sf http://localhost:8000/up > /dev/null 2>&1; then
+    log "Health check passed"
 else
-    warn "Health check returned HTTP $HTTP_CODE — check logs: docker compose logs -f app"
+    warn "Health check failed — check logs: docker compose logs -f app"
+fi
+
+# --- Tunnel check ---
+if docker compose ps tunnel --format '{{.Status}}' 2>/dev/null | grep -q "Up"; then
+    log "Cloudflare Tunnel is running"
+else
+    warn "Cloudflare Tunnel is NOT running — check CLOUDFLARE_TUNNEL_TOKEN"
 fi
 
 # --- Summary ---
@@ -105,8 +122,9 @@ echo ""
 log "======================================"
 log "  Deployment complete!"
 log "======================================"
-log "  App:      http://localhost:${APP_PORT:-80}"
-log "  Horizon:  http://localhost:${APP_PORT:-80}/horizon"
+log "  App URL:  ${APP_URL:-https://your-domain.com}"
+log "  Horizon:  ${APP_URL:-https://your-domain.com}/horizon"
+log "  Tunnel:   Cloudflare Tunnel (no exposed ports)"
 log "  Logs:     docker compose logs -f"
 log "  Octane:   docker compose exec app php artisan octane:status"
 echo ""

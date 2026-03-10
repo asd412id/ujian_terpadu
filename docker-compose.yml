@@ -1,17 +1,17 @@
 # =================================================================
 # Docker Compose — Ujian Terpadu (Production)
-# Laravel Octane + FrankenPHP + Horizon
+# Laravel Octane + FrankenPHP + Horizon + Cloudflare Tunnel
 # Optimized for 4 core / 4GB RAM / 2000 concurrent users
 #
 # Memory Budget:
-#   app:   1856 MB (Octane 4 workers + Horizon + Scheduler)
-#   mysql:  768 MB
-#   redis:  256 MB
+#   app:        1856 MB (Octane 4 workers + Horizon + Scheduler)
+#   mysql:       768 MB
+#   redis:       256 MB
+#   cloudflared:  64 MB
 #   ─────────────
-#   Total: 2880 MB (leaves ~1200 MB for OS + Docker overhead + spikes)
+#   Total: ~2944 MB (leaves ~1056 MB for OS + Docker overhead)
 #
-# Note: Nginx is NOT needed — FrankenPHP has Caddy built-in.
-#       It handles HTTP/HTTPS/HTTP3, gzip, static files, auto TLS.
+# No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
 
 services:
@@ -21,8 +21,6 @@ services:
       dockerfile: docker/app/Dockerfile
     container_name: ujian_app
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-80}:8000"
     env_file: .env
     environment:
       - SERVER_NAME=:8000
@@ -41,7 +39,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     networks:
       - ujian_network
     deploy:
@@ -51,6 +49,26 @@ services:
           memory: 1856M
         reservations:
           memory: 512M
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: ujian_tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - ujian_network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
+        reservations:
+          memory: 32M
 
   mysql:
     image: mysql:8.0
