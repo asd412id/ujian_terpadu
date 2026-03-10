@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PaketSoal;
 use App\Models\PaketUjian;
 use App\Repositories\PaketUjianRepository;
 use App\Repositories\KategoriSoalRepository;
@@ -162,6 +163,37 @@ class PaketUjianService
     public function removeSoalFromPaket(PaketUjian $paket, string $soalId): bool
     {
         return $this->repository->detachSoal($paket, $soalId);
+    }
+
+    /**
+     * Sync soal selection for a paket (bulk add/remove).
+     */
+    public function syncSoalPaket(PaketUjian $paket, array $soalIds): void
+    {
+        DB::transaction(function () use ($paket, $soalIds) {
+            $currentIds = $paket->paketSoal()->pluck('soal_id')->toArray();
+
+            $toAdd    = array_diff($soalIds, $currentIds);
+            $toRemove = array_diff($currentIds, $soalIds);
+
+            if (!empty($toRemove)) {
+                PaketSoal::where('paket_id', $paket->id)
+                    ->whereIn('soal_id', $toRemove)
+                    ->delete();
+            }
+
+            $maxNomor = PaketSoal::where('paket_id', $paket->id)->max('nomor_urut') ?? 0;
+            foreach ($toAdd as $soalId) {
+                $maxNomor++;
+                PaketSoal::create([
+                    'paket_id'   => $paket->id,
+                    'soal_id'    => $soalId,
+                    'nomor_urut' => $maxNomor,
+                ]);
+            }
+
+            $paket->update(['jumlah_soal' => PaketSoal::where('paket_id', $paket->id)->count()]);
+        });
     }
 
     /**

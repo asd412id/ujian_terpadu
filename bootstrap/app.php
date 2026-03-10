@@ -16,6 +16,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'peserta' => \App\Http\Middleware\AuthPeserta::class,
         ]);
 
+        // Where to redirect authenticated users who hit "guest" routes (e.g. /login)
+        $middleware->redirectUsersTo(function (\Illuminate\Http\Request $request) {
+            if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
+                /** @var \App\Models\User $user */
+                $user = \Illuminate\Support\Facades\Auth::guard('web')->user();
+                return route($user->getDashboardRoute());
+            }
+            return '/dinas/dashboard';
+        });
+
         // Livewire CSRF exception
         $middleware->validateCsrfTokens(except: [
             'api/ujian/*',

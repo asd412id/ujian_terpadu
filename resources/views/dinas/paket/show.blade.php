@@ -189,51 +189,47 @@
 
     {{-- Soal Terpilih --}}
     <div class="card">
-        <h2 class="font-semibold text-gray-900 mb-3">Soal Terpilih ({{ $paket->paketSoal->count() }})</h2>
-        @if($paket->paketSoal->isEmpty())
-        <p class="text-sm text-gray-400 py-4 text-center">Belum ada soal dalam paket ini. Tambahkan dari bank soal di bawah.</p>
-        @else
-        <div class="space-y-2" id="soal-terpilih">
-            @foreach($paket->paketSoal->sortBy('nomor_urut') as $ps)
-            <div class="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                <span class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full text-xs font-bold text-blue-700 flex items-center justify-center">
-                    {{ $ps->nomor_urut }}
-                </span>
-                <p class="flex-1 text-sm text-gray-800 line-clamp-1">{{ strip_tags($ps->soal->pertanyaan) }}</p>
-                @php
-                    $jenisMeta = [
-                        'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
-                        'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
-                        'isian' => ['Isian', 'green'], 'essay' => ['Essay', 'amber'], 'menjodohkan' => ['Jodoh', 'pink'],
-                    ];
-                    [$jLabel, $jColor] = $jenisMeta[$ps->soal->tipe_soal] ?? [ucfirst($ps->soal->tipe_soal), 'gray'];
-                @endphp
-                <span class="flex-shrink-0 text-xs font-semibold bg-{{ $jColor }}-100 text-{{ $jColor }}-700 px-2 py-0.5 rounded-full">
-                    {{ $jLabel }}
-                </span>
-                <span class="flex-shrink-0 text-xs text-gray-500">Bobot: {{ $ps->soal->bobot }}</span>
-                <form action="{{ route('dinas.paket.soal.remove', [$paket->id, $ps->soal_id]) }}" method="POST"
-                      onsubmit="return confirm('Hapus soal ini dari paket?')">
-                    @csrf @method('DELETE')
-                    <button type="submit"
-                            class="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                            title="Hapus dari paket">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </form>
-            </div>
-            @endforeach
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-gray-900">Soal Terpilih (<span x-text="selectedIds.length"></span>)</h2>
+            <template x-if="selectedIds.length > 0">
+                <button @click="showConfirmClear = true"
+                        class="text-xs text-red-500 hover:text-red-700 font-medium">
+                    Hapus Semua
+                </button>
+            </template>
         </div>
-        @endif
+
+        <template x-if="selectedIds.length === 0">
+            <p class="text-sm text-gray-400 py-4 text-center">Belum ada soal dalam paket ini. Pilih dari bank soal di bawah.</p>
+        </template>
+
+        <template x-if="selectedIds.length > 0">
+            <div class="space-y-1.5">
+                <template x-for="(soal, idx) in allSoal.filter(s => selectedIds.includes(s.id))" :key="soal.id">
+                    <div class="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2.5">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full text-xs font-bold text-blue-700 flex items-center justify-center"
+                              x-text="idx + 1"></span>
+                        <p class="flex-1 text-sm text-gray-800 line-clamp-1" x-text="soal.pertanyaan"></p>
+                        <span class="flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full"
+                              :class="tipeBadge(soal.tipe_soal)" x-text="tipeLabel(soal.tipe_soal)"></span>
+                        <span class="flex-shrink-0 text-xs text-gray-400" x-text="soal.kategori"></span>
+                        <button type="button" @click="toggleSoal(soal.id)"
+                                class="flex-shrink-0 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="Hapus dari paket">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </template>
     </div>
 
-    {{-- Bank Soal - Tambah Soal --}}
+    {{-- Bank Soal - Multi Select --}}
     <div class="card">
         <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
-            <h2 class="font-semibold text-gray-900">Tambah dari Bank Soal</h2>
-            <div class="flex items-center gap-2">
+            <h2 class="font-semibold text-gray-900">Bank Soal</h2>
+            <div class="flex items-center gap-2 flex-wrap">
                 <input type="text" x-model="search" placeholder="Cari soal..."
                        class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <select x-model="filterJenis"
@@ -245,52 +241,229 @@
                     <option value="essay">Essay</option>
                     <option value="menjodohkan">Menjodohkan</option>
                 </select>
+                <select x-model="filterKategori"
+                        class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Kategori</option>
+                    @foreach($kategoriList as $kat)
+                    <option value="{{ $kat->id }}">{{ $kat->nama }}</option>
+                    @endforeach
+                </select>
             </div>
         </div>
 
-        <div class="space-y-2">
-            @php $terpilihIds = $paket->paketSoal->pluck('soal_id')->toArray(); @endphp
-            @forelse($bankSoal as $soal)
-            <div class="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
-                 x-show="(!search || '{{ strtolower(strip_tags($soal->pertanyaan)) }}'.includes(search.toLowerCase()))
-                         && (!filterJenis || filterJenis === '{{ $soal->tipe_soal }}')">
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm text-gray-800 line-clamp-1">{{ strip_tags($soal->pertanyaan) }}</p>
-                    <p class="text-xs text-gray-500">{{ $soal->kategori->nama ?? '' }} · Bobot {{ $soal->bobot }}</p>
-                </div>
-                @if(in_array($soal->id, $terpilihIds))
-                    <span class="flex-shrink-0 text-xs text-green-600 font-medium flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+        {{-- Quick Actions --}}
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <button type="button" @click="selectAllFiltered()"
+                    class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                ✓ Pilih Semua Terfilter
+            </button>
+            <button type="button" @click="deselectAllFiltered()"
+                    class="text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors">
+                ✗ Batal Pilih Terfilter
+            </button>
+            <span class="text-xs text-gray-400">|</span>
+            <span class="text-xs text-gray-500" x-text="filteredSoal().length + ' soal ditampilkan'"></span>
+        </div>
+
+        {{-- Grouped by Kategori --}}
+        <div class="space-y-4">
+            <template x-for="group in groupedByKategori()" :key="group.kategoriId">
+                <div class="border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-2.5 flex items-center justify-between cursor-pointer"
+                         @click="toggleKategoriCollapse(group.kategoriId)">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                   :checked="isAllKategoriSelected(group)"
+                                   :indeterminate.prop="isSomeKategoriSelected(group) && !isAllKategoriSelected(group)"
+                                   @click.stop="toggleKategori(group)"
+                                   @change.stop>
+                            <span class="text-sm font-semibold text-gray-700" x-text="group.kategori"></span>
+                            <span class="text-xs text-gray-400" x-text="'(' + group.soal.length + ' soal)'"></span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" :class="collapsedKategori.includes(group.kategoriId) && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
-                        Ditambahkan
-                    </span>
-                @else
-                <form action="{{ route('dinas.paket.soal.add', $paket->id) }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="soal_id" value="{{ $soal->id }}">
-                    <button type="submit"
-                            class="flex-shrink-0 text-blue-600 hover:text-blue-800 text-xs font-medium border border-blue-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
-                        + Tambah
-                    </button>
-                </form>
-                @endif
-            </div>
-            @empty
-            <p class="text-sm text-gray-400 text-center py-6">Bank soal kosong.</p>
-            @endforelse
+                    </div>
+                    <div x-show="!collapsedKategori.includes(group.kategoriId)" x-transition>
+                        <template x-for="soal in group.soal" :key="soal.id">
+                            <label class="flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                                   :class="selectedIds.includes(soal.id) && 'bg-blue-50'">
+                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                       :checked="selectedIds.includes(soal.id)"
+                                       @change="toggleSoal(soal.id)">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm text-gray-800 line-clamp-1" x-text="soal.pertanyaan"></p>
+                                    <p class="text-xs text-gray-400 mt-0.5">
+                                        Bobot: <span x-text="soal.bobot"></span>
+                                    </p>
+                                </div>
+                                <span class="flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full"
+                                      :class="tipeBadge(soal.tipe_soal)" x-text="tipeLabel(soal.tipe_soal)"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <template x-if="filteredSoal().length === 0">
+                <p class="text-sm text-gray-400 text-center py-6">Tidak ada soal yang cocok dengan filter.</p>
+            </template>
         </div>
+    </div>
 
-        @if($bankSoal->hasPages())
-        <div class="mt-4">{{ $bankSoal->links() }}</div>
-        @endif
+    {{-- Floating Save Bar --}}
+    <div x-show="hasChanges" x-transition
+         class="sticky bottom-4 z-30">
+        <form action="{{ route('dinas.paket.soal.sync', $paket->id) }}" method="POST"
+              class="bg-white border border-gray-200 shadow-lg rounded-2xl px-6 py-3.5 flex items-center justify-between max-w-3xl mx-auto">
+            @csrf @method('PUT')
+            <template x-for="id in selectedIds" :key="id">
+                <input type="hidden" name="soal_ids[]" :value="id">
+            </template>
+            <div class="text-sm text-gray-700">
+                <span class="font-semibold text-blue-600" x-text="selectedIds.length"></span> soal dipilih
+                <span class="text-gray-400 mx-1">·</span>
+                <span class="text-green-600 font-medium" x-text="addedCount + ' ditambah'"></span>,
+                <span class="text-red-500 font-medium" x-text="removedCount + ' dihapus'"></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="resetSelection()"
+                        class="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    Batal
+                </button>
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- Confirm Clear Dialog --}}
+    <div x-show="showConfirmClear" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showConfirmClear = false">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <p class="text-sm text-gray-800 font-medium mb-4">Hapus semua soal dari paket ini?</p>
+            <div class="flex justify-end gap-2">
+                <button @click="showConfirmClear = false" class="text-sm text-gray-500 px-4 py-2 rounded-lg hover:bg-gray-100">Batal</button>
+                <button @click="clearAll(); showConfirmClear = false" class="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Hapus Semua</button>
+            </div>
+        </div>
     </div>
 
 </div>
 
 <script>
 function paketSoalApp() {
-    return { search: '', filterJenis: '' };
+    const allSoal = @json($bankSoalJson);
+    const initialSelected = @json($terpilihIds);
+
+    return {
+        search: '',
+        filterJenis: '',
+        filterKategori: '',
+        allSoal,
+        selectedIds: [...initialSelected],
+        originalIds: [...initialSelected],
+        collapsedKategori: [],
+        showConfirmClear: false,
+
+        get hasChanges() {
+            if (this.selectedIds.length !== this.originalIds.length) return true;
+            return this.selectedIds.some(id => !this.originalIds.includes(id))
+                || this.originalIds.some(id => !this.selectedIds.includes(id));
+        },
+
+        get addedCount() {
+            return this.selectedIds.filter(id => !this.originalIds.includes(id)).length;
+        },
+
+        get removedCount() {
+            return this.originalIds.filter(id => !this.selectedIds.includes(id)).length;
+        },
+
+        filteredSoal() {
+            return this.allSoal.filter(s => {
+                if (this.search && !s.pertanyaan.toLowerCase().includes(this.search.toLowerCase())) return false;
+                if (this.filterJenis && s.tipe_soal !== this.filterJenis) return false;
+                if (this.filterKategori && s.kategoriId !== this.filterKategori) return false;
+                return true;
+            });
+        },
+
+        groupedByKategori() {
+            const filtered = this.filteredSoal();
+            const groups = {};
+            filtered.forEach(s => {
+                const key = s.kategoriId;
+                if (!groups[key]) groups[key] = { kategoriId: key, kategori: s.kategori, soal: [] };
+                groups[key].soal.push(s);
+            });
+            return Object.values(groups).sort((a, b) => a.kategori.localeCompare(b.kategori));
+        },
+
+        toggleSoal(id) {
+            const idx = this.selectedIds.indexOf(id);
+            if (idx >= 0) this.selectedIds.splice(idx, 1);
+            else this.selectedIds.push(id);
+        },
+
+        toggleKategori(group) {
+            if (this.isAllKategoriSelected(group)) {
+                const groupIds = group.soal.map(s => s.id);
+                this.selectedIds = this.selectedIds.filter(id => !groupIds.includes(id));
+            } else {
+                group.soal.forEach(s => {
+                    if (!this.selectedIds.includes(s.id)) this.selectedIds.push(s.id);
+                });
+            }
+        },
+
+        isAllKategoriSelected(group) {
+            return group.soal.every(s => this.selectedIds.includes(s.id));
+        },
+
+        isSomeKategoriSelected(group) {
+            return group.soal.some(s => this.selectedIds.includes(s.id));
+        },
+
+        toggleKategoriCollapse(id) {
+            const idx = this.collapsedKategori.indexOf(id);
+            if (idx >= 0) this.collapsedKategori.splice(idx, 1);
+            else this.collapsedKategori.push(id);
+        },
+
+        selectAllFiltered() {
+            this.filteredSoal().forEach(s => {
+                if (!this.selectedIds.includes(s.id)) this.selectedIds.push(s.id);
+            });
+        },
+
+        deselectAllFiltered() {
+            const filteredIds = this.filteredSoal().map(s => s.id);
+            this.selectedIds = this.selectedIds.filter(id => !filteredIds.includes(id));
+        },
+
+        clearAll() {
+            this.selectedIds = [];
+        },
+
+        resetSelection() {
+            this.selectedIds = [...this.originalIds];
+        },
+
+        tipeLabel(tipe) {
+            const map = { pg: 'PG', pg_kompleks: 'PGK', isian: 'Isian', essay: 'Essay', menjodohkan: 'Jodoh' };
+            return map[tipe] || tipe;
+        },
+
+        tipeBadge(tipe) {
+            const map = {
+                pg: 'bg-blue-100 text-blue-700', pg_kompleks: 'bg-purple-100 text-purple-700',
+                isian: 'bg-green-100 text-green-700', essay: 'bg-amber-100 text-amber-700',
+                menjodohkan: 'bg-pink-100 text-pink-700',
+            };
+            return map[tipe] || 'bg-gray-100 text-gray-700';
+        },
+    };
 }
 </script>
 @endsection

@@ -13,10 +13,21 @@ use App\Http\Controllers\Sekolah\KartuLoginController;
 use App\Http\Controllers\Ujian\LobbyController;
 use App\Http\Controllers\Ujian\UjianController;
 use App\Http\Controllers\Ujian\JawabanController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 // Root redirect
-Route::get('/', fn () => redirect()->route('login'));
+Route::get('/', function () {
+    if (Auth::guard('web')->check()) {
+        /** @var \App\Models\User $user */
+        $user = Auth::guard('web')->user();
+        return redirect()->route($user->getDashboardRoute());
+    }
+    if (Auth::guard('peserta')->check()) {
+        return redirect()->route('ujian.lobby');
+    }
+    return redirect()->route('login');
+});
 
 // =============================================================
 // AUTH — Admin (Dinas / Sekolah / Pengawas)
@@ -105,6 +116,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::post('/paket/{paket}/publish', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'publish'])->name('paket.publish');
     Route::post('/paket/{paket}/draft', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'draft'])->name('paket.draft');
     Route::post('/paket/{paket}/soal/add', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalAdd'])->name('paket.soal.add');
+    Route::put('/paket/{paket}/soal/sync', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalSync'])->name('paket.soal.sync');
     Route::delete('/paket/{paket}/soal/{soal}', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalRemove'])->name('paket.soal.remove');
 
     // Sesi Ujian CRUD (nested under paket)

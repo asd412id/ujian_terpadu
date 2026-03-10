@@ -62,10 +62,25 @@ class PaketUjianController extends Controller
     {
         $paket->load(['paketSoal.soal.kategori', 'sesi.sesiPeserta', 'sesi.pengawas', 'sekolah']);
 
-        $bankSoal = $this->paketUjianService->getBankSoalForPaket($paket, 10);
+        $terpilihIds = $paket->paketSoal->pluck('soal_id')->toArray();
+        $bankSoal = \App\Models\Soal::with('kategori')
+            ->where('is_active', true)
+            ->orderBy('kategori_id')
+            ->get();
+
+        $bankSoalJson = $bankSoal->map(fn ($s) => [
+            'id'         => $s->id,
+            'pertanyaan' => strip_tags($s->pertanyaan),
+            'tipe_soal'  => $s->tipe_soal,
+            'bobot'      => $s->bobot,
+            'kategori'   => $s->kategori->nama ?? 'Tanpa Kategori',
+            'kategoriId' => $s->kategori_id ?? '_none',
+        ])->values();
+
+        $kategoriList = \App\Models\KategoriSoal::where('is_active', true)->orderBy('nama')->get();
         $pengawas = User::where('role', 'pengawas')->orderBy('name')->get();
 
-        return view('dinas.paket.show', compact('paket', 'bankSoal', 'pengawas'));
+        return view('dinas.paket.show', compact('paket', 'bankSoal', 'bankSoalJson', 'terpilihIds', 'kategoriList', 'pengawas'));
     }
 
     public function edit(PaketUjian $paket)
@@ -136,5 +151,18 @@ class PaketUjianController extends Controller
         $this->paketUjianService->removeSoalFromPaket($paket, $soal->id);
 
         return back()->with('success', 'Soal dihapus dari paket.');
+    }
+
+    public function soalSync(Request $request, PaketUjian $paket)
+    {
+        $request->validate([
+            'soal_ids'   => 'present|array',
+            'soal_ids.*' => 'exists:soal,id',
+        ]);
+
+        $soalIds = $request->input('soal_ids', []);
+        $this->paketUjianService->syncSoalPaket($paket, $soalIds);
+
+        return back()->with('success', 'Soal paket berhasil diperbarui (' . count($soalIds) . ' soal).');
     }
 }

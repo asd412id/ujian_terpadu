@@ -24,7 +24,7 @@ class JawabanController extends Controller
             'answers'            => 'required|array|max:200',
             'answers.*.soal_id'  => 'required|string|exists:soal,id',
             'answers.*.jawaban'  => 'required',
-            'answers.*.idempotency_key' => 'required|string|max:64',
+            'answers.*.idempotency_key' => 'required|string|max:128',
             'answers.*.client_timestamp' => 'nullable|integer',
         ]);
 

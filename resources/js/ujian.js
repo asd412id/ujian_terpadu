@@ -300,8 +300,9 @@ function ujianApp() {
                 const res = await fetch(cfg.syncUrl, {
                     method:  'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'Content-Type':  'application/json',
+                        'Accept':        'application/json',
+                        'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     },
                     body: JSON.stringify({
                         sesi_token: cfg.sesiToken,
@@ -379,8 +380,9 @@ function ujianApp() {
                 const res = await fetch(cfg.submitUrl, {
                     method:  'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'Content-Type':  'application/json',
+                        'Accept':        'application/json',
+                        'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     },
                     body: JSON.stringify({
                         sesi_token: cfg.sesiToken,
