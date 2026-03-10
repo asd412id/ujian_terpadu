@@ -109,9 +109,9 @@
                         </td>
                         <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $sp->peserta->kelas ?? '—' }}</td>
                         <td class="px-5 py-3 text-center">
-                            @if($sp->status === 'submit')
+                            @if($sp->status === 'submit' || $sp->status === 'dinilai')
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
-                            @elseif($sp->status === 'mengerjakan')
+                            @elseif($sp->status === 'mengerjakan' || $sp->status === 'login')
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                     Online
@@ -120,8 +120,8 @@
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Belum</span>
                             @endif
                         </td>
-                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->jumlah_terjawab ?? 0 }}</td>
-                        <td class="px-5 py-3 text-center text-amber-600 font-medium">{{ $sp->jumlah_ragu ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->soal_terjawab ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center text-amber-600 font-medium">{{ $sp->soal_ditandai ?? 0 }}</td>
                         <td class="px-5 py-3 text-center hidden md:table-cell">
                             @if($sp->status === 'mengerjakan' && $sp->getSisaWaktuDetikAttribute() !== null)
                                 @php $sisa = $sp->getSisaWaktuDetikAttribute(); @endphp

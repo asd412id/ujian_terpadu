@@ -75,7 +75,9 @@ class SesiUjianService
         return Peserta::where('is_active', true)
             ->whereNotIn('id', $existingIds)
             ->whereHas('sekolah', function ($q) use ($paket, $sekolahId) {
-                $q->where('jenjang', $paket->jenjang);
+                if ($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA') {
+                    $q->where('jenjang', $paket->jenjang);
+                }
                 if ($paket->sekolah_id) {
                     $q->where('id', $paket->sekolah_id);
                 }
@@ -106,7 +108,9 @@ class SesiUjianService
 
         $pesertaIds = Peserta::where('is_active', true)
             ->whereHas('sekolah', function ($q) use ($paket) {
-                $q->where('jenjang', $paket->jenjang);
+                if ($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA') {
+                    $q->where('jenjang', $paket->jenjang);
+                }
                 if ($paket->sekolah_id) {
                     $q->where('id', $paket->sekolah_id);
                 }

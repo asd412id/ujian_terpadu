@@ -191,6 +191,8 @@ class UjianService
      */
     private function getSoalForPeserta($paket, SesiPeserta $sesiPeserta): array
     {
+        $labels = range('A', 'Z');
+
         $soalQuery = $paket->soal()
             ->with(['opsiJawaban', 'pasangan', 'kategori'])
             ->get();
@@ -200,19 +202,44 @@ class UjianService
             $urutan = $sesiPeserta->urutan_soal;
             $soalMap = $soalQuery->keyBy('id');
             $soalList = collect($urutan)->map(fn ($id) => $soalMap[$id] ?? null)->filter()->values();
+
+            // Restore saved option order per soal
+            $urutanOpsi = $sesiPeserta->urutan_opsi ?? [];
+            $soalList = $soalList->map(function ($soal) use ($urutanOpsi, $labels) {
+                $soalId = $soal->id;
+                if (isset($urutanOpsi[$soalId])) {
+                    $opsiMap = $soal->opsiJawaban->keyBy('id');
+                    $ordered = collect($urutanOpsi[$soalId])
+                        ->map(fn ($opsiId) => $opsiMap[$opsiId] ?? null)
+                        ->filter()
+                        ->values();
+                    // Relabel with sequential A, B, C, D
+                    $ordered->each(fn ($opsi, $i) => $opsi->label = $labels[$i] ?? chr(65 + $i));
+                    $soal->setRelation('opsiJawaban', $ordered);
+                }
+                return $soal;
+            });
         } else {
             $soalList = $paket->acak_soal ? $soalQuery->shuffle() : $soalQuery;
 
             // Shuffle options per soal if setting is active
             if ($paket->acak_opsi) {
-                $soalList = $soalList->map(function ($soal) {
-                    $soal->setRelation('opsiJawaban', $soal->opsiJawaban->shuffle()->values());
+                $soalList = $soalList->map(function ($soal) use ($labels) {
+                    $shuffled = $soal->opsiJawaban->shuffle()->values();
+                    // Relabel with sequential A, B, C, D
+                    $shuffled->each(fn ($opsi, $i) => $opsi->label = $labels[$i] ?? chr(65 + $i));
+                    $soal->setRelation('opsiJawaban', $shuffled);
                     return $soal;
                 });
             }
 
-            // Persist order for offline consistency
-            $sesiPeserta->update(['urutan_soal' => $soalList->pluck('id')->toArray()]);
+            // Persist soal + option order for offline consistency
+            $sesiPeserta->update([
+                'urutan_soal' => $soalList->pluck('id')->toArray(),
+                'urutan_opsi' => $soalList->mapWithKeys(fn ($soal) => [
+                    $soal->id => $soal->opsiJawaban->pluck('id')->toArray(),
+                ])->toArray(),
+            ]);
         }
 
         return $soalList->toArray();

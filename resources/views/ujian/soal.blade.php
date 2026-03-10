@@ -316,6 +316,49 @@
                                     @endforeach
                                 </div>
                             </div>
+
+                            {{-- Benar / Salah --}}
+                            @elseif($soal['tipe_soal'] === 'benar_salah')
+                            <div class="card p-5">
+                                <p class="text-sm font-medium text-gray-700 mb-4">
+                                    Tentukan <strong>Benar</strong> atau <strong>Salah</strong> untuk setiap pernyataan berikut:
+                                </p>
+                                <div class="space-y-3">
+                                    @foreach($soal['opsi_jawaban'] as $opsi)
+                                    <div class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white"
+                                         :class="{
+                                             'border-blue-200 bg-blue-50/40': getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null
+                                         }">
+                                        <span class="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700
+                                                     flex items-center justify-center text-xs font-bold">{{ $opsi['label'] }}</span>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm text-gray-800 leading-relaxed">{{ $opsi['teks'] }}</p>
+                                        </div>
+                                        <div class="flex-shrink-0 flex gap-2 mt-0.5">
+                                            <button type="button"
+                                                    @click="selectBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}', 'benar')"
+                                                    :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') === 'benar'
+                                                            ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                                                            : 'bg-white text-gray-500 border-gray-300 hover:border-green-400 hover:text-green-600'"
+                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all duration-150">
+                                                BENAR
+                                            </button>
+                                            <button type="button"
+                                                    @click="selectBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}', 'salah')"
+                                                    :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') === 'salah'
+                                                            ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                                                            : 'bg-white text-gray-500 border-gray-300 hover:border-red-400 hover:text-red-600'"
+                                                    class="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all duration-150">
+                                                SALAH
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <p class="text-xs text-indigo-600 font-medium px-1 mt-3">
+                                    ℹ️ Pilih Benar atau Salah untuk setiap pernyataan
+                                </p>
+                            </div>
                             @endif
 
                         </div>{{-- end options --}}

@@ -46,7 +46,7 @@ class SoalController extends Controller
     {
         $validated = $request->validate([
             'kategori_soal_id'  => 'required|exists:kategori_soal,id',
-            'jenis_soal'        => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,menjodohkan,isian,essay',
+            'jenis_soal'        => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,benar_salah,menjodohkan,isian,essay',
             'pertanyaan'        => 'required|string',
             'gambar_pertanyaan' => 'nullable|image|max:5120',
             'posisi_gambar'     => 'nullable|in:atas,bawah,kiri,kanan',
@@ -74,7 +74,7 @@ class SoalController extends Controller
     {
         $validated = $request->validate([
             'kategori_soal_id'  => 'required|exists:kategori_soal,id',
-            'jenis_soal'        => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,menjodohkan,isian,essay',
+            'jenis_soal'        => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,benar_salah,menjodohkan,isian,essay',
             'pertanyaan'        => 'required|string',
             'gambar_pertanyaan' => 'nullable|image|max:5120',
             'posisi_gambar'     => 'nullable|in:atas,bawah,kiri,kanan',
@@ -351,15 +351,26 @@ class SoalController extends Controller
         $section->addText('6. [ESSAY] Jelaskan proses terjadinya hujan!', $boldStyle);
         $section->addText('    Gambar: siklus_air.png', $noteStyle);
         $section->addText('    Jawaban: (tulis jawaban contoh atau kosongkan)', $normalStyle);
+        $section->addTextBreak(1);
+
+        // ── Benar/Salah ──
+        $section->addText('BENAR / SALAH', $headingStyle);
+        $section->addTextBreak(0);
+        $section->addText('7. [BENAR_SALAH] Tentukan benar atau salah pernyataan berikut tentang air:', $boldStyle);
+        $section->addText('    1) Air mendidih pada suhu 100°C di tekanan standar (BENAR)', $normalStyle);
+        $section->addText('    2) Es memiliki massa jenis lebih besar dari air (SALAH)', $normalStyle);
+        $section->addText('    3) H2O adalah rumus kimia garam dapur (SALAH)', $normalStyle);
+        $section->addText('    4) Air merupakan pelarut universal (BENAR)', $normalStyle);
         $section->addTextBreak(2);
 
         // ── Notes ──
         $section->addText('CATATAN PENTING:', $boldStyle);
-        $section->addListItem('Tandai jenis soal dengan tag [PG_KOMPLEKS], [MENJODOHKAN], [ISIAN], atau [ESSAY] setelah nomor soal.', 0, $normalStyle);
+        $section->addListItem('Tandai jenis soal dengan tag [PG_KOMPLEKS], [MENJODOHKAN], [ISIAN], [ESSAY], atau [BENAR_SALAH] setelah nomor soal.', 0, $normalStyle);
         $section->addListItem('Soal tanpa tag yang memiliki opsi a/b/c/d dianggap Pilihan Ganda biasa.', 0, $normalStyle);
         $section->addListItem('Soal tanpa tag dan tanpa opsi dianggap Essay.', 0, $normalStyle);
         $section->addListItem('Untuk PG Kompleks, pisahkan jawaban benar dengan koma: Jawaban: A, C, E', 0, $normalStyle);
         $section->addListItem('Untuk Menjodohkan, gunakan tanda = untuk memisahkan pasangan kiri dan kanan.', 0, $normalStyle);
+        $section->addListItem('Untuk Benar/Salah, gunakan format: 1) Pernyataan (BENAR) atau 1) Pernyataan (SALAH)', 0, $normalStyle);
         $section->addTextBreak(1);
         $section->addText('GAMBAR:', $boldStyle);
         $section->addListItem('Untuk soal bergambar, sisipkan gambar langsung di dokumen Word ATAU gunakan format teks: [gambar: namafile.png]', 0, $normalStyle);
@@ -454,6 +465,17 @@ class SoalController extends Controller
 
         $section->addText('5. Jelaskan proses terjadinya hujan!', $boldStyle);
         $section->addText('Jawaban: Proses terjadinya hujan meliputi evaporasi, kondensasi, dan presipitasi.', $normalStyle);
+        $section->addTextBreak(1);
+
+        // Benar/Salah
+        $section->addText('CONTOH BENAR / SALAH', $titleStyle, ['alignment' => Jc::LEFT]);
+        $section->addTextBreak(1);
+
+        $section->addText('6. [BENAR_SALAH] Tentukan benar atau salah pernyataan berikut tentang air:', $boldStyle);
+        $section->addText('1) Air mendidih pada suhu 100°C di tekanan standar (BENAR)', $normalStyle);
+        $section->addText('2) Es memiliki massa jenis lebih besar dari air (SALAH)', $normalStyle);
+        $section->addText('3) H2O adalah rumus kimia garam dapur (SALAH)', $normalStyle);
+        $section->addText('4) Air merupakan pelarut universal (BENAR)', $normalStyle);
 
         $section->addTextBreak(2);
         $section->addText('STRUKTUR ZIP:', $boldStyle);

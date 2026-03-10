@@ -28,15 +28,21 @@ class MonitoringService
         $sesiList = SesiUjian::with(['paket.sekolah', 'pengawas', 'sesiPeserta'])
             ->where('status', 'berlangsung')
             ->latest()
-            ->get();
+            ->get()
+            ->each(function ($sesi) {
+                $sp = $sesi->sesiPeserta;
+                $sesi->total_peserta  = $sp->count();
+                $sesi->peserta_online = $sp->whereIn('status', ['login', 'mengerjakan'])->count();
+                $sesi->sudah_submit   = $sp->whereIn('status', ['submit', 'dinilai'])->count();
+            });
 
         $summary = [
             'total_sesi'     => $sesiList->count(),
-            'peserta_online' => SesiPeserta::whereIn('status', ['hadir', 'mengerjakan'])
+            'peserta_online' => SesiPeserta::whereIn('status', ['login', 'mengerjakan'])
                 ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))->count(),
             'peserta_ragu'   => 0,
-            'sudah_submit'   => SesiPeserta::where('status', 'selesai')
-                ->whereDate('updated_at', today())->count(),
+            'sudah_submit'   => SesiPeserta::where('status', 'submit')
+                ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))->count(),
         ];
 
         return compact('sekolahList', 'sesiList', 'summary');
@@ -156,12 +162,12 @@ class MonitoringService
                     ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $s->id))
                     ->count();
 
-                $pesertaOnline = SesiPeserta::whereIn('status', ['hadir', 'mengerjakan'])
+                $pesertaOnline = SesiPeserta::whereIn('status', ['login', 'mengerjakan'])
                     ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
                         ->whereHas('paket', fn ($p) => $p->where('sekolah_id', $s->id)))
                     ->count();
 
-                $pesertaSelesai = SesiPeserta::where('status', 'selesai')
+                $pesertaSelesai = SesiPeserta::where('status', 'submit')
                     ->whereHas('sesi', fn ($q) => $q->whereDate('created_at', today())
                         ->whereHas('paket', fn ($p) => $p->where('sekolah_id', $s->id)))
                     ->count();
@@ -224,10 +230,10 @@ class MonitoringService
             ],
             'peserta' => $data,
             'stats' => [
-                'total'   => $sesi->sesiPeserta->count(),
-                'hadir'   => $sesi->sesiPeserta->whereIn('status', ['hadir', 'mengerjakan'])->count(),
-                'selesai' => $sesi->sesiPeserta->where('status', 'selesai')->count(),
-                'belum'   => $sesi->sesiPeserta->where('status', 'belum_hadir')->count(),
+                'total'       => $sesi->sesiPeserta->count(),
+                'online'      => $sesi->sesiPeserta->whereIn('status', ['login', 'mengerjakan'])->count(),
+                'submit'      => $sesi->sesiPeserta->whereIn('status', ['submit', 'dinilai'])->count(),
+                'belum_mulai' => $sesi->sesiPeserta->whereIn('status', ['terdaftar', 'belum_login'])->count(),
             ],
         ];
     }

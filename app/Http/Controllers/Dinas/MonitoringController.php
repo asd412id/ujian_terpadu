@@ -47,11 +47,11 @@ class MonitoringController extends Controller
 
     public function apiIndex()
     {
-        $sesiAktif = $this->monitoringService->getSesiAktif();
+        $data = $this->monitoringService->getDashboardMonitoring();
 
         return response()->json([
-            'sesi'  => $sesiAktif,
-            'total' => $sesiAktif->count(),
+            'sesiList' => $data['sesiList'],
+            'summary'  => $data['summary'],
         ]);
     }
 

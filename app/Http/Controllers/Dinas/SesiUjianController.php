@@ -87,7 +87,8 @@ class SesiUjianController extends Controller
         $enrolled = $this->service->getPesertaSesi($sesi, $search);
         $available = $this->service->getAvailablePeserta($sesi, $search, $sekolahFilter);
 
-        $sekolahList = Sekolah::where('jenjang', $paket->jenjang)
+        $sekolahList = Sekolah::when($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA',
+                fn($q) => $q->where('jenjang', $paket->jenjang))
             ->when($paket->sekolah_id, fn($q) => $q->where('id', $paket->sekolah_id))
             ->orderBy('nama')
             ->get();

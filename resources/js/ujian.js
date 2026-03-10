@@ -23,7 +23,7 @@ function ujianApp() {
         showSyncToast:   false,
 
         // Jawaban & status
-        answers:         {}, // { soalId: { pg: [], teks: '', pasangan: [] } }
+        answers:         {}, // { soalId: { pg: [], teks: '', pasangan: {}, benarSalah: {}, terjawab: false } }
         tandaiList:      [], // [soalId, ...]
         pendingSync:     0,
 
@@ -81,10 +81,11 @@ function ujianApp() {
 
             localAnswers.forEach(ans => {
                 this.answers[ans.soalId] = {
-                    pg:       ans.jawaban?.pg      ?? [],
-                    teks:     ans.jawaban?.teks     ?? '',
-                    pasangan: ans.jawaban?.pasangan ?? {},
-                    terjawab: ans.jawaban?.terjawab ?? false,
+                    pg:         ans.jawaban?.pg         ?? [],
+                    teks:       ans.jawaban?.teks       ?? '',
+                    pasangan:   ans.jawaban?.pasangan   ?? {},
+                    benarSalah: ans.jawaban?.benarSalah ?? {},
+                    terjawab:   ans.jawaban?.terjawab   ?? false,
                 };
             });
 
@@ -141,7 +142,7 @@ function ujianApp() {
 
         // ===== JAWABAN =====
         getAnswer(soalId) {
-            return this.answers[soalId] ?? { pg: [], teks: '', pasangan: {}, terjawab: false };
+            return this.answers[soalId] ?? { pg: [], teks: '', pasangan: {}, benarSalah: {}, terjawab: false };
         },
 
         isSelected(soalId, label) {
@@ -198,6 +199,27 @@ function ujianApp() {
 
         getPasanganJawaban(soalId, kiriIndex) {
             return this.answers[soalId]?.pasangan?.[kiriIndex] ?? null;
+        },
+
+        // ===== BENAR / SALAH =====
+        selectBenarSalah(soalId, label, value) {
+            const ans = this.getAnswer(soalId);
+            if (!ans.benarSalah) ans.benarSalah = {};
+
+            // Toggle: klik lagi pada pilihan yang sama → hapus
+            if (ans.benarSalah[label] === value) {
+                delete ans.benarSalah[label];
+            } else {
+                ans.benarSalah[label] = value;
+            }
+
+            ans.terjawab = Object.keys(ans.benarSalah).length > 0;
+            this.answers[soalId] = ans;
+            this.saveJawaban(soalId, { benarSalah: ans.benarSalah, terjawab: ans.terjawab });
+        },
+
+        getBenarSalah(soalId, label) {
+            return this.answers[soalId]?.benarSalah?.[label] ?? null;
         },
 
         // ===== TANDAI =====
@@ -307,6 +329,7 @@ function ujianApp() {
                     body: JSON.stringify({
                         sesi_token: cfg.sesiToken,
                         answers,
+                        soal_ditandai: this.tandaiList.length,
                     }),
                 });
 
@@ -334,9 +357,10 @@ function ujianApp() {
         },
 
         formatJawabanForApi(jawaban) {
-            if (jawaban.pg?.length > 0)     return jawaban.pg;
-            if (jawaban.pasangan)           return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
-            if (jawaban.teks !== undefined)  return jawaban.teks;
+            if (jawaban.pg?.length > 0)                        return jawaban.pg;
+            if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
+            if (jawaban.pasangan)                               return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
+            if (jawaban.teks !== undefined)                     return jawaban.teks;
             return null;
         },
 

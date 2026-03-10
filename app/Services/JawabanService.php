@@ -102,11 +102,15 @@ class JawabanService
                 $synced++;
             }
 
-            // Update answered count
+            // Update answered count + tandai count
             $terjawab = JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
                 ->where('is_terjawab', true)
                 ->count();
-            $sesiPeserta->update(['soal_terjawab' => $terjawab]);
+            $updateData = ['soal_terjawab' => $terjawab];
+            if (isset($requestMeta['soal_ditandai'])) {
+                $updateData['soal_ditandai'] = $requestMeta['soal_ditandai'];
+            }
+            $sesiPeserta->update($updateData);
 
             DB::commit();
 
@@ -227,7 +231,20 @@ class JawabanService
         // Detect answer type
         if (is_array($jawaban)) {
             // PG: ["A"] or PG Kompleks: ["A","C"] or Pasangan: [[1,3],[2,1]]
+            // Benar/Salah: {"1":"benar","2":"salah"} — associative array with string keys
             $isPasangan = isset($jawaban[0]) && is_array($jawaban[0]);
+            $isBenarSalah = !$isPasangan && !array_is_list($jawaban);
+
+            if ($isBenarSalah) {
+                // Benar/Salah format: store as-is in jawaban_pg (JSON object)
+                return [
+                    'jawaban_pg'       => $jawaban,
+                    'jawaban_pasangan' => null,
+                    'jawaban_teks'     => null,
+                    'is_terjawab'      => $isTerjawab,
+                ];
+            }
+
             return [
                 'jawaban_pg'       => $isPasangan ? null : $jawaban,
                 'jawaban_pasangan' => $isPasangan ? $jawaban : null,

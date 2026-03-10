@@ -75,6 +75,7 @@ class PenilaianService
         return match ($soal->tipe_soal) {
             'pg'          => $this->skorPG($jawaban, $bobot),
             'pg_kompleks' => $this->skorPGKompleks($jawaban, $bobot),
+            'benar_salah' => $this->skorBenarSalah($jawaban, $bobot),
             'menjodohkan' => $this->skorMenjodohkan($jawaban, $bobot),
             'isian'       => $this->skorIsian($jawaban, $bobot),
             default       => 0,
@@ -109,6 +110,32 @@ class PenilaianService
         }
 
         return 0;
+    }
+
+    private function skorBenarSalah(JawabanPeserta $jawaban, float $bobot): float
+    {
+        $opsiList = $jawaban->soal->opsiJawaban;
+        $totalPernyataan = $opsiList->count();
+        if ($totalPernyataan === 0) return 0;
+
+        // jawaban_pg stores object like {"1":"benar","2":"salah","3":"benar"}
+        $jawabanPeserta = $jawaban->jawaban_pg;
+        if (!is_array($jawabanPeserta)) return 0;
+
+        $benarCount = 0;
+        foreach ($opsiList as $opsi) {
+            $pesertaJawab = $jawabanPeserta[$opsi->label] ?? null;
+            if ($pesertaJawab === null) continue;
+
+            $kunciBenar = (bool) $opsi->is_benar;
+            $pesertaPilihBenar = ($pesertaJawab === 'benar');
+
+            if ($pesertaPilihBenar === $kunciBenar) {
+                $benarCount++;
+            }
+        }
+
+        return round(($benarCount / $totalPernyataan) * $bobot, 2);
     }
 
     private function skorMenjodohkan(JawabanPeserta $jawaban, float $bobot): float

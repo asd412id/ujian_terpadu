@@ -62,13 +62,14 @@ class UjianController extends Controller
         $sisaWaktu   = $result['sisaWaktu'];
 
         // Pre-process soal list for JS (only needed frontend fields)
+        $labels = range('A', 'Z');
         $soalListJs = collect($soalList)->map(fn ($s) => [
             'id'          => $s['id'],
             'gambar_soal' => isset($s['gambar_soal']) && $s['gambar_soal']
                              ? asset('storage/' . $s['gambar_soal']) : null,
-            'opsi'        => collect($s['opsi_jawaban'] ?? [])->map(fn ($o) => [
+            'opsi'        => collect($s['opsi_jawaban'] ?? [])->values()->map(fn ($o, $i) => [
                 'id'     => $o['id'],
-                'label'  => $o['label'],
+                'label'  => $labels[$i] ?? chr(65 + $i),
                 'gambar' => isset($o['gambar']) && $o['gambar']
                             ? asset('storage/' . $o['gambar']) : null,
             ])->values()->all(),

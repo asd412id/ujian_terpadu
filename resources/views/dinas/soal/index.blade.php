@@ -62,6 +62,7 @@
             <option value="">Semua Tipe</option>
             <option value="pilihan_ganda" {{ request('tipe') === 'pilihan_ganda' ? 'selected' : '' }}>Pilihan Ganda</option>
             <option value="pilihan_ganda_kompleks" {{ request('tipe') === 'pilihan_ganda_kompleks' ? 'selected' : '' }}>PG Kompleks</option>
+            <option value="benar_salah" {{ request('tipe') === 'benar_salah' ? 'selected' : '' }}>Benar / Salah</option>
             <option value="isian" {{ request('tipe') === 'isian' ? 'selected' : '' }}>Isian</option>
             <option value="essay" {{ request('tipe') === 'essay' ? 'selected' : '' }}>Essay</option>
             <option value="menjodohkan" {{ request('tipe') === 'menjodohkan' ? 'selected' : '' }}>Menjodohkan</option>
@@ -130,6 +131,7 @@
                                 $tipeLabel = [
                                     'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
                                     'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
+                                    'benar_salah' => ['B/S', 'indigo'],
                                     'isian' => ['Isian', 'green'],
                                     'essay' => ['Essay', 'amber'],
                                     'menjodohkan' => ['Jodoh', 'pink'],
@@ -302,6 +304,23 @@
                             </div>
                         </template>
 
+                        {{-- Benar / Salah --}}
+                        <template x-if="previewData.tipe_soal === 'benar_salah'">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pernyataan Benar / Salah</h3>
+                                <div class="space-y-2">
+                                    <template x-for="opsi in previewData.opsi" :key="opsi.label">
+                                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold" x-text="opsi.label"></span>
+                                            <span class="flex-1 text-sm text-gray-800" x-text="opsi.teks"></span>
+                                            <span x-show="opsi.is_benar" class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">BENAR</span>
+                                            <span x-show="!opsi.is_benar" class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">SALAH</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
                         {{-- Isian / Essay --}}
                         <template x-if="['isian','essay'].includes(previewData.tipe_soal)">
                             <div>
@@ -359,6 +378,7 @@ function soalIndex() {
             const map = {
                 'pg': 'Pilihan Ganda', 'pilihan_ganda': 'Pilihan Ganda',
                 'pg_kompleks': 'PG Kompleks', 'pilihan_ganda_kompleks': 'PG Kompleks',
+                'benar_salah': 'Benar / Salah',
                 'isian': 'Isian Singkat', 'essay': 'Essay', 'menjodohkan': 'Menjodohkan'
             };
             return map[tipe] || tipe;
@@ -368,6 +388,7 @@ function soalIndex() {
             const map = {
                 'pg': 'bg-blue-100 text-blue-700', 'pilihan_ganda': 'bg-blue-100 text-blue-700',
                 'pg_kompleks': 'bg-purple-100 text-purple-700', 'pilihan_ganda_kompleks': 'bg-purple-100 text-purple-700',
+                'benar_salah': 'bg-indigo-100 text-indigo-700',
                 'isian': 'bg-green-100 text-green-700', 'essay': 'bg-amber-100 text-amber-700',
                 'menjodohkan': 'bg-pink-100 text-pink-700'
             };

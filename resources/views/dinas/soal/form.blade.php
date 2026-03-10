@@ -183,6 +183,57 @@
                 </button>
             </div>
 
+            {{-- Benar / Salah --}}
+            <div class="card space-y-4" x-show="jenis === 'benar_salah'" x-transition>
+                <h2 class="font-semibold text-gray-900">Pernyataan Benar / Salah</h2>
+                <p class="text-xs text-gray-500">Tambahkan pernyataan dan tentukan kunci jawaban (Benar/Salah) untuk setiap pernyataan.</p>
+
+                <template x-for="(item, idx) in pernyataanBsList" :key="idx">
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <span class="flex-shrink-0 mt-2 w-6 h-6 bg-indigo-100 rounded-full text-xs font-bold text-indigo-700 flex items-center justify-center"
+                              x-text="idx + 1"></span>
+                        <div class="flex-1 space-y-2">
+                            <textarea :name="`pernyataan_bs[${idx}][teks]`" rows="2"
+                                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                      :placeholder="`Pernyataan ke-${idx + 1}`"
+                                      x-model="item.teks"></textarea>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-gray-500 font-medium">Kunci:</span>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="radio" :name="`pernyataan_bs[${idx}][benar]`" value="1"
+                                           :checked="item.benar"
+                                           @change="item.benar = true"
+                                           class="w-4 h-4 text-green-600 cursor-pointer">
+                                    <span class="text-xs font-semibold text-green-700 px-1.5 py-0.5 bg-green-50 rounded">BENAR</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="radio" :name="`pernyataan_bs[${idx}][benar]`" value="0"
+                                           :checked="!item.benar"
+                                           @change="item.benar = false"
+                                           class="w-4 h-4 text-red-600 cursor-pointer">
+                                    <span class="text-xs font-semibold text-red-700 px-1.5 py-0.5 bg-red-50 rounded">SALAH</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="button" @click="removePernyataanBs(idx)"
+                                x-show="pernyataanBsList.length > 2"
+                                class="flex-shrink-0 mt-1.5 text-red-400 hover:text-red-600">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </template>
+
+                <button type="button" @click="addPernyataanBs()"
+                        class="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Tambah Pernyataan
+                </button>
+            </div>
+
             {{-- Pembahasan (Essay) --}}
             <div class="card space-y-4" x-show="jenis === 'essay'" x-transition>
                 <div>
@@ -215,6 +266,7 @@
                             class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="pilihan_ganda">Pilihan Ganda</option>
                         <option value="pilihan_ganda_kompleks">PG Kompleks</option>
+                        <option value="benar_salah">Benar / Salah</option>
                         <option value="isian">Isian</option>
                         <option value="essay">Essay</option>
                         <option value="menjodohkan">Menjodohkan</option>
@@ -309,7 +361,10 @@
     $pasanganListData = isset($soal) && $soal->pasangan->count()
         ? $soal->pasangan->map(fn($p) => ['kiri' => $p->kiri_teks, 'kanan' => $p->kanan_teks])->toArray()
         : [['kiri' => '', 'kanan' => ''], ['kiri' => '', 'kanan' => '']];
-    $jenisMap = ['pg'=>'pilihan_ganda','pg_kompleks'=>'pilihan_ganda_kompleks','menjodohkan'=>'menjodohkan','isian'=>'isian','essay'=>'essay'];
+    $pernyataanBsData = isset($soal) && $soal->tipe_soal === 'benar_salah' && $soal->opsiJawaban->count()
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
+        : [['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true]];
+    $jenisMap = ['pg'=>'pilihan_ganda','pg_kompleks'=>'pilihan_ganda_kompleks','benar_salah'=>'benar_salah','menjodohkan'=>'menjodohkan','isian'=>'isian','essay'=>'essay'];
     $currentJenis = old('jenis_soal', isset($soal) ? ($jenisMap[$soal->tipe_soal] ?? 'pilihan_ganda') : 'pilihan_ganda');
 @endphp
 
@@ -319,6 +374,7 @@ function soalForm() {
         jenis: '{{ $currentJenis }}',
         opsiList: @json($opsiListData),
         pasanganList: @json($pasanganListData),
+        pernyataanBsList: @json($pernyataanBsData),
 
         init() {},
 
@@ -385,6 +441,12 @@ function soalForm() {
         },
         removePasangan(idx) {
             this.pasanganList.splice(idx, 1);
+        },
+        addPernyataanBs() {
+            this.pernyataanBsList.push({ teks: '', benar: true });
+        },
+        removePernyataanBs(idx) {
+            this.pernyataanBsList.splice(idx, 1);
         }
     };
 }

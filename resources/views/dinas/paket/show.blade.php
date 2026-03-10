@@ -237,6 +237,7 @@
                     <option value="">Semua Jenis</option>
                     <option value="pg">Pilihan Ganda</option>
                     <option value="pg_kompleks">PG Kompleks</option>
+                    <option value="benar_salah">Benar / Salah</option>
                     <option value="isian">Isian</option>
                     <option value="essay">Essay</option>
                     <option value="menjodohkan">Menjodohkan</option>
@@ -451,13 +452,14 @@ function paketSoalApp() {
         },
 
         tipeLabel(tipe) {
-            const map = { pg: 'PG', pg_kompleks: 'PGK', isian: 'Isian', essay: 'Essay', menjodohkan: 'Jodoh' };
+            const map = { pg: 'PG', pg_kompleks: 'PGK', benar_salah: 'B/S', isian: 'Isian', essay: 'Essay', menjodohkan: 'Jodoh' };
             return map[tipe] || tipe;
         },
 
         tipeBadge(tipe) {
             const map = {
                 pg: 'bg-blue-100 text-blue-700', pg_kompleks: 'bg-purple-100 text-purple-700',
+                benar_salah: 'bg-indigo-100 text-indigo-700',
                 isian: 'bg-green-100 text-green-700', essay: 'bg-amber-100 text-amber-700',
                 menjodohkan: 'bg-pink-100 text-pink-700',
             };

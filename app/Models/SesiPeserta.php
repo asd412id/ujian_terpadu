@@ -13,7 +13,7 @@ class SesiPeserta extends Model
     protected $table = 'sesi_peserta';
 
     protected $fillable = [
-        'sesi_id', 'peserta_id', 'token_ujian', 'urutan_soal',
+        'sesi_id', 'peserta_id', 'token_ujian', 'urutan_soal', 'urutan_opsi',
         'status', 'ip_address', 'browser_info', 'device_type',
         'mulai_at', 'submit_at', 'durasi_aktual_detik',
         'soal_terjawab', 'soal_ditandai', 'nilai_akhir',
@@ -22,6 +22,7 @@ class SesiPeserta extends Model
 
     protected $casts = [
         'urutan_soal'          => 'array',
+        'urutan_opsi'          => 'array',
         'mulai_at'             => 'datetime',
         'submit_at'            => 'datetime',
         'nilai_akhir'          => 'decimal:2',

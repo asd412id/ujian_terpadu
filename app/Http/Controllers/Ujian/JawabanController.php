@@ -26,13 +26,17 @@ class JawabanController extends Controller
             'answers.*.jawaban'  => 'required',
             'answers.*.idempotency_key' => 'required|string|max:128',
             'answers.*.client_timestamp' => 'nullable|integer',
+            'soal_ditandai'      => 'nullable|integer|min:0',
         ]);
 
         try {
             $result = $this->jawabanService->syncOfflineAnswers(
                 sesiToken: $data['sesi_token'],
                 answers: $data['answers'],
-                requestMeta: ['ip_address' => $request->ip()]
+                requestMeta: [
+                    'ip_address'     => $request->ip(),
+                    'soal_ditandai'  => $data['soal_ditandai'] ?? null,
+                ]
             );
 
             return response()->json($result);

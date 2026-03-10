@@ -18,6 +18,7 @@ class SoalService
     private array $jenisMap = [
         'pilihan_ganda'          => 'pg',
         'pilihan_ganda_kompleks' => 'pg_kompleks',
+        'benar_salah'            => 'benar_salah',
         'menjodohkan'            => 'menjodohkan',
         'isian'                  => 'isian',
         'essay'                  => 'essay',
@@ -90,6 +91,8 @@ class SoalService
             // Simpan opsi jawaban
             if (in_array($data['tipe_soal'], ['pg', 'pg_kompleks'])) {
                 $this->saveOpsi($soal, $request);
+            } elseif ($data['tipe_soal'] === 'benar_salah') {
+                $this->saveOpsiBenarSalah($soal, $request);
             } elseif ($data['tipe_soal'] === 'menjodohkan') {
                 $this->savePasangan($soal, $request);
             } elseif (in_array($data['tipe_soal'], ['isian', 'essay'])) {
@@ -137,6 +140,8 @@ class SoalService
 
             if (in_array($data['tipe_soal'], ['pg', 'pg_kompleks'])) {
                 $this->saveOpsi($soal, $request);
+            } elseif ($data['tipe_soal'] === 'benar_salah') {
+                $this->saveOpsiBenarSalah($soal, $request);
             } elseif ($data['tipe_soal'] === 'menjodohkan') {
                 $this->savePasangan($soal, $request);
             } elseif (in_array($data['tipe_soal'], ['isian', 'essay'])) {
@@ -203,6 +208,32 @@ class SoalService
                     'teks'     => $teks,
                     'gambar'   => $gambar,
                     'is_benar' => !empty($opsi['benar']) && $opsi['benar'] !== '0',
+                    'urutan'   => $i,
+                ];
+            }
+        }
+
+        if (!empty($opsiRecords)) {
+            $this->repository->saveOpsiJawaban($soal, $opsiRecords);
+        }
+    }
+
+    /**
+     * Save pernyataan for Benar/Salah type.
+     */
+    private function saveOpsiBenarSalah(Soal $soal, Request $request): void
+    {
+        $pernyataanData = $request->input('pernyataan_bs', []);
+
+        $opsiRecords = [];
+        foreach ($pernyataanData as $i => $item) {
+            $teks = $item['teks'] ?? null;
+            if ($teks) {
+                $opsiRecords[] = [
+                    'label'    => (string) ($i + 1),
+                    'teks'     => $teks,
+                    'gambar'   => null,
+                    'is_benar' => !empty($item['benar']) && $item['benar'] !== '0',
                     'urutan'   => $i,
                 ];
             }

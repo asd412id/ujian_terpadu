@@ -106,7 +106,7 @@ class ImportSoalWordJob implements ShouldQueue
                 if (empty($text) && empty($images)) continue;
 
                 // Skip known heading-only lines
-                if (preg_match('/^(PILIHAN GANDA|PG KOMPLEKS|MENJODOHKAN|ISIAN SINGKAT|ESSAY|CATATAN|GAMBAR|Template Import)/i', $text)) continue;
+                if (preg_match('/^(PILIHAN GANDA|PG KOMPLEKS|MENJODOHKAN|ISIAN SINGKAT|ESSAY|BENAR|CATATAN|GAMBAR|Template Import)/i', $text)) continue;
 
                 // New soal: starts with number.
                 if (preg_match('/^(\d+)\.\s+(.+)/s', $text, $m)) {
@@ -116,14 +116,15 @@ class ImportSoalWordJob implements ShouldQueue
                     $jenis    = 'pg';
 
                     // Detect tag
-                    if (preg_match('/^\[(PG_KOMPLEKS|MENJODOHKAN|ISIAN|ESSAY)\]\s*(.+)/si', $soalText, $tagMatch)) {
+                    if (preg_match('/^\[(PG_KOMPLEKS|MENJODOHKAN|ISIAN|ESSAY|BENAR_SALAH)\]\s*(.+)/si', $soalText, $tagMatch)) {
                         $tag = strtoupper($tagMatch[1]);
                         $soalText = trim($tagMatch[2]);
                         $jenis = match ($tag) {
-                            'PG_KOMPLEKS' => 'pg_kompleks',
-                            'MENJODOHKAN' => 'menjodohkan',
-                            'ISIAN'       => 'isian',
-                            'ESSAY'       => 'essay',
+                            'PG_KOMPLEKS'  => 'pg_kompleks',
+                            'MENJODOHKAN'  => 'menjodohkan',
+                            'ISIAN'        => 'isian',
+                            'ESSAY'        => 'essay',
+                            'BENAR_SALAH'  => 'benar_salah',
                         };
                     }
 
@@ -142,6 +143,14 @@ class ImportSoalWordJob implements ShouldQueue
                         'kunci'       => null,
                         'gambar_soal' => !empty($images) ? $this->saveImageData($images[0]) : $gambarFromText,
                         'pasangan'    => [],
+                        'pernyataan_bs' => [],
+                    ];
+
+                // Benar/Salah pernyataan lines: 1) Pernyataan text (BENAR) or 1) Pernyataan text (SALAH)
+                } elseif ($current && $current['jenis'] === 'benar_salah' && preg_match('/^(\d+)\)\s*(.+?)\s*\((BENAR|SALAH)\)\s*$/i', $text, $m)) {
+                    $current['pernyataan_bs'][] = [
+                        'teks'  => trim($m[2]),
+                        'benar' => strtoupper($m[3]) === 'BENAR',
                     ];
 
                 // Option lines: a. / b. / c. / d. / e. (with or without text — may have only embedded image)
@@ -306,6 +315,7 @@ class ImportSoalWordJob implements ShouldQueue
 
         match ($block['jenis']) {
             'pg', 'pg_kompleks' => $this->saveOpsi($soal, $block),
+            'benar_salah'       => $this->saveBenarSalah($soal, $block),
             'menjodohkan'       => $this->savePasangan($soal, $block),
             'isian', 'essay'    => $this->saveIsian($soal, $block),
             default             => null,
@@ -340,6 +350,20 @@ class ImportSoalWordJob implements ShouldQueue
                 'kiri_teks'  => $pair['kiri'],
                 'kanan_teks' => $pair['kanan'],
                 'urutan'     => $i,
+            ]);
+        }
+    }
+
+    private function saveBenarSalah(Soal $soal, array $block): void
+    {
+        $pernyataanList = $block['pernyataan_bs'] ?? [];
+        foreach ($pernyataanList as $i => $item) {
+            OpsiJawaban::create([
+                'soal_id'  => $soal->id,
+                'label'    => (string) ($i + 1),
+                'teks'     => $item['teks'],
+                'is_benar' => $item['benar'],
+                'urutan'   => $i,
             ]);
         }
     }

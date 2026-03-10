@@ -40,6 +40,7 @@
                     'pilihan_ganda' => ['Pilihan Ganda', 'blue'],
                     'pg_kompleks' => ['PG Kompleks', 'purple'],
                     'pilihan_ganda_kompleks' => ['PG Kompleks', 'purple'],
+                    'benar_salah' => ['Benar / Salah', 'indigo'],
                     'isian' => ['Isian Singkat', 'green'],
                     'essay' => ['Essay', 'amber'],
                     'menjodohkan' => ['Menjodohkan', 'pink'],
@@ -123,6 +124,26 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                 </svg>
                 <span class="flex-1 text-sm text-gray-800">{{ $p->kanan_teks }}</span>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- Benar / Salah --}}
+    @if($soal->tipe_soal === 'benar_salah')
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Pernyataan Benar / Salah</h2>
+        <div class="space-y-2">
+            @foreach($soal->opsiJawaban->sortBy('urutan') as $opsi)
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
+                <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ $opsi->label }}</span>
+                <span class="flex-1 text-sm text-gray-800">{{ $opsi->teks }}</span>
+                @if($opsi->is_benar)
+                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">BENAR</span>
+                @else
+                <span class="text-xs font-semibold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">SALAH</span>
+                @endif
             </div>
             @endforeach
         </div>
