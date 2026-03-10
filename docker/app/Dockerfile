@@ -8,7 +8,7 @@
 FROM composer:2 AS composer-deps
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-scripts --no-autoloader --no-dev --prefer-dist
+RUN composer install --no-scripts --no-autoloader --no-dev --prefer-dist --ignore-platform-reqs
 
 # ==== Stage 2: Frontend build ====
 FROM node:20-alpine AS frontend
