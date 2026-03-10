@@ -27,7 +27,7 @@
                 Tambah Peserta
             </a>
             <form action="{{ route('dinas.peserta.destroy-all') }}" method="POST"
-                  onsubmit="return confirm('PERHATIAN: Tindakan ini akan menghapus {{ request('sekolah_id') ? 'semua peserta sekolah ini' : 'SEMUA data peserta' }} secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Peserta',message:'PERHATIAN: Tindakan ini akan menghapus {{ request('sekolah_id') ? 'semua peserta sekolah ini' : 'SEMUA data peserta' }} secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
                 @csrf @method('DELETE')
                 @if(request('sekolah_id'))
                 <input type="hidden" name="sekolah_id" value="{{ request('sekolah_id') }}">
@@ -127,7 +127,7 @@
                                 <a href="{{ route('dinas.peserta.edit', $p->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                 <form action="{{ route('dinas.peserta.destroy', $p->id) }}" method="POST"
-                                      onsubmit="return confirm('Hapus peserta {{ addslashes($p->nama) }}?')">
+                                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Peserta',message:'Hapus peserta {{ addslashes($p->nama) }}?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                                 </form>

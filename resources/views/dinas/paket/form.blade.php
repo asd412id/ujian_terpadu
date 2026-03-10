@@ -31,7 +31,7 @@
         <div class="flex items-center gap-2">
             @if($paket->status === 'draft')
             <form action="{{ route('dinas.paket.publish', $paket->id) }}" method="POST"
-                  onsubmit="return confirm('Publikasikan paket ujian ini?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Publish Paket',message:'Publikasikan paket ujian ini?',confirmText:'Publish'})) $el.submit()">
                 @csrf
                 <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,7 +42,7 @@
             </form>
             @elseif($paket->status === 'aktif')
             <form action="{{ route('dinas.paket.draft', $paket->id) }}" method="POST"
-                  onsubmit="return confirm('Kembalikan paket ke Draft?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Kembalikan ke Draft',message:'Kembalikan paket ke Draft?',confirmText:'Ya, Draft'})) $el.submit()">
                 @csrf
                 <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

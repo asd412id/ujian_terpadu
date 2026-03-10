@@ -25,7 +25,7 @@
         <div class="flex items-center gap-2">
             @if($paket->status === 'draft')
             <form action="{{ route('dinas.paket.publish', $paket->id) }}" method="POST"
-                  onsubmit="return confirm('Publikasikan paket ujian ini?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Publish Paket',message:'Publikasikan paket ujian ini?',confirmText:'Publish'})) $el.submit()">
                 @csrf
                 <button type="submit"
                         class="btn-success flex-shrink-0">
@@ -170,7 +170,7 @@
                 </a>
                 @if($sesi->status !== 'berlangsung')
                 <form action="{{ route('dinas.paket.sesi.destroy', [$paket->id, $sesi->id]) }}" method="POST"
-                      onsubmit="return confirm('Hapus sesi \'{{ addslashes($sesi->nama_sesi) }}\'? Peserta yang terdaftar juga akan dihapus.')">
+                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Sesi',message:'Hapus sesi \'{{ addslashes($sesi->nama_sesi) }}\'? Peserta yang terdaftar juga akan dihapus.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                     @csrf @method('DELETE')
                     <button type="submit"
                             class="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
@@ -340,7 +340,7 @@
     </div>
 
     {{-- Confirm Clear Dialog --}}
-    <div x-show="showConfirmClear" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showConfirmClear = false">
+    <div x-show="showConfirmClear" x-cloak x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showConfirmClear = false">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
             <p class="text-sm text-gray-800 font-medium mb-4">Hapus semua soal dari paket ini?</p>
             <div class="flex justify-end gap-2">

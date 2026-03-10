@@ -29,7 +29,7 @@
                 Cetak Semua Kartu
             </a>
             <form action="{{ route('sekolah.peserta.destroy-all') }}" method="POST"
-                  onsubmit="return confirm('PERHATIAN: Tindakan ini akan menghapus SEMUA data peserta sekolah Anda secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Peserta',message:'PERHATIAN: Tindakan ini akan menghapus SEMUA data peserta sekolah Anda secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
                 @csrf @method('DELETE')
                 <button type="submit"
                         class="btn-danger-outline inline-flex items-center gap-2">

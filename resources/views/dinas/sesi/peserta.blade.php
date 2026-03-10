@@ -30,7 +30,7 @@
             @if($sesi->is_peserta_override)
             <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">Override Manual</span>
             <form action="{{ route('dinas.paket.sesi.peserta.reset', [$paket->id, $sesi->id]) }}" method="POST"
-                  onsubmit="return confirm('Reset ke auto-sync? Semua peserta yang di-override akan diganti sesuai filter paket.')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Reset Auto-Sync',message:'Reset ke auto-sync? Semua peserta yang di-override akan diganti sesuai filter paket.',confirmText:'Ya, Reset',danger:true})) $el.submit()">
                 @csrf
                 <button type="submit"
                         class="text-sm text-blue-600 hover:text-blue-800 font-medium border border-blue-300 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
@@ -113,7 +113,7 @@
             <p class="text-sm text-gray-400 text-center py-6">Belum ada peserta terdaftar di sesi ini.</p>
             @else
             <form action="{{ route('dinas.paket.sesi.peserta.remove', [$paket->id, $sesi->id]) }}" method="POST"
-                  onsubmit="return confirm('Hapus peserta terpilih dari sesi ini?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Peserta',message:'Hapus peserta terpilih dari sesi ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                 @csrf
                 <div class="space-y-1.5 max-h-[500px] overflow-y-auto">
                     @foreach($enrolled as $p)

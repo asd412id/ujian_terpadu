@@ -71,7 +71,7 @@
             {{-- Aksi --}}
             <div class="flex items-center gap-2 flex-shrink-0">
                 <form action="{{ route('dinas.paket.restore', $item->id) }}" method="POST"
-                      onsubmit="return confirm('Pulihkan paket ujian ini?')">
+                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Pulihkan Paket',message:'Pulihkan paket ujian ini?',confirmText:'Ya, Pulihkan'})) $el.submit()">
                     @csrf
                     <button type="submit"
                             class="border border-green-300 hover:bg-green-50 text-green-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5">
@@ -82,7 +82,7 @@
                     </button>
                 </form>
                 <form action="{{ route('dinas.paket.force-delete', $item->id) }}" method="POST"
-                      onsubmit="return confirm('HAPUS PERMANEN paket ujian ini?\n\nSemua sesi, jawaban peserta, dan log aktivitas akan DIHAPUS PERMANEN dan tidak dapat dikembalikan!')">
+                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Permanen',message:'HAPUS PERMANEN paket ujian ini?\n\nSemua sesi, jawaban peserta, dan log aktivitas akan DIHAPUS PERMANEN dan tidak dapat dikembalikan!',confirmText:'Ya, Hapus Permanen',danger:true})) $el.submit()">
                     @csrf @method('DELETE')
                     <button type="submit"
                             class="border border-red-300 hover:bg-red-50 text-red-600 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5">

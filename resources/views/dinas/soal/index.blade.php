@@ -15,7 +15,7 @@
         <div class="flex items-center gap-2">
             @if($soal->total() > 0)
             <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
-                  onsubmit="return confirm('Yakin ingin menghapus SEMUA soal? Tindakan ini tidak dapat dibatalkan.')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Soal',message:'Yakin ingin menghapus SEMUA soal? Tindakan ini tidak dapat dibatalkan.',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
                 @csrf @method('DELETE')
                 <button type="submit"
                         class="btn-danger-outline inline-flex items-center gap-2">
@@ -152,7 +152,7 @@
                                 <a href="{{ route('dinas.soal.edit', $item->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                 <form action="{{ route('dinas.soal.destroy', $item->id) }}" method="POST"
-                                      onsubmit="return confirm('Hapus soal ini?')">
+                                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal',message:'Hapus soal ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                                 </form>

@@ -103,7 +103,7 @@
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                 @if($user->id !== auth()->id())
                                 <form action="{{ route('dinas.users.destroy', $user->id) }}" method="POST"
-                                      onsubmit="return confirm('Hapus pengguna ini?')">
+                                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Pengguna',message:'Hapus pengguna ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                                 </form>

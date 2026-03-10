@@ -83,7 +83,7 @@
             <div class="flex items-center gap-2 flex-shrink-0">
                 @if($item->status === 'draft')
                 <form action="{{ route('dinas.paket.publish', $item->id) }}" method="POST"
-                      onsubmit="return confirm('Publikasikan paket ujian ini?')">
+                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Publish Paket',message:'Publikasikan paket ujian ini?',confirmText:'Publish'})) $el.submit()">
                     @csrf
                     <button type="submit"
                             class="border border-green-300 hover:bg-green-50 text-green-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
@@ -100,7 +100,7 @@
                     Edit
                 </a>
                 <form action="{{ route('dinas.paket.destroy', $item->id) }}" method="POST"
-                      onsubmit="return confirm('Hapus paket ujian ini? Paket akan dipindahkan ke Sampah.')">
+                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Paket',message:'Hapus paket ujian ini? Paket akan dipindahkan ke Sampah.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                     @csrf @method('DELETE')
                     <button type="submit"
                             class="border border-red-200 hover:bg-red-50 text-red-600 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">

@@ -56,7 +56,7 @@
                             <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
                                     class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
                             <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
-                                  onsubmit="return confirm('Hapus kategori ini?')">
+                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Kategori',message:'Hapus kategori ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                             </form>
@@ -71,7 +71,7 @@
     </div>
 
     {{-- Modal --}}
-    <div x-show="showModal" x-transition.opacity
+    <div x-show="showModal" x-cloak x-transition.opacity
          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
          @click.self="closeModal()">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>

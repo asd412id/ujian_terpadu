@@ -26,7 +26,7 @@
                 Tambah Sekolah
             </a>
             <form action="{{ route('dinas.sekolah.destroy-all') }}" method="POST"
-                  onsubmit="return confirm('PERHATIAN: Tindakan ini akan menghapus SEMUA data sekolah secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Sekolah',message:'PERHATIAN: Tindakan ini akan menghapus SEMUA data sekolah secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
                 @csrf @method('DELETE')
                 <button type="submit"
                         class="btn-danger-outline inline-flex items-center gap-2">
@@ -104,7 +104,7 @@
                                 <a href="{{ route('dinas.sekolah.edit', $sekolah->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                 <form action="{{ route('dinas.sekolah.destroy', $sekolah->id) }}" method="POST"
-                                      onsubmit="return confirm('Hapus sekolah ini?')">
+                                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Sekolah',message:'Hapus sekolah ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                                 </form>

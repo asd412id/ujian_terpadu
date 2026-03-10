@@ -31,7 +31,7 @@
             </form>
             @elseif($sesi->status === 'berlangsung')
             <form action="#" method="POST"
-                  onsubmit="return confirm('Tutup sesi sekarang? Peserta yang belum submit akan disubmit otomatis.')">
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Tutup Sesi',message:'Tutup sesi sekarang? Peserta yang belum submit akan disubmit otomatis.',confirmText:'Ya, Tutup',danger:true})) $el.submit()">
                 @csrf
                 <button type="submit" class="btn-danger">
                     Tutup Sesi
