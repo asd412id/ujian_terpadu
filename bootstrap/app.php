@@ -11,6 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust all proxies (Cloudflare Tunnel forwards requests via HTTP internally)
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role'    => \App\Http\Middleware\RoleMiddleware::class,
             'peserta' => \App\Http\Middleware\AuthPeserta::class,
