@@ -1,19 +1,42 @@
+# =================================================================
+# Docker Compose — Ujian Terpadu (Production)
+# Optimized for 4 core / 4GB RAM / 2000 concurrent users
+#
+# Memory Budget:
+#   nginx:   64 MB
+#   app:   1792 MB (php-fpm 50 workers + 2 queue workers via supervisord)
+#   mysql:  768 MB
+#   redis:  256 MB
+#   ─────────────
+#   Total: 2880 MB (leaves ~1200 MB for OS + Docker overhead + spikes)
+# =================================================================
+
 services:
   nginx:
     image: nginx:1.25-alpine
     container_name: ujian_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "${APP_PORT:-80}:80"
+      - "${APP_SSL_PORT:-443}:443"
     volumes:
-      - .:/var/www/html
+      - .:/var/www/html:ro
+      - ./storage/app/public:/var/www/html/storage/app/public:ro
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     networks:
       - ujian_network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
+        reservations:
+          memory: 32M
 
   app:
     build:
@@ -21,42 +44,34 @@ services:
       dockerfile: docker/app/Dockerfile
     container_name: ujian_app
     restart: unless-stopped
+    command: ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
     environment:
       - APP_ENV=${APP_ENV:-production}
-      - OCTANE_SERVER=frankenphp
     volumes:
       - .:/var/www/html
-      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+      - ./docker/app/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+      - ./docker/app/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php-fpm-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - ujian_network
     deploy:
       resources:
         limits:
-          memory: 1536M
-
-  queue:
-    build:
-      context: .
-      dockerfile: docker/app/Dockerfile
-    container_name: ujian_queue
-    restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600", "--queue=imports,default"]
-    volumes:
-      - .:/var/www/html
-    depends_on:
-      - mysql
-      - redis
-    networks:
-      - ujian_network
-    deploy:
-      resources:
-        limits:
-          memory: 256M
+          cpus: "3.0"
+          memory: 1792M
+        reservations:
+          memory: 512M
 
   mysql:
     image: mysql:8.0
@@ -72,34 +87,51 @@ services:
       - ./docker/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
       timeout: 10s
       retries: 5
-      interval: 10s
+      start_period: 30s
     networks:
       - ujian_network
     deploy:
       resources:
         limits:
-          memory: 1024M
+          cpus: "2.0"
+          memory: 768M
+        reservations:
+          memory: 384M
 
   redis:
     image: redis:7-alpine
     container_name: ujian_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 192mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --tcp-backlog 511
+      --timeout 300
+      --tcp-keepalive 60
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
       timeout: 5s
       retries: 5
-      interval: 10s
+      start_period: 10s
     networks:
       - ujian_network
     deploy:
       resources:
         limits:
-          memory: 512M
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 64M
 
 volumes:
   mysql_data:
