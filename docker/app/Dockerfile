@@ -22,7 +22,7 @@ COPY --from=composer-deps /app/vendor/laravel/framework/src/Illuminate/Paginatio
 RUN npm run build
 
 # ==== Stage 3: Final production image ====
-FROM dunglas/frankenphp:1.12-php8.3
+FROM dunglas/frankenphp:1.6-php8.3
 
 # Install system deps (no Node.js needed at runtime!)
 RUN apt-get update && apt-get install -y --no-install-recommends \
