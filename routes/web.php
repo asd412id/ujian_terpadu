@@ -17,27 +17,6 @@ use App\Http\Controllers\Ujian\JawabanController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// Dynamic PWA manifest
-Route::get('/manifest.json', function () {
-    return response()->json([
-        'name' => config('app.name'),
-        'short_name' => config('app.name'),
-        'description' => 'Platform Ujian Resmi Dinas Pendidikan',
-        'start_url' => '/ujian/login',
-        'scope' => '/',
-        'display' => 'standalone',
-        'orientation' => 'portrait-primary',
-        'theme_color' => '#1e40af',
-        'background_color' => '#ffffff',
-        'lang' => 'id',
-        'icons' => [
-            ['src' => '/images/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
-            ['src' => '/images/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
-        ],
-        'categories' => ['education'],
-    ])->header('Cache-Control', 'public, max-age=3600');
-});
-
 // Root redirect
 Route::get('/', function () {
     if (Auth::guard('web')->check()) {
