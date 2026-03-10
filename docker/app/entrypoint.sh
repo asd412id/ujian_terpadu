@@ -45,9 +45,13 @@ echo "[entrypoint] Caching config & routes..."
 php artisan config:cache --no-interaction
 php artisan route:cache --no-interaction
 
-# --- Fix permissions ---
+# --- Fix permissions (run as root before supervisor drops to www-data) ---
 chown -R www-data:www-data /app/storage /app/bootstrap/cache 2>/dev/null || true
 chmod -R 775 /app/storage /app/bootstrap/cache 2>/dev/null || true
+
+# Ensure FrankenPHP/Caddy data dirs are writable by www-data
+mkdir -p /data/caddy /config/caddy
+chown -R www-data:www-data /data /config 2>/dev/null || true
 
 echo "[entrypoint] Setup complete. Starting services..."
 exec "$@"
