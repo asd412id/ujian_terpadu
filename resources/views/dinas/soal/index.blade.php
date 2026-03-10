@@ -7,18 +7,40 @@
 @endsection
 
 @section('page-content')
-<div class="space-y-5">
+<div class="space-y-5" x-data="soalIndex()">
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Bank Soal</h1>
-        <a href="{{ route('dinas.soal.create') }}"
-           class="btn-primary inline-flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Tambah Soal
-        </a>
+        <div class="flex items-center gap-2">
+            @if($soal->total() > 0)
+            <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
+                  onsubmit="return confirm('Yakin ingin menghapus SEMUA soal? Tindakan ini tidak dapat dibatalkan.')">
+                @csrf @method('DELETE')
+                <button type="submit"
+                        class="inline-flex items-center gap-2 border border-red-300 hover:bg-red-50 text-red-600 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Hapus Semua
+                </button>
+            </form>
+            @endif
+            <a href="{{ route('dinas.soal.import') }}"
+               class="inline-flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                Import Soal
+            </a>
+            <a href="{{ route('dinas.soal.create') }}"
+               class="btn-primary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tambah Soal
+            </a>
+        </div>
     </div>
 
     {{-- Filter --}}
@@ -122,6 +144,9 @@
                         <td class="px-5 py-3 text-center hidden md:table-cell font-medium text-gray-900">{{ $item->bobot }}</td>
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-2">
+                                <a href="{{ route('dinas.soal.show', $item->id) }}"
+                                   class="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                                   @click.prevent="openPreview('{{ $item->id }}')">Preview</a>
                                 <a href="{{ route('dinas.soal.edit', $item->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                 <form action="{{ route('dinas.soal.destroy', $item->id) }}" method="POST"
@@ -152,5 +177,203 @@
         @endif
     </div>
 
+    {{-- Preview Modal --}}
+    <template x-teleport="body">
+    <div x-show="showPreview" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         @keydown.escape.window="showPreview = false">
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/50" @click="showPreview = false" x-show="showPreview"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+
+        {{-- Modal Panel --}}
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+             x-show="showPreview"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+
+            {{-- Modal Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-bold text-gray-900">Preview Soal</h2>
+                <div class="flex items-center gap-2">
+                    <a :href="`{{ url('dinas/soal') }}/${previewData?.id}/edit`"
+                       class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                       x-show="previewData">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Edit
+                    </a>
+                    <button @click="showPreview = false" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {{-- Modal Body --}}
+            <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+                {{-- Loading --}}
+                <div x-show="previewLoading" class="flex items-center justify-center py-12">
+                    <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                </div>
+
+                <template x-if="previewData && !previewLoading">
+                    <div class="space-y-5">
+                        {{-- Meta --}}
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 rounded-xl p-4">
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wide">Jenis</p>
+                                <span class="inline-block mt-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                                      :class="tipeClass(previewData.tipe_soal)" x-text="tipeLabel(previewData.tipe_soal)"></span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wide">Kategori</p>
+                                <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.kategori"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wide">Kesulitan</p>
+                                <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.tingkat_kesulitan"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 uppercase tracking-wide">Bobot</p>
+                                <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.bobot"></p>
+                            </div>
+                        </div>
+
+                        {{-- Pertanyaan --}}
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pertanyaan</h3>
+                            <div class="text-sm text-gray-800 whitespace-pre-line" x-text="previewData.pertanyaan"></div>
+                            <template x-if="previewData.gambar_soal">
+                                <img :src="previewData.gambar_soal" class="mt-3 max-h-64 rounded-lg border">
+                            </template>
+                        </div>
+
+                        {{-- Opsi PG / PGK --}}
+                        <template x-if="['pg','pilihan_ganda','pg_kompleks','pilihan_ganda_kompleks'].includes(previewData.tipe_soal)">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pilihan Jawaban</h3>
+                                <div class="space-y-2">
+                                    <template x-for="opsi in previewData.opsi" :key="opsi.label">
+                                        <div class="flex items-start gap-3 p-3 rounded-lg"
+                                             :class="opsi.is_benar ? 'bg-green-50 border border-green-200' : 'bg-gray-50'">
+                                            <span class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                                                  :class="opsi.is_benar ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'"
+                                                  x-text="opsi.label"></span>
+                                            <div class="flex-1">
+                                                <p class="text-sm text-gray-800" x-show="opsi.teks" x-text="opsi.teks"></p>
+                                                <template x-if="opsi.gambar">
+                                                    <img :src="opsi.gambar" class="max-h-32 rounded border" :class="opsi.teks ? 'mt-2' : ''">
+                                                </template>
+                                                <p class="text-sm text-gray-400 italic" x-show="!opsi.teks && !opsi.gambar">—</p>
+                                            </div>
+                                            <svg x-show="opsi.is_benar" class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- Menjodohkan --}}
+                        <template x-if="previewData.tipe_soal === 'menjodohkan'">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pasangan</h3>
+                                <div class="space-y-2">
+                                    <template x-for="(p, i) in previewData.pasangan" :key="i">
+                                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold" x-text="i + 1"></span>
+                                            <span class="flex-1 text-sm text-gray-800" x-text="p.kiri"></span>
+                                            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                            </svg>
+                                            <span class="flex-1 text-sm text-gray-800" x-text="p.kanan"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- Isian / Essay --}}
+                        <template x-if="['isian','essay'].includes(previewData.tipe_soal)">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Kunci Jawaban</h3>
+                                <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                    <p class="text-sm text-gray-800" x-text="previewData.kunci_jawaban || '—'"></p>
+                                </div>
+                                <template x-if="previewData.pembahasan">
+                                    <div class="mt-4">
+                                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pembahasan</h3>
+                                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <p class="text-sm text-gray-800 whitespace-pre-line" x-text="previewData.pembahasan"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+    </template>
+
 </div>
+
+<script>
+function soalIndex() {
+    return {
+        showPreview: false,
+        previewLoading: false,
+        previewData: null,
+
+        openPreview(id) {
+            this.showPreview = true;
+            this.previewLoading = true;
+            this.previewData = null;
+
+            fetch(`{{ url('dinas/soal') }}/${id}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.previewData = data;
+                this.previewLoading = false;
+            })
+            .catch(() => {
+                this.previewLoading = false;
+                this.showPreview = false;
+                alert('Gagal memuat preview soal.');
+            });
+        },
+
+        tipeLabel(tipe) {
+            const map = {
+                'pg': 'Pilihan Ganda', 'pilihan_ganda': 'Pilihan Ganda',
+                'pg_kompleks': 'PG Kompleks', 'pilihan_ganda_kompleks': 'PG Kompleks',
+                'isian': 'Isian Singkat', 'essay': 'Essay', 'menjodohkan': 'Menjodohkan'
+            };
+            return map[tipe] || tipe;
+        },
+
+        tipeClass(tipe) {
+            const map = {
+                'pg': 'bg-blue-100 text-blue-700', 'pilihan_ganda': 'bg-blue-100 text-blue-700',
+                'pg_kompleks': 'bg-purple-100 text-purple-700', 'pilihan_ganda_kompleks': 'bg-purple-100 text-purple-700',
+                'isian': 'bg-green-100 text-green-700', 'essay': 'bg-amber-100 text-amber-700',
+                'menjodohkan': 'bg-pink-100 text-pink-700'
+            };
+            return map[tipe] || 'bg-gray-100 text-gray-700';
+        }
+    };
+}
+</script>
 @endsection

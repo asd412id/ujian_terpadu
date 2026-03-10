@@ -59,14 +59,14 @@ class JawabanService
      *
      * @throws ValidationException
      */
-    public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = []): array
+    public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = [], bool $isFinalSubmit = false): array
     {
         $sesiPeserta = SesiPeserta::where('token_ujian', $sesiToken)
-            ->whereIn('status', ['mengerjakan', 'login'])
+            ->whereIn('status', ['mengerjakan', 'login', 'submit'])
             ->firstOrFail();
 
-        // Validate time — prevent submit after exam ends
-        if ($sesiPeserta->sisa_waktu_detik <= 0) {
+        // Validate time — allow sync during final submit even if time expired
+        if (!$isFinalSubmit && $sesiPeserta->sisa_waktu_detik <= 0) {
             throw ValidationException::withMessages([
                 'waktu' => 'Waktu ujian telah habis.',
             ]);
@@ -182,9 +182,19 @@ class JawabanService
             ];
         }
 
-        // Final sync if answers included
+        // Final sync if answers included — use isFinalSubmit=true to bypass time check
         if (!empty($finalAnswers)) {
-            $this->syncOfflineAnswers($token, $finalAnswers);
+            try {
+                $this->syncOfflineAnswers($token, $finalAnswers, [], true);
+            } catch (\Exception $e) {
+                // Log but don't block submit
+                LogAktivitasUjian::create([
+                    'sesi_peserta_id' => $sesiPeserta->id,
+                    'tipe_event'      => 'final_sync_error',
+                    'detail'          => ['error' => $e->getMessage()],
+                    'created_at'      => now(),
+                ]);
+            }
         }
 
         $durasi = $sesiPeserta->mulai_at

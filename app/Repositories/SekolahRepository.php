@@ -13,7 +13,7 @@ class SekolahRepository
     ) {}
 
     /**
-     * Get all sekolah with stats, paginated.
+     * Get all sekolah with stats, paginated (with optional filters).
      */
     public function getAll(int $perPage = 20): LengthAwarePaginator
     {
@@ -22,6 +22,27 @@ class SekolahRepository
             ->withCount(['peserta', 'soal'])
             ->orderBy('nama')
             ->paginate($perPage);
+    }
+
+    /**
+     * Get filtered + paginated sekolah (for dinas index with search & jenjang filter).
+     */
+    public function getAllFiltered(
+        ?string $search = null,
+        ?string $jenjang = null,
+        int $perPage = 20
+    ): LengthAwarePaginator {
+        return $this->model
+            ->withCount(['peserta', 'soal'])
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('npsn', 'like', "%{$search}%")
+                  ->orWhere('kota', 'like', "%{$search}%");
+            }))
+            ->when($jenjang, fn ($q) => $q->where('jenjang', $jenjang))
+            ->orderBy('nama')
+            ->paginate($perPage)
+            ->withQueryString();
     }
 
     /**

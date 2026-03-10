@@ -349,12 +349,24 @@ function ujianApp() {
             if (this.isSubmitting) return;
             this.isSubmitting = true;
 
-            // Sync semua pending dulu
-            if (this.pendingSync > 0) {
-                await this.syncToServer();
-            }
-
             const cfg = window.UJIAN_CONFIG;
+
+            // Gather ALL answers from IndexedDB as safety net
+            let allAnswers = [];
+            try {
+                const allRecords = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .toArray();
+
+                allAnswers = allRecords.map(item => ({
+                    soal_id:           item.soalId,
+                    jawaban:           this.formatJawabanForApi(item.jawaban),
+                    idempotency_key:   item.idempotencyKey,
+                    client_timestamp:  item.updatedAt,
+                }));
+            } catch (e) {
+                console.warn('[Submit] Could not read IndexedDB:', e.message);
+            }
 
             if (!navigator.onLine) {
                 // Offline submit — queue untuk dikirim nanti
@@ -370,11 +382,20 @@ function ujianApp() {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     },
-                    body: JSON.stringify({ sesi_token: cfg.sesiToken }),
+                    body: JSON.stringify({
+                        sesi_token: cfg.sesiToken,
+                        answers:    allAnswers,
+                    }),
                 });
 
                 const data = await res.json();
                 if (res.ok) {
+                    // Clear IndexedDB after successful submit
+                    try {
+                        await db.exam_answers
+                            .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                            .delete();
+                    } catch (e) { /* ignore */ }
                     window.location.href = data.redirect ?? '/ujian/' + cfg.sesiPesertaId + '/selesai';
                 }
             } catch (err) {
@@ -386,6 +407,14 @@ function ujianApp() {
                 csrf.type = 'hidden'; csrf.name = '_token';
                 csrf.value = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
                 form.appendChild(csrf);
+                // Include answers in hidden field as fallback
+                if (allAnswers.length > 0) {
+                    const answersInput = document.createElement('input');
+                    answersInput.type = 'hidden';
+                    answersInput.name = 'answers_json';
+                    answersInput.value = JSON.stringify(allAnswers);
+                    form.appendChild(answersInput);
+                }
                 document.body.appendChild(form);
                 form.submit();
             }

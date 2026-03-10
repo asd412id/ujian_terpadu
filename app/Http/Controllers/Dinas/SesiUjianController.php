@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaketUjian;
+use App\Models\Sekolah;
 use App\Models\SesiUjian;
 use App\Models\User;
 use App\Services\SesiUjianService;
@@ -74,5 +75,62 @@ class SesiUjianController extends Controller
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    public function peserta(PaketUjian $paket, SesiUjian $sesi, Request $request)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        $search = $request->get('search');
+        $sekolahFilter = $request->get('sekolah_id');
+
+        $enrolled = $this->service->getPesertaSesi($sesi, $search);
+        $available = $this->service->getAvailablePeserta($sesi, $search, $sekolahFilter);
+
+        $sekolahList = Sekolah::where('jenjang', $paket->jenjang)
+            ->when($paket->sekolah_id, fn($q) => $q->where('id', $paket->sekolah_id))
+            ->orderBy('nama')
+            ->get();
+
+        return view('dinas.sesi.peserta', compact(
+            'paket', 'sesi', 'enrolled', 'available', 'sekolahList', 'search', 'sekolahFilter'
+        ));
+    }
+
+    public function addPeserta(Request $request, PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        $request->validate([
+            'peserta_ids'   => 'required|array|min:1',
+            'peserta_ids.*' => 'exists:peserta,id',
+        ]);
+
+        $count = $this->service->addPesertaToSesi($sesi, $request->peserta_ids);
+
+        return back()->with('success', "{$count} peserta berhasil ditambahkan.");
+    }
+
+    public function removePeserta(Request $request, PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        $request->validate([
+            'peserta_ids'   => 'required|array|min:1',
+            'peserta_ids.*' => 'exists:peserta,id',
+        ]);
+
+        $count = $this->service->removePesertaFromSesi($sesi, $request->peserta_ids);
+
+        return back()->with('success', "{$count} peserta berhasil dihapus dari sesi.");
+    }
+
+    public function resetPeserta(PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        $count = $this->service->resetToAutoSync($sesi);
+
+        return back()->with('success', "Peserta direset ke auto-sync. {$count} peserta terdaftar.");
     }
 }

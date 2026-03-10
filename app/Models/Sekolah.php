@@ -22,6 +22,14 @@ class Sekolah extends Model
         'is_active' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        // Ketika sekolah dihapus, hapus juga semua user operator (admin_sekolah) yang terkait
+        static::deleting(function (Sekolah $sekolah) {
+            $sekolah->users()->where('role', User::ROLE_ADMIN_SEKOLAH)->delete();
+        });
+    }
+
     public function dinas()
     {
         return $this->belongsTo(DinasPendidikan::class, 'dinas_id');

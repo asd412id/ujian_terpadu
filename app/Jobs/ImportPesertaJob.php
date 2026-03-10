@@ -20,6 +20,12 @@ class ImportPesertaJob implements ShouldQueue
     public int $timeout  = 600;
     public int $tries    = 3;
 
+    /**
+     * Header yang WAJIB ada di baris pertama template peserta (urutan kolom A–G).
+     * Digunakan untuk mencegah upload template sekolah ke import peserta.
+     */
+    private const EXPECTED_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
+
     public function __construct(public ImportJob $importJob) {}
 
     public function handle(): void
@@ -27,12 +33,19 @@ class ImportPesertaJob implements ShouldQueue
         $this->importJob->update(['status' => 'processing', 'started_at' => now()]);
 
         try {
+            $mode = $this->importJob->meta['mode'] ?? 'update';
             $path = Storage::disk('local')->path($this->importJob->filepath);
             $rows = Excel::toArray([], $path)[0] ?? [];
 
-            // Skip header row
+            // Ambil header row dan validasi — cegah upload template sekolah ke import peserta
             $headers = array_shift($rows);
+            $this->validateHeaders($headers);
             $this->importJob->update(['total_rows' => count($rows)]);
+
+            // Mode replace_all: hapus semua peserta sekolah ini terlebih dahulu
+            if ($mode === 'replace_all' && $this->importJob->sekolah_id) {
+                Peserta::where('sekolah_id', $this->importJob->sekolah_id)->delete();
+            }
 
             $errors = [];
             $success = 0;
@@ -66,6 +79,31 @@ class ImportPesertaJob implements ShouldQueue
                 'catatan' => $e->getMessage(),
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Validasi header baris pertama. Melempar exception jika header tidak cocok
+     * dengan template peserta, sehingga mencegah upload template sekolah ke sini.
+     */
+    private function validateHeaders(?array $headerRow): void
+    {
+        if (empty($headerRow)) {
+            throw new \Exception("File Excel kosong atau tidak memiliki header.");
+        }
+
+        // Normalisasi header dari file
+        $actualHeaders = array_map(fn ($h) => strtolower(trim((string) $h)), $headerRow);
+        $actualHeaders = array_slice($actualHeaders, 0, count(self::EXPECTED_HEADERS));
+
+        foreach (self::EXPECTED_HEADERS as $i => $expected) {
+            $actual = $actualHeaders[$i] ?? '';
+            if ($actual !== $expected) {
+                throw new \Exception(
+                    "Template tidak sesuai. Kolom " . chr(65 + $i) . " seharusnya \"$expected\", bukan \"$actual\". " .
+                    "Pastikan Anda menggunakan template import PESERTA, bukan template lain."
+                );
+            }
         }
     }
 

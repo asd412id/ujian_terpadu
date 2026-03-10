@@ -20,7 +20,7 @@ class LobbyService
     {
         return SesiPeserta::with(['sesi.paket'])
             ->where('peserta_id', $pesertaId)
-            ->whereIn('status', ['belum_login', 'login', 'mengerjakan'])
+            ->whereIn('status', ['terdaftar', 'belum_login', 'login', 'mengerjakan'])
             ->get();
     }
 

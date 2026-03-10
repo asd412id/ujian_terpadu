@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\DinasPendidikan;
+use App\Models\ImportJob;
 use App\Models\Sekolah;
+use App\Jobs\ImportSekolahJob;
 use App\Repositories\SekolahRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -15,11 +17,19 @@ class SekolahService
     ) {}
 
     /**
-     * Get all sekolah with stats, paginated (Dinas view).
+     * Get all sekolah with stats, paginated (Dinas view) with optional filters.
      */
-    public function getAllPaginated(int $perPage = 20): mixed
+    public function getAllPaginated(int $perPage = 20, array $filters = []): mixed
     {
-        return $this->repository->getAll($perPage);
+        if (empty($filters['q']) && empty($filters['jenjang'])) {
+            return $this->repository->getAll($perPage);
+        }
+
+        return $this->repository->getAllFiltered(
+            $filters['q'] ?? null,
+            $filters['jenjang'] ?? null,
+            $perPage
+        );
     }
 
     /**
@@ -72,5 +82,15 @@ class SekolahService
     public function getWithStats(): mixed
     {
         return $this->repository->getWithStats();
+    }
+
+    /**
+     * Create an import job and dispatch the import queue.
+     */
+    public function createImportJob(array $data): ImportJob
+    {
+        $importJob = ImportJob::create($data);
+        ImportSekolahJob::dispatch($importJob);
+        return $importJob;
     }
 }

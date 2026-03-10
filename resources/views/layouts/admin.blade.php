@@ -34,7 +34,6 @@
                         ['route' => 'sekolah.dashboard',    'icon' => 'grid',     'label' => 'Dashboard'],
                         ['route' => 'sekolah.paket',        'icon' => 'document', 'label' => 'Paket Ujian'],
                         ['route' => 'sekolah.peserta.index','icon' => 'users',    'label' => 'Data Peserta'],
-                        ['route' => 'sekolah.soal.index',   'icon' => 'pencil',   'label' => 'Bank Soal'],
                         ['route' => 'sekolah.kartu.index',  'icon' => 'tag',      'label' => 'Kartu Login'],
                     ];
                 } elseif ($userRole === 'pengawas') {
@@ -49,6 +48,7 @@
                         ['route' => 'dinas.soal.index',       'icon' => 'pencil',   'label' => 'Bank Soal'],
                         ['route' => 'dinas.kategori.index',    'icon' => 'tag',      'label' => 'Kategori Soal'],
                         ['route' => 'dinas.sekolah.index',     'icon' => 'office',   'label' => 'Sekolah'],
+                        ['route' => 'dinas.peserta.index',     'icon' => 'users',    'label' => 'Peserta'],
                         ['route' => 'dinas.grading',           'icon' => 'star',     'label' => 'Penilaian Essay'],
                         ['route' => 'dinas.laporan',           'icon' => 'chart',    'label' => 'Laporan'],
                         ['route' => 'dinas.users.index',       'icon' => 'users',    'label' => 'Pengguna'],
@@ -157,36 +157,6 @@
                 </div>
             </div>
         </header>
-
-        {{-- Flash Messages --}}
-        @if(session('success'))
-        <div class="mx-4 mt-4 lg:mx-6" x-data="{show: true}" x-show="show" x-transition>
-            <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl
-                        flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    <span class="text-sm">{{ session('success') }}</span>
-                </div>
-                <button @click="show = false" class="text-green-400 hover:text-green-600">✕</button>
-            </div>
-        </div>
-        @endif
-
-        @if(session('error') || $errors->any())
-        <div class="mx-4 mt-4 lg:mx-6">
-            <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="text-sm">{{ session('error') ?? $errors->first() }}</span>
-                </div>
-            </div>
-        </div>
-        @endif
 
         {{-- Page Content --}}
         <main class="flex-1 px-4 py-5 lg:px-6 lg:py-6">

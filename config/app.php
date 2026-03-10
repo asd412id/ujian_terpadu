@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Operator Email Domain
+    |--------------------------------------------------------------------------
+    |
+    | Domain email untuk user operator sekolah yang di-generate otomatis
+    | saat import data sekolah. Format: {npsn}@{domain}
+    |
+    */
+
+    'ops_email_domain' => env('OPS_EMAIL_DOMAIN', 'sekolah.local'),
+
 ];

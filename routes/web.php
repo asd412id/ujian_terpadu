@@ -5,8 +5,8 @@ use App\Http\Controllers\Auth\PesertaLoginController;
 use App\Http\Controllers\Dinas\DashboardController as DinasDashboardController;
 use App\Http\Controllers\Dinas\MonitoringController;
 use App\Http\Controllers\Dinas\LaporanController as DinasLaporanController;
+use App\Http\Controllers\Dinas\SekolahController as DinasSekolahController;
 use App\Http\Controllers\Sekolah\DashboardController as SekolahDashboardController;
-use App\Http\Controllers\Sekolah\SoalController;
 use App\Http\Controllers\Sekolah\PesertaController;
 use App\Http\Controllers\Sekolah\PaketUjianController;
 use App\Http\Controllers\Sekolah\KartuLoginController;
@@ -44,7 +44,8 @@ Route::prefix('ujian')->name('ujian.')->group(function () {
     // Lobby & Ujian (auth peserta)
     Route::middleware('peserta')->group(function () {
         Route::get('/lobby', [LobbyController::class, 'index'])->name('lobby');
-        Route::get('/{sesiPeserta}', [UjianController::class, 'index'])->name('mulai');
+        Route::get('/{sesiPeserta}/konfirmasi', [UjianController::class, 'konfirmasi'])->name('konfirmasi');
+        Route::get('/{sesiPeserta}/mengerjakan', [UjianController::class, 'mengerjakan'])->name('mengerjakan');
         Route::post('/{sesiPeserta}/submit', [UjianController::class, 'submit'])->name('submit');
         Route::get('/{sesiPeserta}/selesai', [UjianController::class, 'selesai'])->name('selesai');
     });
@@ -78,10 +79,22 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/laporan', [DinasLaporanController::class, 'index'])->name('laporan');
     Route::get('/laporan/export', [DinasLaporanController::class, 'export'])->name('laporan.export');
 
-    // Manajemen Sekolah
+    // Manajemen Sekolah — Import routes HARUS sebelum resource agar tidak konflik dengan {sekolah}
+    Route::get('/sekolah/import', [DinasSekolahController::class, 'showImport'])->name('sekolah.import');
+    Route::post('/sekolah/import', [DinasSekolahController::class, 'import'])->name('sekolah.import.post');
+    Route::get('/sekolah/import/template', [DinasSekolahController::class, 'downloadTemplate'])->name('sekolah.import.template');
+    Route::get('/sekolah/import/status/{job}', [DinasSekolahController::class, 'importStatus'])->name('sekolah.import.status');
+    Route::delete('/sekolah/destroy-all', [DinasSekolahController::class, 'destroyAll'])->name('sekolah.destroy-all');
     Route::resource('sekolah', \App\Http\Controllers\Dinas\SekolahController::class)->names('sekolah');
 
-    // Bank Soal (dinas bisa kelola semua soal)
+    // Bank Soal — Import routes HARUS sebelum resource agar tidak konflik dengan {soal}
+    Route::get('/soal/import', [\App\Http\Controllers\Dinas\SoalController::class, 'showImport'])->name('soal.import');
+    Route::post('/soal/import/word', [\App\Http\Controllers\Dinas\SoalController::class, 'importWord'])->name('soal.import.word');
+    Route::post('/soal/import/zip', [\App\Http\Controllers\Dinas\SoalController::class, 'importZip'])->name('soal.import.zip');
+    Route::get('/soal/import/status/{job}', [\App\Http\Controllers\Dinas\SoalController::class, 'importStatus'])->name('soal.import.status');
+    Route::get('/soal/import/template/word', [\App\Http\Controllers\Dinas\SoalController::class, 'templateWord'])->name('soal.import.template.word');
+    Route::get('/soal/import/template/zip', [\App\Http\Controllers\Dinas\SoalController::class, 'templateZip'])->name('soal.import.template.zip');
+    Route::delete('/soal/destroy-all', [\App\Http\Controllers\Dinas\SoalController::class, 'destroyAll'])->name('soal.destroy-all');
     Route::resource('soal', \App\Http\Controllers\Dinas\SoalController::class)->names('soal');
 
     // Kategori Soal
@@ -99,6 +112,11 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/paket/{paket}/sesi/{sesi}/edit', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'edit'])->name('paket.sesi.edit');
     Route::put('/paket/{paket}/sesi/{sesi}', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'update'])->name('paket.sesi.update');
     Route::delete('/paket/{paket}/sesi/{sesi}', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'destroy'])->name('paket.sesi.destroy');
+    // Peserta Sesi
+    Route::get('/paket/{paket}/sesi/{sesi}/peserta', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'peserta'])->name('paket.sesi.peserta');
+    Route::post('/paket/{paket}/sesi/{sesi}/peserta/add', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'addPeserta'])->name('paket.sesi.peserta.add');
+    Route::post('/paket/{paket}/sesi/{sesi}/peserta/remove', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'removePeserta'])->name('paket.sesi.peserta.remove');
+    Route::post('/paket/{paket}/sesi/{sesi}/peserta/reset', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'resetPeserta'])->name('paket.sesi.peserta.reset');
 
     // Grading Essay
     Route::get('/grading', [\App\Http\Controllers\Dinas\GradingController::class, 'index'])->name('grading');
@@ -106,6 +124,17 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 
     // User management
     Route::resource('users', \App\Http\Controllers\Dinas\UserController::class)->names('users');
+
+    // Peserta management (dinas kelola semua peserta lintas sekolah)
+    // Import routes HARUS sebelum resource agar tidak konflik dengan {peserta}
+    Route::get('/peserta/import', [\App\Http\Controllers\Dinas\PesertaController::class, 'showImport'])->name('peserta.import');
+    Route::post('/peserta/import', [\App\Http\Controllers\Dinas\PesertaController::class, 'import'])->name('peserta.import.post');
+    Route::get('/peserta/import/template', [\App\Http\Controllers\Dinas\PesertaController::class, 'downloadTemplate'])->name('peserta.import.template');
+    Route::get('/peserta/import/status/{job}', [\App\Http\Controllers\Dinas\PesertaController::class, 'importStatus'])->name('peserta.import.status');
+    Route::delete('/peserta/destroy-all', [\App\Http\Controllers\Dinas\PesertaController::class, 'destroyAll'])->name('peserta.destroy-all');
+    Route::resource('peserta', \App\Http\Controllers\Dinas\PesertaController::class)
+         ->names('peserta')
+         ->parameters(['peserta' => 'peserta']);
 });
 
 // =============================================================
@@ -114,11 +143,14 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_sekolah,super_admin,admin_dinas'])->group(function () {
     Route::get('/dashboard', [SekolahDashboardController::class, 'index'])->name('dashboard');
 
-    // Peserta
+    // Peserta (sekolah hanya bisa lihat daftar + import + cetak kartu, tidak bisa tambah/edit/hapus manual)
+    // Import routes HARUS sebelum resource agar tidak konflik dengan {peserta}
     Route::get('/peserta/import', [PesertaController::class, 'showImport'])->name('peserta.import');
     Route::post('/peserta/import', [PesertaController::class, 'import'])->name('peserta.import.post');
     Route::get('/peserta/import/template', [PesertaController::class, 'downloadTemplate'])->name('peserta.import.template');
-    Route::resource('peserta', PesertaController::class)->names('peserta')->parameters(['peserta' => 'peserta']);
+    Route::get('/peserta/import/status/{job}', [PesertaController::class, 'importStatus'])->name('peserta.import.status');
+    Route::delete('/peserta/destroy-all', [PesertaController::class, 'destroyAll'])->name('peserta.destroy-all');
+    Route::resource('peserta', PesertaController::class)->only(['index'])->names('peserta')->parameters(['peserta' => 'peserta']);
 
     // Kartu Login
     Route::get('/kartu-login', [KartuLoginController::class, 'index'])->name('kartu.index');
@@ -127,14 +159,6 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
     Route::get('/kartu-login/{sesi}/cetak', [KartuLoginController::class, 'cetak'])->name('kartu.cetak');
     Route::get('/kartu-login/peserta/{peserta}', [KartuLoginController::class, 'cetakSatu'])->name('kartu.satu');
     Route::get('/kartu-login/peserta/{peserta}/show', [KartuLoginController::class, 'show'])->name('kartu.show');
-
-    // Soal (admin sekolah input soal untuk sekolahnya)
-    Route::get('/soal/import', [SoalController::class, 'showImport'])->name('soal.import');
-    Route::post('/soal/import/excel', [SoalController::class, 'importExcel'])->name('soal.import.excel');
-    Route::post('/soal/import/word', [SoalController::class, 'importWord'])->name('soal.import.word');
-    Route::get('/soal/import/template/{format}', [SoalController::class, 'downloadTemplate'])->name('soal.import.template');
-    Route::get('/soal/import/status/{job}', [SoalController::class, 'importStatus'])->name('soal.import.status');
-    Route::resource('soal', SoalController::class)->names('soal');
 
     // Paket Ujian (lihat dan daftarkan peserta)
     Route::get('/paket', [PaketUjianController::class, 'index'])->name('paket');

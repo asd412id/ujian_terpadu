@@ -23,8 +23,12 @@ class GradingService
     {
         $query = JawabanPeserta::with(['soal.kategori', 'sesiPeserta.peserta.sekolah', 'sesiPeserta.sesi.paket'])
             ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
+            ->whereHas('sesiPeserta', fn ($q) => $q->whereIn('status', ['submit', 'dinilai']))
             ->whereNull('skor_manual')
-            ->whereNotNull('jawaban_teks');
+            ->where(function ($q) {
+                $q->whereNotNull('jawaban_teks')
+                  ->where('jawaban_teks', '!=', '');
+            });
 
         if (!empty($filters['paket_id'])) {
             $query->whereHas('sesiPeserta.sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
@@ -38,8 +42,12 @@ class GradingService
         $jawabans = $query->latest()->paginate($perPage);
 
         $totalBelumDinilai = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
+            ->whereHas('sesiPeserta', fn ($q) => $q->whereIn('status', ['submit', 'dinilai']))
             ->whereNull('skor_manual')
-            ->whereNotNull('jawaban_teks')
+            ->where(function ($q) {
+                $q->whereNotNull('jawaban_teks')
+                  ->where('jawaban_teks', '!=', '');
+            })
             ->count();
 
         $paketList = PaketUjian::orderBy('nama')->get();

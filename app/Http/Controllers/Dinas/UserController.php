@@ -13,9 +13,13 @@ class UserController extends Controller
         protected UserService $userService
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $users = $this->userService->getAllPaginated(20);
+        $role   = $request->input('role');
+        $search = $request->input('search');
+        $status = $request->filled('status') ? (bool) $request->input('status') : null;
+
+        $users = $this->userService->getFilteredPaginated($role, $search, $status, 20);
 
         return view('dinas.users.index', compact('users'));
     }
@@ -70,6 +74,6 @@ class UserController extends Controller
         $this->userService->deleteUser($user);
 
         return redirect()->route('dinas.users.index')
-                         ->with('success', 'Pengguna dinonaktifkan.');
+                         ->with('success', 'Pengguna berhasil dihapus.');
     }
 }

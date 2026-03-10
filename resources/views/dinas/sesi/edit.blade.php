@@ -16,14 +16,6 @@
 
 @section('page-content')
 
-@if($errors->any())
-<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 max-w-2xl mb-4">
-    <ul class="list-disc list-inside space-y-1">
-        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-    </ul>
-</div>
-@endif
-
 <div class="max-w-2xl">
     <div class="card">
         <h2 class="font-semibold text-gray-900 mb-4">Edit Sesi: <span class="text-blue-600">{{ $sesi->nama_sesi }}</span></h2>

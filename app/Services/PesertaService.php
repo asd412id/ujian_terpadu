@@ -23,6 +23,18 @@ class PesertaService
     }
 
     /**
+     * Get all peserta for dinas admin view (cross-school, with optional filters).
+     */
+    public function getAllForDinas(array $filters = []): mixed
+    {
+        return $this->repository->getAllFiltered(
+            $filters['sekolah_id'] ?? null,
+            $filters['q'] ?? null,
+            $filters['kelas'] ?? null
+        );
+    }
+
+    /**
      * Get peserta by sekolah with optional filters.
      */
     public function getBySekolah(string $sekolahId, array $filters = []): mixed

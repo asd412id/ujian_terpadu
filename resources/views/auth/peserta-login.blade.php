@@ -11,7 +11,7 @@
         <div class="absolute -bottom-20 -left-20 w-96 h-96 bg-white/5 rounded-full"></div>
     </div>
 
-    <div class="relative w-full max-w-sm">
+    <div class="relative w-full max-w-md">
         {{-- Card --}}
         <div class="bg-white rounded-3xl shadow-2xl p-8">
 

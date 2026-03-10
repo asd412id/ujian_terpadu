@@ -26,13 +26,16 @@ class UserRepository
     /**
      * Get filtered users.
      */
-    public function getFiltered(?string $role = null, ?string $search = null, int $perPage = 20): LengthAwarePaginator
+    public function getFiltered(?string $role = null, ?string $search = null, ?bool $isActive = null, int $perPage = 20): LengthAwarePaginator
     {
         return $this->model
             ->with('sekolah')
             ->when($role, fn ($q) => $q->where('role', $role))
-            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
+                $sub->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            }))
+            ->when($isActive !== null, fn ($q) => $q->where('is_active', $isActive))
             ->orderBy('role')
             ->paginate($perPage);
     }
@@ -70,10 +73,10 @@ class UserRepository
     }
 
     /**
-     * Soft-delete (deactivate) a user.
+     * Hapus user secara permanen dari database.
      */
     public function delete(User $user): bool
     {
-        return $user->update(['is_active' => false]);
+        return $user->delete();
     }
 }

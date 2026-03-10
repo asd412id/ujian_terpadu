@@ -15,11 +15,13 @@ class SesiUjian extends Model
     protected $fillable = [
         'paket_id', 'nama_sesi', 'ruangan', 'pengawas_id',
         'waktu_mulai', 'waktu_selesai', 'status', 'kapasitas',
+        'is_peserta_override',
     ];
 
     protected $casts = [
-        'waktu_mulai'   => 'datetime',
-        'waktu_selesai' => 'datetime',
+        'waktu_mulai'          => 'datetime',
+        'waktu_selesai'        => 'datetime',
+        'is_peserta_override'  => 'boolean',
     ];
 
     public function paket()

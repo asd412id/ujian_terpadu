@@ -2,12 +2,35 @@
 
 @section('title', 'Ujian Selesai')
 
-@section('body-class', 'bg-gradient-to-br from-slate-900 to-blue-950 min-h-screen')
-
 @section('content')
-<div class="min-h-screen flex flex-col items-center justify-center p-4"
-     x-data="selesaiApp()"
-     x-init="init()">
+{{-- Top Navigation Bar --}}
+<header class="w-full bg-white border-b border-gray-200 px-6 py-3.5">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+            </div>
+            <span class="text-sm font-bold text-gray-900">UJIAN TERPADU</span>
+        </div>
+        <form action="{{ route('ujian.logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Keluar
+            </button>
+        </form>
+    </div>
+</header>
+
+<main class="min-h-screen bg-slate-100 flex items-center justify-center p-6"
+      x-data="selesaiApp()"
+      x-init="init()">
 
     {{-- Offline Banner --}}
     <div x-show="!isOnline && hasPendingSync"
@@ -31,122 +54,127 @@
         Menyinkronkan jawaban ke server...
     </div>
 
-    <div class="w-full max-w-xl">
+    <div class="w-full max-w-lg">
+        {{-- Card --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
-        {{-- Animasi Selesai --}}
-        <div class="text-center mb-8">
-            <div class="relative w-24 h-24 mx-auto mb-6">
-                {{-- Lingkaran Animasi --}}
-                <div class="absolute inset-0 rounded-full bg-green-500/20 animate-ping"></div>
-                <div class="relative w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/30">
-                    <svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            {{-- Header --}}
+            <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-5 text-white text-center">
+                <div class="relative w-14 h-14 mx-auto mb-3">
+                    <div class="absolute inset-0 rounded-2xl bg-white/20 animate-ping"></div>
+                    <div class="relative w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                        <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="text-lg font-bold">Ujian Selesai!</h1>
+                <p class="text-green-200 text-sm mt-1">
+                    Terima kasih, <strong class="text-white">{{ auth('peserta')->user()->nama }}</strong>
+                </p>
+            </div>
+
+            {{-- Content --}}
+            <div class="px-6 py-5 space-y-4">
+
+                {{-- Ringkasan Pengerjaan --}}
+                <div>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Ringkasan Pengerjaan</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-slate-50 rounded-xl px-3 py-3 text-center">
+                            <p class="text-2xl font-bold text-gray-900">{{ $ringkasan['terjawab'] }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Terjawab</p>
+                        </div>
+                        <div class="bg-amber-50 rounded-xl px-3 py-3 text-center">
+                            <p class="text-2xl font-bold text-amber-600">{{ $ringkasan['ragu'] }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Ditandai</p>
+                        </div>
+                        <div class="bg-red-50 rounded-xl px-3 py-3 text-center">
+                            <p class="text-2xl font-bold text-red-500">{{ $ringkasan['kosong'] }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Kosong</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Detail Info --}}
+                <div class="bg-slate-50 rounded-xl px-4 py-3 space-y-1.5">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Durasi Pengerjaan</span>
+                        <span class="font-medium text-gray-900">{{ $ringkasan['durasi'] }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Selesai Pukul</span>
+                        <span class="font-medium text-gray-900">{{ now()->format('H:i:s') }} WIB</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Status Sinkronisasi</span>
+                        <span class="font-medium flex items-center gap-1.5"
+                              :class="hasPendingSync ? 'text-amber-600' : 'text-green-600'">
+                            <span class="w-2 h-2 rounded-full inline-block"
+                                  :class="hasPendingSync ? 'bg-amber-500' : 'bg-green-500'"></span>
+                            <span x-text="hasPendingSync ? 'Belum tersinkron' : 'Tersinkron'"></span>
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Pesan Offline Sync --}}
+                <div x-show="hasPendingSync && !isOnline"
+                     x-transition
+                     class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 text-center">
+                    <svg class="w-5 h-5 mx-auto mb-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
+                    Masih ada jawaban yang belum dikirim ke server. Jangan tutup browser ini.<br>
+                    Jawaban akan otomatis terkirim saat koneksi tersambung kembali.
                 </div>
+
+                {{-- Sukses Sync --}}
+                <div x-show="!hasPendingSync"
+                     x-transition
+                     class="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700 text-center">
+                    <svg class="w-5 h-5 mx-auto mb-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Semua jawaban berhasil diterima server. Hasil ujian akan segera diproses.
+                </div>
+
+                {{-- Langkah Selanjutnya --}}
+                <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                    <p class="text-sm font-semibold text-blue-800 mb-2">Langkah selanjutnya:</p>
+                    <ul class="text-xs text-blue-700 space-y-1">
+                        <li class="flex items-start gap-1.5">
+                            <span class="mt-0.5">&#8226;</span>
+                            Serahkan alat tulis dan kartu ujian kepada pengawas.
+                        </li>
+                        <li class="flex items-start gap-1.5">
+                            <span class="mt-0.5">&#8226;</span>
+                            Tunggu pengumuman hasil dari sekolah / dinas pendidikan.
+                        </li>
+                        <li class="flex items-start gap-1.5">
+                            <span class="mt-0.5">&#8226;</span>
+                            Jangan berbagi soal ujian kepada siapapun.
+                        </li>
+                    </ul>
+                </div>
+
+                {{-- Tombol Keluar --}}
+                <form action="{{ route('ujian.logout') }}" method="POST">
+                    @csrf
+                    <button type="submit"
+                            class="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 active:scale-95
+                                   text-gray-700 text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Keluar
+                    </button>
+                </form>
             </div>
-
-            <h1 class="text-3xl font-bold text-white mb-2">Ujian Selesai!</h1>
-            <p class="text-blue-300">
-                Terima kasih, <strong class="text-white">{{ auth('peserta')->user()->nama }}</strong>.
-            </p>
         </div>
-
-        {{-- Ringkasan --}}
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-5 border border-white/20 text-white">
-            <h2 class="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-4">Ringkasan Pengerjaan</h2>
-            <div class="grid grid-cols-3 gap-4 text-center">
-                <div class="bg-white/10 rounded-xl p-4">
-                    <p class="text-2xl font-bold">{{ $ringkasan['terjawab'] }}</p>
-                    <p class="text-blue-300 text-xs mt-1">Terjawab</p>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4">
-                    <p class="text-2xl font-bold text-amber-400">{{ $ringkasan['ragu'] }}</p>
-                    <p class="text-blue-300 text-xs mt-1">Ditandai</p>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4">
-                    <p class="text-2xl font-bold text-red-400">{{ $ringkasan['kosong'] }}</p>
-                    <p class="text-blue-300 text-xs mt-1">Kosong</p>
-                </div>
-            </div>
-
-            <div class="mt-4 pt-4 border-t border-white/10">
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-blue-300">Durasi Pengerjaan</span>
-                    <span class="font-semibold">{{ $ringkasan['durasi'] }}</span>
-                </div>
-                <div class="flex items-center justify-between text-sm mt-2">
-                    <span class="text-blue-300">Selesai Pukul</span>
-                    <span class="font-semibold">{{ now()->format('H:i:s') }} WIB</span>
-                </div>
-                <div class="flex items-center justify-between text-sm mt-2">
-                    <span class="text-blue-300">Status Sinkronisasi</span>
-                    <span class="font-semibold flex items-center gap-1.5"
-                          :class="hasPendingSync ? 'text-amber-400' : 'text-green-400'">
-                        <span class="w-2 h-2 rounded-full inline-block"
-                              :class="hasPendingSync ? 'bg-amber-400' : 'bg-green-400'"></span>
-                        <span x-text="hasPendingSync ? 'Belum tersinkron' : 'Tersinkron'"></span>
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        {{-- Pesan Offline Sync --}}
-        <div x-show="hasPendingSync && !isOnline"
-             x-transition
-             class="bg-amber-500/20 border border-amber-500/40 rounded-xl p-4 mb-5 text-sm text-amber-200 text-center">
-            <svg class="w-5 h-5 mx-auto mb-2 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-            Masih ada jawaban yang belum dikirim ke server. Jangan tutup browser ini.<br>
-            Jawaban akan otomatis terkirim saat koneksi tersambung kembali.
-        </div>
-
-        {{-- Sukses Sync --}}
-        <div x-show="!hasPendingSync"
-             x-transition
-             class="bg-green-500/20 border border-green-500/40 rounded-xl p-4 mb-5 text-sm text-green-200 text-center">
-            <svg class="w-5 h-5 mx-auto mb-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            Semua jawaban berhasil diterima server. Hasil ujian akan segera diproses.
-        </div>
-
-        {{-- Info --}}
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-5 mb-6 border border-white/20 text-sm text-blue-100">
-            <p class="font-semibold text-white mb-2">Langkah selanjutnya:</p>
-            <ul class="space-y-1.5">
-                <li class="flex items-start gap-2">
-                    <span class="text-blue-400 font-bold flex-shrink-0">1.</span>
-                    Serahkan alat tulis dan kartu ujian kepada pengawas.
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-blue-400 font-bold flex-shrink-0">2.</span>
-                    Tunggu pengumuman hasil dari sekolah / dinas pendidikan.
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-blue-400 font-bold flex-shrink-0">3.</span>
-                    Jangan berbagi soal ujian kepada siapapun.
-                </li>
-            </ul>
-        </div>
-
-        {{-- Tombol Logout --}}
-        <form action="{{ route('ujian.logout') }}" method="POST">
-            @csrf
-            <button type="submit"
-                    class="w-full bg-white/20 hover:bg-white/30 active:scale-95 text-white font-semibold
-                           py-3.5 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                </svg>
-                Keluar
-            </button>
-        </form>
-
     </div>
-</div>
+</main>
 
 <script>
 function selesaiApp() {
@@ -179,12 +207,10 @@ function selesaiApp() {
             if (!this.hasPendingSync || this.isSyncing) return;
             this.isSyncing = true;
             try {
-                // Trigger background sync melalui Service Worker
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     const reg = await navigator.serviceWorker.ready;
                     await reg.sync.register('jawaban-sync');
                 }
-                // Tunggu sebentar lalu cek ulang
                 await new Promise(r => setTimeout(r, 3000));
                 await this.checkPendingSync();
             } catch (e) { /* fallback */ } finally {

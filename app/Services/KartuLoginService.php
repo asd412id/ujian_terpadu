@@ -51,14 +51,12 @@ class KartuLoginService
      */
     public function getKartuBySekolah(string $sekolahId): mixed
     {
-        $sesiIds = SesiUjian::whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->pluck('id');
-
-        return SesiPeserta::with('peserta')
-            ->whereIn('sesi_id', $sesiIds)
+        return Peserta::where('sekolah_id', $sekolahId)
+            ->where('is_active', true)
+            ->orderBy('kelas')
+            ->orderBy('nama')
             ->get()
-            ->map(function ($sp) {
-                $peserta = $sp->peserta;
+            ->map(function ($peserta) {
                 $peserta->password_kartu = $peserta->password_plain
                     ? decrypt($peserta->password_plain)
                     : '(hubungi admin)';

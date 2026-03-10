@@ -78,8 +78,8 @@ class MonitoringService
             'total'       => $pesertaList->count(),
             'online'      => $pesertaList->whereIn('status', ['login', 'mengerjakan'])->count(),
             'submit'      => $pesertaList->whereIn('status', ['submit', 'dinilai'])->count(),
-            'kosong'      => $pesertaList->where('status', 'belum_login')->count(),
-            'belum_mulai' => $pesertaList->where('status', 'belum_login')->count(),
+            'kosong'      => $pesertaList->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'belum_mulai' => $pesertaList->whereIn('status', ['terdaftar', 'belum_login'])->count(),
         ];
 
         return compact('sesi', 'alerts', 'pesertaList', 'stats');
@@ -111,7 +111,7 @@ class MonitoringService
             'total'        => $sesi->sesiPeserta->count(),
             'aktif'        => $sesi->sesiPeserta->whereIn('status', ['login', 'mengerjakan'])->count(),
             'submit'       => $sesi->sesiPeserta->where('status', 'submit')->count(),
-            'belum_masuk'  => $sesi->sesiPeserta->where('status', 'belum_login')->count(),
+            'belum_masuk'  => $sesi->sesiPeserta->whereIn('status', ['terdaftar', 'belum_login'])->count(),
         ];
 
         return compact('sesi', 'statsPeserta');
@@ -129,7 +129,7 @@ class MonitoringService
             'total'        => $sesi->sesiPeserta->count(),
             'aktif'        => $sesi->sesiPeserta->whereIn('status', ['login', 'mengerjakan'])->count(),
             'submit'       => $sesi->sesiPeserta->where('status', 'submit')->count(),
-            'belum_masuk'  => $sesi->sesiPeserta->where('status', 'belum_login')->count(),
+            'belum_masuk'  => $sesi->sesiPeserta->whereIn('status', ['terdaftar', 'belum_login'])->count(),
         ];
 
         return compact('sesi', 'statsPeserta');

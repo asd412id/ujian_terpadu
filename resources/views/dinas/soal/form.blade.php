@@ -17,17 +17,6 @@
     @csrf
     @if(isset($soal)) @method('PUT') @endif
 
-    {{-- Error bag --}}
-    @if($errors->any())
-    <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-        <ul class="list-disc list-inside space-y-1">
-            @foreach($errors->all() as $error)
-            <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
-
     <div class="grid lg:grid-cols-3 gap-5">
 
         {{-- LEFT: Isi Soal --}}
@@ -95,11 +84,33 @@
                         <div class="flex-1 space-y-2">
                             <textarea :name="`opsi[${idx}][teks]`" rows="2"
                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                      :placeholder="`Opsi ${String.fromCharCode(65 + idx)}`"
-                                      x-model="opsi.teks"></textarea>
-                            {{-- Upload gambar opsi --}}
-                            <input type="file" :name="`opsi[${idx}][gambar]`" accept="image/*"
-                                   class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
+                                      :placeholder="`Opsi ${String.fromCharCode(65 + idx)} (teks opsional jika ada gambar)`"
+                                      x-model="opsi.teks"
+                                      @paste="handleOpsiPaste($event, idx)"></textarea>
+                            {{-- Upload / paste gambar opsi --}}
+                            <input type="hidden" :name="`opsi[${idx}][gambar_existing]`" :value="opsi.gambar || ''">
+                            {{-- Preview gambar existing (dari server) --}}
+                            <template x-if="opsi.gambar && !opsi.pastedPreview">
+                                <div class="mt-1 flex items-center gap-2">
+                                    <img :src="'/storage/' + opsi.gambar" class="h-10 w-10 rounded object-cover border">
+                                    <span class="text-xs text-gray-400">Gambar saat ini</span>
+                                    <button type="button" @click="opsi.gambar = null" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                </div>
+                            </template>
+                            {{-- Preview gambar dari paste clipboard --}}
+                            <template x-if="opsi.pastedPreview">
+                                <div class="mt-1 flex items-center gap-2">
+                                    <img :src="opsi.pastedPreview" class="h-16 max-w-[120px] rounded object-cover border">
+                                    <span class="text-xs text-green-600">Gambar dari clipboard</span>
+                                    <button type="button" @click="removePastedImage(idx)" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                </div>
+                            </template>
+                            <div class="flex items-center gap-2">
+                                <input type="file" :id="`opsi-gambar-${idx}`" :name="`opsi[${idx}][gambar]`" accept="image/*"
+                                       @change="handleOpsiFileChange($event, idx)"
+                                       class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
+                                <span class="text-xs text-gray-400 whitespace-nowrap">atau Ctrl+V di teks</span>
+                            </div>
                         </div>
                         {{-- Hapus opsi --}}
                         <button type="button" @click="removeOpsi(idx)"
@@ -132,7 +143,7 @@
             {{-- Kunci Jawaban Isian --}}
             <div class="card" x-show="jenis === 'isian'" x-transition>
                 <h2 class="font-semibold text-gray-900 mb-3">Kunci Jawaban</h2>
-                <input type="text" name="kunci_jawaban"
+                <input type="text" :name="jenis === 'isian' ? 'kunci_jawaban' : ''"
                        value="{{ old('kunci_jawaban', $soal->kunci_jawaban ?? '') }}"
                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="Jawaban yang benar (tepat sama, case-insensitive)">
@@ -173,11 +184,19 @@
             </div>
 
             {{-- Pembahasan (Essay) --}}
-            <div class="card" x-show="jenis === 'essay'" x-transition>
-                <h2 class="font-semibold text-gray-900 mb-3">Panduan Penilaian (Opsional)</h2>
-                <textarea name="pembahasan" rows="4"
-                          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                          placeholder="Tuliskan panduan atau kunci jawaban untuk membantu penilai...">{{ old('pembahasan', $soal->pembahasan ?? '') }}</textarea>
+            <div class="card space-y-4" x-show="jenis === 'essay'" x-transition>
+                <div>
+                    <h2 class="font-semibold text-gray-900 mb-3">Kunci Jawaban</h2>
+                    <textarea :name="jenis === 'essay' ? 'kunci_jawaban' : ''" rows="4"
+                              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                              placeholder="Jawaban yang diharapkan...">{{ old('kunci_jawaban', $soal->kunci_jawaban ?? '') }}</textarea>
+                </div>
+                <div>
+                    <h2 class="font-semibold text-gray-900 mb-3">Panduan Penilaian (Opsional)</h2>
+                    <textarea name="pembahasan" rows="4"
+                              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                              placeholder="Tuliskan panduan atau rubrik penilaian untuk membantu penilai...">{{ old('pembahasan', $soal->pembahasan ?? '') }}</textarea>
+                </div>
             </div>
         </div>
 
@@ -285,8 +304,8 @@
 
 @php
     $opsiListData = isset($soal) && $soal->opsiJawaban->count()
-        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
-        : [['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false]];
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar, 'pastedPreview' => null])->toArray()
+        : [['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null]];
     $pasanganListData = isset($soal) && $soal->pasangan->count()
         ? $soal->pasangan->map(fn($p) => ['kiri' => $p->kiri_teks, 'kanan' => $p->kanan_teks])->toArray()
         : [['kiri' => '', 'kanan' => ''], ['kiri' => '', 'kanan' => '']];
@@ -304,13 +323,62 @@ function soalForm() {
         init() {},
 
         addOpsi() {
-            if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false });
+            if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false, gambar: null, pastedPreview: null });
         },
         removeOpsi(idx) {
             this.opsiList.splice(idx, 1);
         },
         setBenarPG(idx) {
             this.opsiList.forEach((o, i) => o.benar = i === idx);
+        },
+
+        handleOpsiPaste(event, idx) {
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    event.preventDefault();
+                    const file = item.getAsFile();
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.opsiList[idx].pastedPreview = e.target.result;
+                        this.opsiList[idx].gambar = null;
+                    };
+                    reader.readAsDataURL(file);
+
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    const fileInput = document.getElementById(`opsi-gambar-${idx}`);
+                    if (fileInput) {
+                        fileInput.files = dt.files;
+                    }
+                    return;
+                }
+            }
+        },
+
+        handleOpsiFileChange(event, idx) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.opsiList[idx].pastedPreview = e.target.result;
+                    this.opsiList[idx].gambar = null;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                this.opsiList[idx].pastedPreview = null;
+            }
+        },
+
+        removePastedImage(idx) {
+            this.opsiList[idx].pastedPreview = null;
+            this.opsiList[idx].gambar = null;
+            const fileInput = document.getElementById(`opsi-gambar-${idx}`);
+            if (fileInput) {
+                fileInput.value = '';
+            }
         },
         addPasangan() {
             this.pasanganList.push({ kiri: '', kanan: '' });

@@ -16,14 +16,6 @@
     @csrf
     @if(isset($user)) @method('PUT') @endif
 
-    @if($errors->any())
-    <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-        <ul class="list-disc list-inside space-y-1">
-            @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-        </ul>
-    </div>
-    @endif
-
     <div class="card space-y-4">
         <h2 class="font-semibold text-gray-900">Data Pengguna</h2>
 
@@ -51,21 +43,23 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Role <span class="text-red-500">*</span></label>
             <select name="role" required
-                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="admin_dinas" {{ old('role', $user->role ?? '') === 'admin_dinas' ? 'selected' : '' }}>Admin Dinas</option>
-                <option value="operator_sekolah" {{ old('role', $user->role ?? '') === 'operator_sekolah' ? 'selected' : '' }}>Operator Sekolah</option>
-                <option value="pengawas" {{ old('role', $user->role ?? '') === 'pengawas' ? 'selected' : '' }}>Pengawas</option>
+                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style="color: #111827;">
+                <option value="admin_dinas" style="color: #111827;" {{ old('role', $user->role ?? '') === 'admin_dinas' ? 'selected' : '' }}>Admin Dinas</option>
+                <option value="admin_sekolah" style="color: #111827;" {{ old('role', $user->role ?? '') === 'admin_sekolah' ? 'selected' : '' }}>Operator Sekolah</option>
+                <option value="pengawas" style="color: #111827;" {{ old('role', $user->role ?? '') === 'pengawas' ? 'selected' : '' }}>Pengawas</option>
             </select>
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Sekolah (untuk Operator/Pengawas)</label>
             <select name="sekolah_id"
-                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">— Dinas Pendidikan —</option>
+                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style="color: #111827;">
+                <option value="" style="color: #111827;">— Dinas Pendidikan —</option>
                 @foreach($sekolahList as $sekolah)
-                <option value="{{ $sekolah->id }}" {{ old('sekolah_id', $user->sekolah_id ?? '') == $sekolah->id ? 'selected' : '' }}>
-                    {{ $sekolah->nama_sekolah }}
+                <option value="{{ $sekolah->id }}" style="color: #111827;" {{ old('sekolah_id', $user->sekolah_id ?? '') == $sekolah->id ? 'selected' : '' }}>
+                    {{ $sekolah->nama }} ({{ $sekolah->npsn }})
                 </option>
                 @endforeach
             </select>

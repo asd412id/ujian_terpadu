@@ -20,7 +20,7 @@
     </div>
 
     {{-- Stat Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div class="card p-5">
             <div class="flex items-start justify-between mb-3">
                 <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
@@ -57,18 +57,6 @@
             </div>
             <p class="text-2xl font-bold {{ $stats['sesi_aktif'] > 0 ? 'text-green-700' : 'text-gray-900' }}">{{ $stats['sesi_aktif'] }}</p>
             <p class="text-sm text-gray-500 mt-0.5">Sesi Aktif</p>
-        </div>
-        <div class="card p-5">
-            <div class="flex items-start justify-between mb-3">
-                <div class="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                    </svg>
-                </div>
-            </div>
-            <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_soal']) }}</p>
-            <p class="text-sm text-gray-500 mt-0.5">Bank Soal</p>
         </div>
     </div>
 
@@ -108,10 +96,9 @@
             <h2 class="font-semibold text-gray-900 mb-4">Akses Cepat</h2>
             <div class="grid grid-cols-2 gap-3">
                 @foreach([
-                    ['route' => 'sekolah.peserta.create', 'label' => 'Tambah Peserta', 'icon' => 'users', 'color' => 'blue'],
-                    ['route' => 'sekolah.peserta.import', 'label' => 'Import Peserta', 'icon' => 'upload', 'color' => 'purple'],
-                    ['route' => 'sekolah.kartu.index', 'label' => 'Cetak Kartu Login', 'icon' => 'id-card', 'color' => 'amber'],
-                    ['route' => 'sekolah.soal.index', 'label' => 'Bank Soal', 'icon' => 'pencil', 'color' => 'green'],
+                    ['route' => 'sekolah.peserta.import', 'label' => 'Import Peserta', 'icon' => 'upload', 'color' => 'blue'],
+                    ['route' => 'sekolah.kartu.index', 'label' => 'Cetak Kartu Login', 'icon' => 'tag', 'color' => 'amber'],
+                    ['route' => 'sekolah.paket', 'label' => 'Paket Ujian', 'icon' => 'document', 'color' => 'purple'],
                 ] as $qa)
                 <a href="{{ route($qa['route']) }}"
                    class="card hover:shadow-md transition-shadow flex flex-col items-center gap-2 p-4 text-center group border border-gray-100">

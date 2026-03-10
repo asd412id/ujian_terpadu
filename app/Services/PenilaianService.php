@@ -32,8 +32,11 @@ class PenilaianService
             $skor = $this->hitungSkorSatu($jawaban, $bobot);
 
             if ($jawaban->soal->tipe_soal === 'essay') {
-                // Essay dihitung manual — skip auto
                 $jawaban->update(['skor_auto' => 0]);
+                if ($jawaban->skor_manual !== null) {
+                    $nilaiBenar += $jawaban->skor_manual;
+                    $jumlahBenar++;
+                }
                 continue;
             }
 
@@ -42,6 +45,9 @@ class PenilaianService
             if ($skor >= $bobot) {
                 $jumlahBenar++;
                 $nilaiBenar += $skor;
+            } elseif ($skor > 0) {
+                $jumlahSalah++;
+                $nilaiBenar += $skor;
             } else {
                 $jumlahSalah++;
             }
@@ -49,6 +55,7 @@ class PenilaianService
 
         $totalSoal    = $paket->paketSoal()->count();
         $jumlahKosong = $totalSoal - $jumlahBenar - $jumlahSalah;
+        if ($jumlahKosong < 0) $jumlahKosong = 0;
         $nilaiAkhir   = $totalBobot > 0 ? round(($nilaiBenar / $totalBobot) * 100, 2) : 0;
 
         return [

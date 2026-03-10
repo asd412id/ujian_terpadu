@@ -25,6 +25,29 @@ class PesertaRepository
     }
 
     /**
+     * Get all peserta across sekolah with optional filters (for dinas admin).
+     */
+    public function getAllFiltered(
+        ?string $sekolahId = null,
+        ?string $search = null,
+        ?string $kelas = null,
+        int $perPage = 25
+    ): LengthAwarePaginator {
+        return $this->model
+            ->with('sekolah')
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('nis', 'like', "%{$search}%")
+                  ->orWhere('nisn', 'like', "%{$search}%");
+            }))
+            ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
+            ->orderBy('nama')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
      * Get filtered peserta for a specific sekolah.
      */
     public function getFiltered(

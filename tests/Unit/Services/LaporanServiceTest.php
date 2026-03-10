@@ -110,44 +110,59 @@ class LaporanServiceTest extends TestCase
     }
 
     // ── getStatistik ───────────────────────────────────────────
-    // BUG: LaporanService::getStatistik() calls $this->repository->getStatistik() with 0 args,
-    // but LaporanRepository::getStatistik(string $paketId) expects 1 arg.
-    // This causes an ArgumentCountError at runtime.
+    // Fixed: getStatistik() now accepts optional paketId and handles both cases.
 
-    public function test_get_statistik_throws_due_to_argument_mismatch(): void
+    public function test_get_statistik_with_paket_delegates_to_repository(): void
     {
+        $paketId = 'paket-1';
+        $expected = [
+            'total_peserta' => 10,
+            'rata_rata' => 75.5,
+            'nilai_max' => 95,
+            'nilai_min' => 40,
+            'lulus' => 7,
+            'tidak_lulus' => 3,
+        ];
+
         $this->repository
             ->shouldReceive('getStatistik')
-            ->andReturn([]);
+            ->once()
+            ->with($paketId)
+            ->andReturn($expected);
 
-        $this->expectException(\ArgumentCountError::class);
-        $this->service->getStatistik();
+        $result = $this->service->getStatistik($paketId);
+        $this->assertEquals($expected, $result);
     }
 
     // ── getRekapNilai ──────────────────────────────────────────
-    // BUG: LaporanService::getRekapNilai(array $filters) passes array to
-    // LaporanRepository::getRekapNilai(?string $sekolahId, ?string $paketId).
-    // This causes a TypeError at runtime.
+    // Fixed: getRekapNilai() now correctly extracts sekolah_id and paket_id from filters array.
 
-    public function test_get_rekap_nilai_throws_type_error_with_array_filters(): void
+    public function test_get_rekap_nilai_with_filters_delegates_correctly(): void
     {
+        $expected = new EloquentCollection([]);
+
         $this->repository
             ->shouldReceive('getRekapNilai')
-            ->andReturn(new EloquentCollection([]));
+            ->once()
+            ->with('s1', null)
+            ->andReturn($expected);
 
-        $this->expectException(\TypeError::class);
-        $this->service->getRekapNilai(['sekolah_id' => 's1']);
+        $result = $this->service->getRekapNilai(['sekolah_id' => 's1']);
+        $this->assertEquals($expected, $result);
     }
 
-    public function test_get_rekap_nilai_empty_filters_passes_empty_array(): void
+    public function test_get_rekap_nilai_empty_filters_passes_nulls(): void
     {
-        // Even empty array is wrong type for ?string parameter
+        $expected = new EloquentCollection([]);
+
         $this->repository
             ->shouldReceive('getRekapNilai')
-            ->andReturn(new EloquentCollection([]));
+            ->once()
+            ->with(null, null)
+            ->andReturn($expected);
 
-        $this->expectException(\TypeError::class);
-        $this->service->getRekapNilai();
+        $result = $this->service->getRekapNilai();
+        $this->assertEquals($expected, $result);
     }
 
     // ── getDetailNilaiPeserta ──────────────────────────────────

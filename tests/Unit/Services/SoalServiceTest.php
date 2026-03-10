@@ -399,42 +399,6 @@ class SoalServiceTest extends TestCase
         $this->assertSame($paginator, $result);
     }
 
-    // ── getBySekolah ─────────────────────────────────────────────────
-
-    public function test_get_by_sekolah_passes_filters_to_repository(): void
-    {
-        $paginator = new LengthAwarePaginator([], 0, 20);
-
-        $this->repository
-            ->shouldReceive('getFilteredBySekolah')
-            ->once()
-            ->with('sekolah-1', 'search term', 'kat-1', 'pg')
-            ->andReturn($paginator);
-
-        $result = $this->service->getBySekolah('sekolah-1', [
-            'q'        => 'search term',
-            'kategori' => 'kat-1',
-            'jenis'    => 'pg',
-        ]);
-
-        $this->assertSame($paginator, $result);
-    }
-
-    public function test_get_by_sekolah_with_empty_filters(): void
-    {
-        $paginator = new LengthAwarePaginator([], 0, 20);
-
-        $this->repository
-            ->shouldReceive('getFilteredBySekolah')
-            ->once()
-            ->with('sekolah-1', null, null, null)
-            ->andReturn($paginator);
-
-        $result = $this->service->getBySekolah('sekolah-1', []);
-
-        $this->assertSame($paginator, $result);
-    }
-
     // ── importSoal ───────────────────────────────────────────────────
 
     public function test_import_soal_returns_summary(): void

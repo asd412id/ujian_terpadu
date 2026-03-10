@@ -16,14 +16,6 @@
     @csrf
     @if(isset($peserta)) @method('PUT') @endif
 
-    @if($errors->any())
-    <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-        <ul class="list-disc list-inside space-y-1">
-            @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-        </ul>
-    </div>
-    @endif
-
     <div class="card space-y-4">
         <h2 class="font-semibold text-gray-900">Data Peserta</h2>
 

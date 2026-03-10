@@ -24,6 +24,14 @@ class UserService
     }
 
     /**
+     * Get filtered users with search, role and status filters.
+     */
+    public function getFilteredPaginated(?string $role = null, ?string $search = null, ?bool $isActive = null, int $perPage = 20): mixed
+    {
+        return $this->repository->getFiltered($role, $search, $isActive, $perPage);
+    }
+
+    /**
      * Get active sekolah list (for dropdowns/filters).
      */
     public function getActiveSekolahs(): mixed
@@ -67,7 +75,7 @@ class UserService
     }
 
     /**
-     * Soft-delete (deactivate) a user.
+     * Hapus user secara permanen.
      */
     public function deleteUser(User $user): bool
     {

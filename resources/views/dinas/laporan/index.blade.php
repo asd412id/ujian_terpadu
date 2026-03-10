@@ -130,8 +130,10 @@
                             </span>
                         </td>
                         <td class="px-5 py-3 text-center">
-                            @if($hasil->status === 'selesai')
-                                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Selesai</span>
+                            @if($hasil->status === 'dinilai')
+                                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Dinilai</span>
+                            @elseif($hasil->status === 'submit')
+                                <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
                             @else
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{{ ucfirst($hasil->status) }}</span>
                             @endif
@@ -151,7 +153,7 @@
     <div class="card text-center py-12 text-gray-400">Tidak ada data yang sesuai filter.</div>
     @else
     <div class="card text-center py-12 text-gray-400">
-        Pilih sekolah di atas untuk menampilkan laporan.
+        Belum ada peserta yang menyelesaikan ujian.
     </div>
     @endif
 

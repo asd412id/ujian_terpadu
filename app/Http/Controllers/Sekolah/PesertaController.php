@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
-use App\Models\Peserta;
+use App\Models\ImportJob;
 use App\Services\PesertaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class PesertaController extends Controller
 {
@@ -30,86 +32,20 @@ class PesertaController extends Controller
         return view('sekolah.peserta.index', compact('peserta', 'kelasList'));
     }
 
-    public function create()
+    public function destroyAll()
     {
-        return view('sekolah.peserta.form');
-    }
-
-    public function store(Request $request)
-    {
-        $data = $request->validate([
-            'nama'          => 'required|string|max:200',
-            'nis'           => 'nullable|string|max:20',
-            'nisn'          => 'nullable|string|max:20',
-            'kelas'         => 'nullable|string|max:10',
-            'jurusan'       => 'nullable|string|max:100',
-            'jenis_kelamin' => 'nullable|in:L,P',
-            'tanggal_lahir' => 'nullable|date',
-            'tempat_lahir'  => 'nullable|string|max:100',
-            'foto'          => 'nullable|image|max:2048',
-        ]);
-
         /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if ($request->hasFile('foto')) {
-            $data['foto'] = $request->file('foto')->store('peserta/foto', 'public');
-        }
-
-        $plainPassword = $request->filled('password_ujian')
-            ? $request->input('password_ujian')
-            : null;
-
-        $this->pesertaService->createForSekolah($data, $user->sekolah_id, $plainPassword);
+        $user   = Auth::user();
+        $jumlah = \App\Models\Peserta::where('sekolah_id', $user->sekolah_id)->count();
+        \App\Models\Peserta::where('sekolah_id', $user->sekolah_id)->delete();
 
         return redirect()->route('sekolah.peserta.index')
-                         ->with('success', 'Peserta berhasil ditambahkan.');
+                         ->with('success', "Semua data peserta ($jumlah peserta) berhasil dihapus.");
     }
 
-    public function edit(Peserta $peserta)
-    {
-        $this->authorizeSekolah($peserta);
-        return view('sekolah.peserta.form', compact('peserta'));
-    }
-
-    public function update(Request $request, Peserta $peserta)
-    {
-        $this->authorizeSekolah($peserta);
-
-        $data = $request->validate([
-            'nama'          => 'required|string|max:200',
-            'nis'           => 'nullable|string|max:20',
-            'nisn'          => 'nullable|string|max:20',
-            'kelas'         => 'nullable|string|max:10',
-            'jurusan'       => 'nullable|string|max:100',
-            'jenis_kelamin' => 'nullable|in:L,P',
-            'tanggal_lahir' => 'nullable|date',
-            'foto'          => 'nullable|image|max:2048',
-        ]);
-
-        if ($request->hasFile('foto')) {
-            $data['foto'] = $request->file('foto')->store('peserta/foto', 'public');
-        }
-
-        $plainPassword = $request->filled('password_ujian')
-            ? $request->input('password_ujian')
-            : null;
-
-        $this->pesertaService->updateForSekolah($peserta->id, $data, $plainPassword);
-
-        return redirect()->route('sekolah.peserta.index')
-                         ->with('success', 'Data peserta berhasil diperbarui.');
-    }
-
-    public function destroy(Peserta $peserta)
-    {
-        $this->authorizeSekolah($peserta);
-
-        $this->pesertaService->delete($peserta->id);
-
-        return redirect()->route('sekolah.peserta.index')
-                         ->with('success', 'Peserta berhasil dihapus.');
-    }
+    // =========================================================
+    // IMPORT EXCEL
+    // =========================================================
 
     public function showImport()
     {
@@ -120,12 +56,14 @@ class PesertaController extends Controller
     {
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls|max:10240',
+            'mode' => 'required|in:update,replace_all',
         ]);
 
         /** @var \App\Models\User $user */
         $user     = Auth::user();
-        $path     = $request->file('file')->store('imports', 'local');
-        $filename = $request->file('file')->getClientOriginalName();
+        $file     = $request->file('file');
+        $path     = $file->store('imports/peserta', 'local');
+        $filename = $file->getClientOriginalName();
 
         $job = $this->pesertaService->createImportJob([
             'created_by' => $user->id,
@@ -134,6 +72,7 @@ class PesertaController extends Controller
             'filename'   => $filename,
             'filepath'   => $path,
             'status'     => 'pending',
+            'meta'       => ['mode' => $request->input('mode')],
         ]);
 
         return redirect()->route('sekolah.peserta.import')
@@ -141,20 +80,70 @@ class PesertaController extends Controller
                          ->with('success', 'File sedang diproses. Tunggu sebentar...');
     }
 
-    public function downloadTemplate()
+    public function importStatus(ImportJob $job)
     {
-        return response()->download(
-            resource_path('templates/peserta_template.xlsx'),
-            'template_import_peserta.xlsx'
-        );
+        return response()->json([
+            'status'         => $job->status,
+            'total_rows'     => $job->total_rows,
+            'processed_rows' => $job->processed_rows,
+            'success_rows'   => $job->success_rows,
+            'error_rows'     => $job->error_rows,
+            'errors'         => $job->errors ?? [],
+        ]);
     }
 
-    private function authorizeSekolah(Peserta $peserta): void
+    public function downloadTemplate()
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if ($peserta->sekolah_id !== $user->sekolah_id && ! $user->isDinas()) {
-            abort(403);
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+
+        // Header row
+        $headers = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValueByColumnAndRow($col + 1, 1, $header);
         }
+
+        // Contoh data
+        $sheet->setCellValueByColumnAndRow(1, 2, 'Ahmad Fauzi');
+        $sheet->setCellValueByColumnAndRow(2, 2, '12345');
+        $sheet->setCellValueByColumnAndRow(3, 2, '1234567890');
+        $sheet->setCellValueByColumnAndRow(4, 2, 'XII IPA 1');
+        $sheet->setCellValueByColumnAndRow(5, 2, 'IPA');
+        $sheet->setCellValueByColumnAndRow(6, 2, 'L');
+        $sheet->setCellValueByColumnAndRow(7, 2, '2006-05-20');
+
+        $sheet->setCellValueByColumnAndRow(1, 3, 'Siti Aminah');
+        $sheet->setCellValueByColumnAndRow(2, 3, '12346');
+        $sheet->setCellValueByColumnAndRow(3, 3, '1234567891');
+        $sheet->setCellValueByColumnAndRow(4, 3, 'XII IPA 1');
+        $sheet->setCellValueByColumnAndRow(5, 3, 'IPA');
+        $sheet->setCellValueByColumnAndRow(6, 3, 'P');
+        $sheet->setCellValueByColumnAndRow(7, 3, '2006-08-15');
+
+        // Style header
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1D4ED8'],
+            ],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+
+        // Auto-size columns
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $sheet->setTitle('Data Peserta');
+
+        $writer  = new Xlsx($spreadsheet);
+        $tmpFile = tempnam(sys_get_temp_dir(), 'peserta_template_') . '.xlsx';
+        $writer->save($tmpFile);
+
+        return response()->download($tmpFile, 'template_import_peserta.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 }

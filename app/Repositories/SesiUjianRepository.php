@@ -49,7 +49,7 @@ class SesiUjianRepository
         return $this->model
             ->with(['sesi.paket'])
             ->where('peserta_id', $pesertaId)
-            ->whereIn('status', ['login', 'mengerjakan', 'belum_login'])
+            ->whereIn('status', ['terdaftar', 'belum_login', 'login', 'mengerjakan'])
             ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
             ->get();
     }

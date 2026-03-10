@@ -28,6 +28,9 @@
 </head>
 <body class="h-full bg-[#f0f4f8] font-['Inter']">
 
+    {{-- Flash Notification — floating kanan atas, di luar semua container --}}
+    <x-flash-notification />
+
     @yield('content')
 
     {{-- PWA Install Prompt --}}

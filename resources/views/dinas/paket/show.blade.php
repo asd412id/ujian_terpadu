@@ -152,6 +152,14 @@
                 <span class="flex-shrink-0 text-xs font-semibold bg-{{ $statusColor['bg'] }}-100 text-{{ $statusColor['bg'] }}-700 px-2 py-0.5 rounded-full">
                     {{ $statusColor['label'] }}
                 </span>
+                <a href="{{ route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id]) }}"
+                   class="flex-shrink-0 text-gray-500 hover:text-green-600 hover:bg-green-50 p-1.5 rounded-lg transition-colors"
+                   title="Kelola Peserta">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </a>
                 <a href="{{ route('dinas.paket.sesi.edit', [$paket->id, $sesi->id]) }}"
                    class="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
                    title="Edit sesi">

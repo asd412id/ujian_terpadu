@@ -2,86 +2,87 @@
 
 @section('title', 'Ruang Tunggu Ujian')
 
-@section('body-class', 'bg-gradient-to-br from-slate-900 to-blue-950 min-h-screen')
-
 @section('content')
-<div class="min-h-screen flex flex-col items-center justify-center p-4">
-
-    <div class="w-full max-w-2xl">
-
-        {{-- Header --}}
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg class="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+{{-- Top Navigation Bar --}}
+<header class="w-full bg-white border-b border-gray-200 px-6 py-3.5">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
             </div>
-            <h1 class="text-2xl font-bold text-white mb-1">Selamat Datang, {{ $peserta->nama }}</h1>
-            <p class="text-blue-300 text-sm">{{ $peserta->sekolah->nama }} · Kelas {{ $peserta->kelas }}</p>
+            <span class="text-sm font-bold text-gray-900">UJIAN TERPADU</span>
+        </div>
+        <form action="{{ route('ujian.logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Keluar
+            </button>
+        </form>
+    </div>
+</header>
+
+{{-- Main Content --}}
+<main class="flex-1 flex items-start justify-center px-4 py-10 sm:py-14">
+    <div class="w-full max-w-md space-y-5">
+
+        {{-- Welcome Card --}}
+        <div class="card p-6 text-center">
+            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+            </div>
+            <h1 class="text-xl font-bold text-gray-900 mb-1">Selamat Datang, {{ $peserta->nama }}</h1>
+            <p class="text-sm text-gray-500">{{ $peserta->sekolah->nama }} · Kelas {{ $peserta->kelas }}</p>
         </div>
 
         {{-- Sesi Tersedia --}}
         @if($sesiTersedia->isNotEmpty())
-        <div class="space-y-4 mb-6">
-            <h2 class="text-white font-semibold text-lg">Ujian Tersedia</h2>
+        <div class="space-y-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1">Ujian Tersedia</p>
             @foreach($sesiTersedia as $sp)
             @php $sesi = $sp->sesi; $paket = $sesi->paket; @endphp
-            <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-5">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex-1">
-                        <h3 class="text-white font-semibold text-lg mb-1">{{ $paket->nama }}</h3>
-                        <p class="text-blue-300 text-sm mb-3">{{ $sesi->nama_sesi }}</p>
-                        <div class="flex flex-wrap gap-3 text-sm">
-                            <span class="flex items-center gap-1 text-blue-200">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+            <div class="card p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-gray-900 mb-1">{{ $paket->nama }}</h3>
+                        <p class="text-sm text-gray-500 mb-2.5">{{ $sesi->nama_sesi }}</p>
+                        <div class="flex flex-wrap gap-4 text-xs text-gray-400">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 {{ $paket->durasi_menit }} menit
                             </span>
-                            <span class="flex items-center gap-1 text-blue-200">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-                                </svg>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 {{ $paket->jumlah_soal }} soal
                             </span>
-                            @if($sesi->ruangan)
-                            <span class="flex items-center gap-1 text-blue-200">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                </svg>
-                                {{ $sesi->ruangan }}
-                            </span>
-                            @endif
                         </div>
                     </div>
-                    <div>
-                        @if($sesi->status === 'berlangsung' && in_array($sp->status, ['belum_login','login','mengerjakan']))
-                        <a href="{{ route('ujian.mulai', $sp->id) }}"
-                           class="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-5 py-2.5 rounded-xl transition-colors shadow-md">
+                    <div class="flex-shrink-0">
+                        @if($sesi->status === 'berlangsung' && in_array($sp->status, ['terdaftar','belum_login','login','mengerjakan']))
                             @if($sp->status === 'mengerjakan')
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                                </svg>
+                            <a href="{{ route('ujian.mengerjakan', $sp->id) }}"
+                               class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
                                 Lanjutkan
+                            </a>
                             @else
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                                </svg>
+                            <a href="{{ route('ujian.konfirmasi', $sp->id) }}"
+                               class="inline-flex items-center gap-1.5 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
                                 Mulai Ujian
+                            </a>
                             @endif
-                        </a>
-                        @elseif($sesi->status === 'persiapan')
-                        <span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 text-sm font-semibold px-4 py-2 rounded-xl">
-                            <svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="10"/>
-                            </svg>
-                            Menunggu
-                        </span>
                         @else
-                        <span class="inline-flex items-center gap-1 bg-gray-500/20 text-gray-300 text-sm font-semibold px-4 py-2 rounded-xl">
-                            Tidak Tersedia
-                        </span>
+                            <span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 text-xs font-semibold px-3 py-1.5 rounded-full">
+                                <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                                Menunggu
+                            </span>
                         @endif
                     </div>
                 </div>
@@ -89,46 +90,46 @@
             @endforeach
         </div>
         @else
-        <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 text-center mb-6">
-            <svg class="w-12 h-12 text-blue-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <p class="text-white font-semibold mb-1">Tidak ada ujian aktif</p>
-            <p class="text-blue-300 text-sm">Belum ada sesi ujian yang tersedia untuk Anda saat ini.</p>
+        {{-- Empty State --}}
+        <div class="card px-6 py-10 text-center">
+            <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <p class="font-semibold text-gray-900 mb-1">Tidak ada ujian aktif</p>
+            <p class="text-sm text-gray-400">Belum ada sesi ujian yang tersedia untuk Anda saat ini.</p>
         </div>
         @endif
 
         {{-- Riwayat Selesai --}}
         @if($sesiSelesai->isNotEmpty())
-        <div class="space-y-3">
-            <h2 class="text-white/70 font-semibold text-sm uppercase tracking-wide">Riwayat Ujian</h2>
-            @foreach($sesiSelesai as $sp)
-            <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
-                <div>
-                    <p class="text-white text-sm font-medium">{{ $sp->sesi->paket?->nama ?? '—' }}</p>
-                    <p class="text-blue-300 text-xs">{{ $sp->sesi->nama_sesi }}</p>
-                </div>
-                <div class="text-right">
-                    <span class="text-green-400 text-xs font-semibold">Selesai</span>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Riwayat Ujian</p>
+            <div class="card p-0 divide-y divide-gray-100">
+                @foreach($sesiSelesai as $sp)
+                @php $paket = $sp->sesi->paket; @endphp
+                <div class="flex items-center justify-between px-5 py-3.5">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ $paket->nama }}</p>
+                            <p class="text-xs text-gray-400">Selesai</p>
+                        </div>
+                    </div>
                     @if($sp->nilai_akhir !== null)
-                    <p class="text-white text-sm font-bold">{{ number_format($sp->nilai_akhir, 0) }}</p>
+                    <span class="text-lg font-bold text-gray-900">{{ number_format($sp->nilai_akhir, 0) }}</span>
                     @endif
                 </div>
+                @endforeach
             </div>
-            @endforeach
         </div>
         @endif
 
-        {{-- Footer --}}
-        <div class="text-center mt-8">
-            <form action="{{ route('ujian.logout') }}" method="POST">
-                @csrf
-                <button type="submit" class="text-blue-300 hover:text-white text-sm transition-colors">
-                    Keluar
-                </button>
-            </form>
-        </div>
-
     </div>
-</div>
+</main>
 @endsection

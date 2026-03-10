@@ -16,9 +16,9 @@ return new class extends Migration
             $table->string('token_ujian', 64)->unique()->nullable(); // auth token saat ujian berlangsung
             $table->json('urutan_soal')->nullable(); // array soal ID yg sudah diacak per peserta
             $table->enum('status', [
-                'belum_login', 'login', 'mengerjakan',
+                'terdaftar', 'belum_login', 'login', 'mengerjakan',
                 'tidak_hadir', 'submit', 'dinilai'
-            ])->default('belum_login');
+            ])->default('terdaftar');
             $table->string('ip_address', 45)->nullable();
             $table->string('browser_info')->nullable();
             $table->string('device_type', 20)->nullable(); // mobile, tablet, desktop

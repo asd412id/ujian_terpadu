@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\OpsiJawaban;
 use App\Models\Soal;
 use App\Repositories\SoalRepository;
 use App\Repositories\KategoriSoalRepository;
@@ -75,7 +76,7 @@ class SoalService
             ];
 
             if ($request->hasFile('gambar_pertanyaan')) {
-                $data['gambar_pertanyaan'] = $request->file('gambar_pertanyaan')
+                $data['gambar_soal'] = $request->file('gambar_pertanyaan')
                     ->store('soal/gambar', 'public');
             }
 
@@ -91,6 +92,8 @@ class SoalService
                 $this->saveOpsi($soal, $request);
             } elseif ($data['tipe_soal'] === 'menjodohkan') {
                 $this->savePasangan($soal, $request);
+            } elseif (in_array($data['tipe_soal'], ['isian', 'essay'])) {
+                $this->saveKunciJawaban($soal, $request);
             }
 
             return $soal;
@@ -114,10 +117,10 @@ class SoalService
             ];
 
             if ($request->hasFile('gambar_pertanyaan')) {
-                if ($soal->gambar_pertanyaan) {
-                    Storage::disk('public')->delete($soal->gambar_pertanyaan);
+                if ($soal->gambar_soal) {
+                    Storage::disk('public')->delete($soal->gambar_soal);
                 }
-                $data['gambar_pertanyaan'] = $request->file('gambar_pertanyaan')
+                $data['gambar_soal'] = $request->file('gambar_pertanyaan')
                     ->store('soal/gambar', 'public');
             }
 
@@ -131,6 +134,8 @@ class SoalService
                 $this->saveOpsi($soal, $request);
             } elseif ($data['tipe_soal'] === 'menjodohkan') {
                 $this->savePasangan($soal, $request);
+            } elseif (in_array($data['tipe_soal'], ['isian', 'essay'])) {
+                $this->saveKunciJawaban($soal, $request);
             }
 
             return $soal;
@@ -144,11 +149,26 @@ class SoalService
     {
         return DB::transaction(function () use ($soal) {
             // Delete associated image
-            if ($soal->gambar_pertanyaan) {
-                Storage::disk('public')->delete($soal->gambar_pertanyaan);
+            if ($soal->gambar_soal) {
+                Storage::disk('public')->delete($soal->gambar_soal);
             }
 
             return (bool) $this->repository->delete($soal);
+        });
+    }
+
+    /**
+     * Delete all soal (soft-delete) and remove associated images.
+     */
+    public function deleteAllSoal(): void
+    {
+        DB::transaction(function () {
+            $soals = Soal::whereNotNull('gambar_soal')->get(['id', 'gambar_soal']);
+            foreach ($soals as $s) {
+                Storage::disk('public')->delete($s->gambar_soal);
+            }
+
+            Soal::query()->delete();
         });
     }
 
@@ -168,6 +188,8 @@ class SoalService
 
             if ($file) {
                 $gambar = $file->store('soal/opsi', 'public');
+            } elseif (!empty($opsi['gambar_existing'])) {
+                $gambar = $opsi['gambar_existing'];
             }
 
             if ($teks || $gambar) {
@@ -191,20 +213,40 @@ class SoalService
      */
     private function savePasangan(Soal $soal, Request $request): void
     {
-        $kiriTeks  = $request->input('pasangan_kiri_teks', []);
-        $kananTeks = $request->input('pasangan_kanan_teks', []);
+        $pasanganData = $request->input('pasangan', []);
 
         $pasanganRecords = [];
-        foreach ($kiriTeks as $i => $kiri) {
-            $pasanganRecords[] = [
-                'kiri_teks'  => $kiri,
-                'kanan_teks' => $kananTeks[$i] ?? null,
-                'urutan'     => $i,
-            ];
+        foreach ($pasanganData as $i => $pair) {
+            $kiri  = $pair['kiri'] ?? null;
+            $kanan = $pair['kanan'] ?? null;
+            if ($kiri || $kanan) {
+                $pasanganRecords[] = [
+                    'kiri_teks'  => $kiri,
+                    'kanan_teks' => $kanan,
+                    'urutan'     => $i,
+                ];
+            }
         }
 
         if (!empty($pasanganRecords)) {
             $this->repository->savePasangan($soal, $pasanganRecords);
+        }
+    }
+
+    /**
+     * Save kunci jawaban for isian / essay types.
+     */
+    private function saveKunciJawaban(Soal $soal, Request $request): void
+    {
+        $kunci = $request->input('kunci_jawaban');
+        if ($kunci) {
+            OpsiJawaban::create([
+                'soal_id'  => $soal->id,
+                'label'    => 'KUNCI',
+                'teks'     => $kunci,
+                'is_benar' => true,
+                'urutan'   => 0,
+            ]);
         }
     }
 
@@ -286,19 +328,6 @@ class SoalService
     }
 
     /**
-     * Get soal filtered by sekolah with optional filters.
-     */
-    public function getBySekolah(string $sekolahId, array $filters = []): mixed
-    {
-        return $this->repository->getFilteredBySekolah(
-            $sekolahId,
-            $filters['q'] ?? null,
-            $filters['kategori'] ?? null,
-            $filters['jenis'] ?? null
-        );
-    }
-
-    /**
      * Get soal associated with a paket ujian.
      */
     public function getSoalByPaketUjian(string $paketId, array $excludeSoalIds = [], int $perPage = 10): mixed
@@ -313,9 +342,7 @@ class SoalService
     {
         $job = \App\Models\ImportJob::create($data);
 
-        if ($data['tipe'] === 'soal_excel') {
-            dispatch(new \App\Jobs\ImportSoalExcelJob($job));
-        } elseif ($data['tipe'] === 'soal_word') {
+        if ($data['tipe'] === 'soal_word') {
             dispatch(new \App\Jobs\ImportSoalWordJob($job));
         }
 
@@ -323,12 +350,12 @@ class SoalService
     }
 
     /**
-     * Get import jobs for a sekolah.
+     * Get import jobs for the current user (Dinas).
      */
-    public function getImportJobs(string $sekolahId, int $limit = 10): mixed
+    public function getImportJobsByUser(string $userId, int $limit = 10): mixed
     {
-        return \App\Models\ImportJob::where('sekolah_id', $sekolahId)
-            ->whereIn('tipe', ['soal_excel', 'soal_word'])
+        return \App\Models\ImportJob::where('created_by', $userId)
+            ->where('tipe', 'soal_word')
             ->latest()
             ->take($limit)
             ->get();

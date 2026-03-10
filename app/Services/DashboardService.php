@@ -72,7 +72,6 @@ class DashboardService
             'total_peserta' => Peserta::where('sekolah_id', $sekolah->id)->count(),
             'total_paket'   => $paketIds->count(),
             'sesi_aktif'    => SesiUjian::whereIn('paket_id', $paketIds)->where('status', 'berlangsung')->count(),
-            'total_soal'    => $sekolah->soal()->count(),
         ];
 
         $sesiMendatang = SesiUjian::whereIn('paket_id', $paketIds)

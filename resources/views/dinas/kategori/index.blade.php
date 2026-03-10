@@ -20,10 +20,6 @@
         </button>
     </div>
 
-    @if(session('success'))
-    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">{{ session('success') }}</div>
-    @endif
-
     <div class="card overflow-hidden p-0">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">

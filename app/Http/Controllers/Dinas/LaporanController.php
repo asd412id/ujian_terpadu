@@ -20,6 +20,7 @@ class LaporanController extends Controller
             'sekolahList' => $data['sekolahList'],
             'paketList'   => $data['paketList'],
             'data'        => $data['data'],
+            'rekap'       => $data['rekap'],
         ]);
     }
 
@@ -27,10 +28,39 @@ class LaporanController extends Controller
     {
         $exportData = $this->laporanService->exportHasil($request->all());
 
-        // Placeholder — Excel export diimplementasi di Phase 8
-        return response()->download(
-            '',
-            'laporan_ujian_' . now()->format('Ymd_His') . '.xlsx'
-        );
+        if (empty($exportData)) {
+            return back()->with('warning', 'Tidak ada data untuk di-export.');
+        }
+
+        $filename = 'laporan_ujian_' . now()->format('Ymd_His') . '.csv';
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($exportData) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($file, ['Nama Peserta', 'NIS', 'Sekolah', 'Paket', 'Nilai Akhir', 'Benar', 'Salah', 'Kosong', 'Durasi', 'Submit']);
+
+            foreach ($exportData as $row) {
+                fputcsv($file, [
+                    $row['nama_peserta'],
+                    $row['nis'],
+                    $row['sekolah'],
+                    $row['paket'],
+                    $row['nilai_akhir'],
+                    $row['jumlah_benar'],
+                    $row['jumlah_salah'],
+                    $row['jumlah_kosong'],
+                    $row['durasi'],
+                    $row['submit_at'],
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

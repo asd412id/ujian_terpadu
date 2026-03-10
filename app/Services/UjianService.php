@@ -42,7 +42,7 @@ class UjianService
         }
 
         // Set status mengerjakan + catat waktu mulai
-        if (in_array($sesiPeserta->status, ['belum_login', 'login'])) {
+        if (in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login'])) {
             $sesiPeserta->update([
                 'status'       => 'mengerjakan',
                 'mulai_at'     => $sesiPeserta->mulai_at ?? now(),

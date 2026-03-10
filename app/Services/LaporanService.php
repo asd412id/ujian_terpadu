@@ -21,21 +21,57 @@ class LaporanService
         $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get();
         $paketList = PaketUjian::orderBy('nama')->get();
 
-        $data = [];
+        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket', 'jawaban'])
+            ->whereIn('status', ['submit', 'dinilai']);
+
         if (!empty($filters['sekolah_id'])) {
-            $query = SesiPeserta::with(['peserta', 'sesi.paket', 'jawaban'])
-                ->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']))
-                ->whereIn('status', ['submit', 'dinilai']);
-
-            if (!empty($filters['paket_id'])) {
-                $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
-            }
-
-            $perPage = $filters['per_page'] ?? 30;
-            $data = $query->paginate($perPage);
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
         }
 
-        return compact('sekolahList', 'paketList', 'data');
+        if (!empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where('nilai_akhir', '<', 70);
+            }
+        }
+
+        $perPage = $filters['per_page'] ?? 30;
+        $data = $query->latest('updated_at')->paginate($perPage);
+
+        $rekap = $this->buildRekap($filters);
+
+        return compact('sekolahList', 'paketList', 'data', 'rekap');
+    }
+
+    /**
+     * Build rekap statistics based on current filters.
+     */
+    protected function buildRekap(array $filters = []): array
+    {
+        $query = SesiPeserta::whereIn('status', ['submit', 'dinilai']);
+
+        if (!empty($filters['sekolah_id'])) {
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+        }
+
+        if (!empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        $results = $query->get();
+
+        return [
+            'total_peserta' => $results->count(),
+            'sudah_ujian'   => $results->count(),
+            'lulus'         => $results->where('nilai_akhir', '>=', 70)->count(),
+            'tidak_lulus'   => $results->where('nilai_akhir', '<', 70)->count(),
+            'rata_rata'     => $results->count() > 0 ? round($results->avg('nilai_akhir'), 1) : 0,
+        ];
     }
 
     /**
@@ -55,11 +91,24 @@ class LaporanService
     }
 
     /**
-     * Get laporan statistics.
+     * Get laporan statistics for a specific paket.
      */
-    public function getStatistik(): array
+    public function getStatistik(?string $paketId = null): array
     {
-        return $this->repository->getStatistik();
+        if ($paketId) {
+            return $this->repository->getStatistik($paketId);
+        }
+
+        $results = SesiPeserta::whereIn('status', ['submit', 'dinilai'])->get();
+
+        return [
+            'total_peserta' => $results->count(),
+            'rata_rata'     => $results->count() > 0 ? round($results->avg('nilai_akhir'), 1) : 0,
+            'nilai_max'     => $results->max('nilai_akhir') ?? 0,
+            'nilai_min'     => $results->min('nilai_akhir') ?? 0,
+            'lulus'         => $results->where('nilai_akhir', '>=', 70)->count(),
+            'tidak_lulus'   => $results->where('nilai_akhir', '<', 70)->count(),
+        ];
     }
 
     /**
@@ -67,13 +116,14 @@ class LaporanService
      */
     public function getRekapNilai(array $filters = []): mixed
     {
-        return $this->repository->getRekapNilai($filters);
+        return $this->repository->getRekapNilai(
+            $filters['sekolah_id'] ?? null,
+            $filters['paket_id'] ?? null
+        );
     }
 
     /**
      * Export hasil ujian data for Excel generation.
-     *
-     * @return array  Data ready for Excel export
      */
     public function exportHasil(array $filters = []): array
     {
@@ -81,7 +131,7 @@ class LaporanService
             ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['sekolah_id'])) {
-            $query->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
         }
 
         if (!empty($filters['paket_id'])) {

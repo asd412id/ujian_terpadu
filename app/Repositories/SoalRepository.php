@@ -37,27 +37,6 @@ class SoalRepository
     }
 
     /**
-     * Get filtered & paginated soal for a specific sekolah.
-     */
-    public function getFilteredBySekolah(
-        string $sekolahId,
-        ?string $search = null,
-        ?string $kategoriId = null,
-        ?string $jenis = null,
-        int $perPage = 20
-    ): LengthAwarePaginator {
-        return $this->model
-            ->with('kategori')
-            ->where('sekolah_id', $sekolahId)
-            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
-            ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
-            ->when($jenis, fn ($q) => $q->where('tipe_soal', $jenis))
-            ->latest()
-            ->paginate($perPage)
-            ->withQueryString();
-    }
-
-    /**
      * Find a single soal by ID.
      */
     public function findById(string $id): ?Soal
@@ -126,11 +105,11 @@ class SoalRepository
     }
 
     /**
-     * Get import jobs for a specific sekolah.
+     * Get import jobs by user (for Dinas).
      */
-    public function getImportJobs(string $sekolahId, int $limit = 10): Collection
+    public function getImportJobsByUser(string $userId, int $limit = 10): Collection
     {
-        return ImportJob::where('sekolah_id', $sekolahId)
+        return ImportJob::where('created_by', $userId)
             ->whereIn('tipe', ['soal_excel', 'soal_word'])
             ->latest()
             ->take($limit)

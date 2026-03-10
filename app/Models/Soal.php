@@ -52,6 +52,14 @@ class Soal extends Model
         return $this->hasMany(PasanganSoal::class)->orderBy('urutan');
     }
 
+    /**
+     * Accessor: kunci jawaban untuk tipe isian/essay (dari opsi_jawaban label=KUNCI).
+     */
+    public function getKunciJawabanAttribute(): ?string
+    {
+        return $this->opsiJawaban->firstWhere('label', 'KUNCI')?->teks;
+    }
+
     public function paketSoal()
     {
         return $this->hasMany(PaketSoal::class);

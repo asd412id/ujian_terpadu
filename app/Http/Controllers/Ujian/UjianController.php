@@ -14,7 +14,30 @@ class UjianController extends Controller
         protected UjianService $ujianService
     ) {}
 
-    public function index(SesiPeserta $sesiPeserta)
+    public function konfirmasi(SesiPeserta $sesiPeserta)
+    {
+        /** @var \App\Models\Peserta $peserta */
+        $peserta = Auth::guard('peserta')->user();
+
+        if ($sesiPeserta->peserta_id !== $peserta->id) {
+            abort(403);
+        }
+
+        if (in_array($sesiPeserta->status, ['submit', 'dinilai'])) {
+            return redirect()->route('ujian.selesai', $sesiPeserta);
+        }
+
+        if ($sesiPeserta->status === 'mengerjakan') {
+            return redirect()->route('ujian.mengerjakan', $sesiPeserta);
+        }
+
+        $sesiPeserta->load(['sesi.paket']);
+        $paket = $sesiPeserta->sesi->paket;
+
+        return view('ujian.konfirmasi', compact('peserta', 'sesiPeserta', 'paket'));
+    }
+
+    public function mengerjakan(SesiPeserta $sesiPeserta)
     {
         /** @var \App\Models\Peserta $peserta */
         $peserta = Auth::guard('peserta')->user();
@@ -28,7 +51,6 @@ class UjianController extends Controller
             ]
         );
 
-        // Already submitted — redirect to results page
         if ($result['already_submitted']) {
             return redirect()->route('ujian.selesai', $sesiPeserta);
         }
@@ -61,6 +83,19 @@ class UjianController extends Controller
     {
         /** @var \App\Models\Peserta $peserta */
         $peserta = Auth::guard('peserta')->user();
+
+        // If form fallback includes answers, sync them first via JawabanService
+        if ($request->filled('answers_json')) {
+            try {
+                $answers = json_decode($request->input('answers_json'), true);
+                if (is_array($answers) && count($answers) > 0) {
+                    app(\App\Services\JawabanService::class)
+                        ->syncOfflineAnswers($sesiPeserta->token_ujian, $answers, [], true);
+                }
+            } catch (\Exception $e) {
+                // Log but don't block submit
+            }
+        }
 
         $result = $this->ujianService->selesaikanUjian(
             sesiPesertaId: $sesiPeserta->id,
