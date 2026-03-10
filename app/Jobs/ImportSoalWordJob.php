@@ -135,15 +135,29 @@ class ImportSoalWordJob implements ShouldQueue
                         $gambarFromText = $this->saveImageFromFolder(trim($gm[1]));
                     }
 
+                    // Parse optional meta tags: [tingkat: mudah/sedang/sulit] [bobot: angka]
+                    $tingkat = 'sedang';
+                    $bobot   = 1.0;
+                    if (preg_match('/\[tingkat:\s*(mudah|sedang|sulit)\]/i', $soalText, $tm)) {
+                        $tingkat = strtolower(trim($tm[1]));
+                        $soalText = trim(preg_replace('/\[tingkat:\s*(mudah|sedang|sulit)\]/i', '', $soalText));
+                    }
+                    if (preg_match('/\[bobot:\s*([\d.,]+)\]/i', $soalText, $bm)) {
+                        $bobot = (float) str_replace(',', '.', trim($bm[1]));
+                        $soalText = trim(preg_replace('/\[bobot:\s*[\d.,]+\]/i', '', $soalText));
+                    }
+
                     $current = [
-                        'pertanyaan'  => $soalText,
-                        'jenis'       => $jenis,
-                        'opsi'        => [],
-                        'opsi_gambar' => [],
-                        'kunci'       => null,
-                        'gambar_soal' => !empty($images) ? $this->saveImageData($images[0]) : $gambarFromText,
-                        'pasangan'    => [],
+                        'pertanyaan'    => $soalText,
+                        'jenis'         => $jenis,
+                        'opsi'          => [],
+                        'opsi_gambar'   => [],
+                        'kunci'         => null,
+                        'gambar_soal'   => !empty($images) ? $this->saveImageData($images[0]) : $gambarFromText,
+                        'pasangan'      => [],
                         'pernyataan_bs' => [],
+                        'tingkat'       => $tingkat,
+                        'bobot'         => $bobot,
                     ];
 
                 // Benar/Salah pernyataan lines: 1) Pernyataan text (BENAR) or 1) Pernyataan text (SALAH)
@@ -200,6 +214,12 @@ class ImportSoalWordJob implements ShouldQueue
                     if ($jawaban && !preg_match('/^\(.*\)$/', $jawaban)) {
                         $current['kunci'] = $jawaban;
                     }
+
+                // Meta tag lines: [tingkat: ...] or [bobot: ...] as standalone line
+                } elseif ($current && preg_match('/^\[tingkat:\s*(mudah|sedang|sulit)\]/i', $text, $tm)) {
+                    $current['tingkat'] = strtolower(trim($tm[1]));
+                } elseif ($current && preg_match('/^\[bobot:\s*([\d.,]+)\]/i', $text, $bm)) {
+                    $current['bobot'] = (float) str_replace(',', '.', trim($bm[1]));
 
                 // Standalone image following a soal (no text, just image)
                 } elseif ($current && empty($text) && !empty($images) && !$current['gambar_soal']) {
@@ -309,8 +329,8 @@ class ImportSoalWordJob implements ShouldQueue
             'pertanyaan'        => $block['pertanyaan'],
             'gambar_soal'       => $block['gambar_soal'],
             'posisi_gambar'     => $block['gambar_soal'] ? 'bawah' : null,
-            'tingkat_kesulitan' => 'sedang',
-            'bobot'             => 1.0,
+            'tingkat_kesulitan' => $block['tingkat'] ?? 'sedang',
+            'bobot'             => $block['bobot'] ?? 1.0,
         ]);
 
         match ($block['jenis']) {

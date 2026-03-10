@@ -264,17 +264,32 @@
                     <p class="pl-4">Jawaban: Evaporasi, kondensasi, presipitasi.</p>
                 </div>
             </div>
+
+            {{-- Benar/Salah --}}
+            <div>
+                <h4 class="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
+                    <span class="w-2 h-2 bg-indigo-500 rounded-full"></span> Benar / Salah
+                </h4>
+                <div class="bg-gray-50 rounded-lg p-4 font-mono text-xs text-gray-700 space-y-1 border">
+                    <p><strong>7. [BENAR_SALAH] Tentukan benar/salah:</strong></p>
+                    <p class="pl-4">1) Air mendidih pada 100°C (BENAR)</p>
+                    <p class="pl-4">2) Es lebih berat dari air (SALAH)</p>
+                    <p class="pl-4">3) H2O adalah garam dapur (SALAH)</p>
+                </div>
+            </div>
         </div>
 
         <div class="mt-4 space-y-3">
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
                 <strong>Catatan:</strong>
                 <ul class="list-disc list-inside mt-1 space-y-0.5">
-                    <li>Tandai jenis soal dengan tag <code class="bg-blue-100 px-1 rounded">[PG_KOMPLEKS]</code>, <code class="bg-blue-100 px-1 rounded">[MENJODOHKAN]</code>, <code class="bg-blue-100 px-1 rounded">[ISIAN]</code>, atau <code class="bg-blue-100 px-1 rounded">[ESSAY]</code> setelah nomor soal.</li>
+                    <li>Tandai jenis soal dengan tag <code class="bg-blue-100 px-1 rounded">[PG_KOMPLEKS]</code>, <code class="bg-blue-100 px-1 rounded">[MENJODOHKAN]</code>, <code class="bg-blue-100 px-1 rounded">[ISIAN]</code>, <code class="bg-blue-100 px-1 rounded">[ESSAY]</code>, atau <code class="bg-blue-100 px-1 rounded">[BENAR_SALAH]</code> setelah nomor soal.</li>
                     <li>Soal tanpa tag dan memiliki opsi a/b/c/d otomatis dianggap Pilihan Ganda.</li>
                     <li>Soal tanpa tag dan tanpa opsi otomatis dianggap Essay.</li>
                     <li>Untuk menjodohkan, gunakan tanda <code class="bg-blue-100 px-1 rounded">=</code> untuk memisahkan pasangan kiri dan kanan.</li>
-                    <li>Tag opsional: <code class="bg-blue-100 px-1 rounded">[tingkat: mudah/sedang/sulit]</code> <code class="bg-blue-100 px-1 rounded">[bobot: angka]</code></li>
+                    <li>Untuk Benar/Salah, gunakan format: <code class="bg-blue-100 px-1 rounded">1) Pernyataan (BENAR)</code> atau <code class="bg-blue-100 px-1 rounded">1) Pernyataan (SALAH)</code></li>
+                    <li>Tag opsional tingkat kesulitan: <code class="bg-blue-100 px-1 rounded">[tingkat: mudah]</code>, <code class="bg-blue-100 px-1 rounded">[tingkat: sedang]</code>, atau <code class="bg-blue-100 px-1 rounded">[tingkat: sulit]</code> &mdash; default: sedang.</li>
+                    <li>Tag opsional bobot nilai: <code class="bg-blue-100 px-1 rounded">[bobot: 2]</code> &mdash; default: 1. Bisa ditaruh di baris soal atau baris terpisah.</li>
                 </ul>
             </div>
             <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">

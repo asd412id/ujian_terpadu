@@ -372,6 +372,11 @@ class SoalController extends Controller
         $section->addListItem('Untuk Menjodohkan, gunakan tanda = untuk memisahkan pasangan kiri dan kanan.', 0, $normalStyle);
         $section->addListItem('Untuk Benar/Salah, gunakan format: 1) Pernyataan (BENAR) atau 1) Pernyataan (SALAH)', 0, $normalStyle);
         $section->addTextBreak(1);
+        $section->addText('TAG OPSIONAL:', $boldStyle);
+        $section->addListItem('Tingkat kesulitan: [tingkat: mudah], [tingkat: sedang], atau [tingkat: sulit] — default: sedang', 0, $normalStyle);
+        $section->addListItem('Bobot nilai: [bobot: 2] — default: 1. Bisa ditaruh di baris soal atau baris terpisah.', 0, $normalStyle);
+        $section->addListItem('Contoh: 1. [PG_KOMPLEKS] [tingkat: sulit] [bobot: 3] Manakah bilangan prima?', 0, $italicStyle);
+        $section->addTextBreak(1);
         $section->addText('GAMBAR:', $boldStyle);
         $section->addListItem('Untuk soal bergambar, sisipkan gambar langsung di dokumen Word ATAU gunakan format teks: [gambar: namafile.png]', 0, $normalStyle);
         $section->addListItem('Untuk opsi bergambar, tambahkan setelah teks opsi: a. Teks opsi | gambar: namafile.png', 0, $normalStyle);
@@ -413,7 +418,9 @@ class SoalController extends Controller
         $section->addListItem('Opsi PG: a. teks opsi', 0, $normalStyle);
         $section->addListItem('Opsi dengan gambar: a. teks opsi | gambar: namafile.png', 0, $normalStyle);
         $section->addListItem('Jawaban: huruf opsi (A) atau beberapa dipisah koma (A,C)', 0, $normalStyle);
-        $section->addListItem('Tag opsional: [tingkat: mudah/sedang/sulit] [bobot: angka]', 0, $normalStyle);
+        $section->addListItem('Tag jenis: [PG_KOMPLEKS], [MENJODOHKAN], [ISIAN], [ESSAY], [BENAR_SALAH]', 0, $normalStyle);
+        $section->addListItem('Tag tingkat: [tingkat: mudah], [tingkat: sedang], [tingkat: sulit] — default: sedang', 0, $normalStyle);
+        $section->addListItem('Tag bobot: [bobot: 2] — default: 1. Bisa di baris soal atau baris terpisah.', 0, $normalStyle);
         $section->addTextBreak(1);
 
         // PG with image options
