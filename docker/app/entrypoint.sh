@@ -14,7 +14,7 @@ if [ -z "$(grep '^APP_KEY=base64:' /app/.env 2>/dev/null)" ]; then
     echo "[entrypoint] Generating APP_KEY..."
     NEW_KEY=$(php artisan key:generate --show --no-interaction 2>/dev/null)
     if [ -n "$NEW_KEY" ]; then
-        sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" /app/.env
+        sed "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" /app/.env > /tmp/.env.tmp && cp /tmp/.env.tmp /app/.env && rm /tmp/.env.tmp
         export APP_KEY="$NEW_KEY"
         echo "[entrypoint] APP_KEY set: ${NEW_KEY:0:20}..."
     fi
