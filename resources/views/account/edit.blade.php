@@ -6,7 +6,7 @@
     <span>Pengaturan Akun</span>
 @endsection
 
-@section('main')
+@section('page-content')
 <div class="max-w-2xl mx-auto space-y-6">
 
     @if(session('success'))
