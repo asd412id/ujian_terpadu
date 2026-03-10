@@ -8,9 +8,11 @@ Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara d
 - Dashboard statistik seluruh sekolah
 - Manajemen sekolah, user, dan kategori soal
 - Bank soal terpusat & paket ujian (publish/unpublish)
+- Multi-select soal pada paket ujian (checkbox per kategori, search & filter, bulk sync)
 - Monitoring ujian real-time (per sekolah & per sesi)
-- Grading essay manual
-- Laporan & export nilai
+- Grading essay manual dengan kalkulasi nilai otomatis
+- Laporan & export Excel (.xlsx) — 3 sheet: Rekap, Hasil Ujian (19 kolom), Analisis Per Soal
+- Filter laporan berdasarkan paket ujian, sekolah, dan status lulus/tidak lulus
 
 ### Admin Sekolah
 - Dashboard statistik sekolah
@@ -26,16 +28,20 @@ Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara d
 ### Peserta Ujian
 - Login terpisah dengan token
 - Lobby ujian (daftar sesi tersedia)
-- Pengerjaan ujian dengan timer
-- Auto-save jawaban (offline sync via API)
-- Submit & halaman selesai
+- Halaman konfirmasi sebelum mulai ujian
+- Pengerjaan ujian dengan timer (6 tipe soal: PG, PG Kompleks, Menjodohkan, Isian, Essay)
+- Auto-save jawaban ke IndexedDB (Dexie.js) + offline sync via API
+- Submit otomatis saat waktu habis + submit manual
+- Halaman selesai dengan ringkasan hasil
 
 ### Teknis
 - PWA support (offline fallback)
-- API offline sync untuk jawaban
+- API offline sync untuk jawaban (IndexedDB + server sync dengan idempotency key)
+- Final submit menyertakan seluruh jawaban sebagai safety net
+- Multi-guard auth (admin via `web`, peserta via `peserta`)
 - Docker-ready deployment
-- 232 automated tests (unit + feature)
-- SQLite default, MySQL supported
+- Automated tests (unit + feature)
+- MySQL sebagai database utama
 
 ## Tech Stack
 
@@ -43,11 +49,13 @@ Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara d
 |-------|-----------|
 | Framework | Laravel 12 |
 | PHP | 8.3+ |
-| Database | SQLite (default) / MySQL |
-| Frontend | Blade + Tailwind CSS + Vite |
-| Queue | Database driver |
+| Database | MySQL 8.0+ |
+| Frontend | Blade + Alpine.js + Tailwind CSS + Vite |
+| Offline Storage | Dexie.js (IndexedDB) |
+| Export | Maatwebsite/Excel 3.1 (PhpSpreadsheet) |
 | Import | Maatwebsite/Excel 3.1, PhpWord |
-| Testing | PHPUnit (232 tests) |
+| Queue | Database driver |
+| Testing | PHPUnit |
 | Container | Docker + Nginx |
 
 ## Persyaratan
@@ -55,7 +63,7 @@ Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara d
 - PHP 8.3+
 - Composer 2.x
 - Node.js 18+ & npm
-- SQLite3 atau MySQL 8.0+
+- MySQL 8.0+
 
 ## Instalasi
 
@@ -74,8 +82,8 @@ npm install
 cp .env.example .env
 php artisan key:generate
 
-# Database (SQLite default)
-touch database/database.sqlite
+# Database (MySQL)
+# Sesuaikan DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD di .env
 php artisan migrate --seed
 
 # Build assets
@@ -114,8 +122,10 @@ app/
 │   ├── Sekolah/           # Peserta, soal, paket, kartu login
 │   ├── Pengawas/          # Dashboard & monitoring ruang
 │   └── Ujian/             # Lobby, pengerjaan ujian, jawaban API
+├── Exports/               # Excel export classes (Maatwebsite/Excel)
 ├── Models/                # Eloquent models
 ├── Imports/               # Excel/Word import classes
+├── Repositories/          # Data access layer
 └── Services/              # Business logic services
 
 database/
