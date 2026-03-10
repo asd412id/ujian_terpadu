@@ -410,7 +410,7 @@
                     {{ isset($soal) ? 'Simpan Perubahan' : 'Simpan Soal' }}
                 </button>
                 <a href="{{ route('dinas.soal.index') }}"
-                   class="w-full text-center border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium py-2.5 rounded-xl transition-colors">
+                   class="btn-secondary w-full text-center">
                     Batal
                 </a>
             </div>

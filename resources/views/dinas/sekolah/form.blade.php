@@ -100,7 +100,7 @@
             {{ isset($sekolah) ? 'Simpan Perubahan' : 'Tambah Sekolah' }}
         </button>
         <a href="{{ route('dinas.sekolah.index') }}"
-           class="border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+           class="btn-secondary">
             Batal
         </a>
     </div>

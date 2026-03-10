@@ -50,17 +50,17 @@
         </div>
         <div class="flex items-center gap-3">
             <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
+                    class="btn-primary">
                 Tampilkan
             </button>
             @if(request()->hasAny(['paket_id', 'sekolah_id', 'status']))
             <a href="{{ route('dinas.laporan') }}"
-               class="border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Reset</a>
+               class="btn-secondary">Reset</a>
             @endif
             {{-- Export --}}
             <div class="ml-auto flex items-center gap-2">
                 <a href="{{ route('dinas.laporan.export', request()->query()) }}"
-                   class="flex items-center gap-1.5 border border-green-300 hover:bg-green-50 text-green-700 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+                   class="btn-success inline-flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>

@@ -28,13 +28,13 @@
                   onsubmit="return confirm('Publikasikan paket ujian ini?')">
                 @csrf
                 <button type="submit"
-                        class="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                        class="btn-success flex-shrink-0">
                     Publish Paket
                 </button>
             </form>
             @endif
             <a href="{{ route('dinas.paket.edit', $paket->id) }}"
-               class="flex-shrink-0 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+               class="btn-secondary flex-shrink-0">
                 Edit Info Paket
             </a>
         </div>
@@ -109,11 +109,11 @@
                 </div>
                 <div class="flex gap-2 pt-1">
                     <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                            class="btn-primary">
                         Simpan Sesi
                     </button>
                     <button type="button" @click="showForm = false"
-                            class="border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                            class="btn-secondary">
                         Batal
                     </button>
                 </div>
@@ -332,7 +332,7 @@
                     Batal
                 </button>
                 <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+                        class="btn-primary">
                     Simpan Perubahan
                 </button>
             </div>

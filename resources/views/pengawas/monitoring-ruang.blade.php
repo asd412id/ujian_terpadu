@@ -25,7 +25,7 @@
             @if($sesi->status === 'persiapan')
             <form action="#" method="POST">
                 @csrf
-                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+                <button type="submit" class="btn-success">
                     Buka Sesi
                 </button>
             </form>
@@ -33,7 +33,7 @@
             <form action="#" method="POST"
                   onsubmit="return confirm('Tutup sesi sekarang? Peserta yang belum submit akan disubmit otomatis.')">
                 @csrf
-                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+                <button type="submit" class="btn-danger">
                     Tutup Sesi
                 </button>
             </form>
@@ -76,7 +76,7 @@
                     <option value="submit" {{ ($filters['status'] ?? '') === 'submit' ? 'selected' : '' }}>Submit</option>
                     <option value="belum" {{ ($filters['status'] ?? '') === 'belum' ? 'selected' : '' }}>Belum Mulai</option>
                 </select>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg">Cari</button>
+                <button type="submit" class="btn-primary">Cari</button>
                 @if(!empty($filters['search']) || !empty($filters['status']))
                 <a href="{{ route('pengawas.sesi', $sesi->id) }}" class="text-xs text-gray-500 hover:text-red-500">Reset</a>
                 @endif

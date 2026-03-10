@@ -23,7 +23,6 @@ class PaketUjianRepository
         return $this->model
             ->with(['sekolah', 'pembuat'])
             ->withCount(['paketSoal', 'sesi'])
-            ->where('status', '!=', 'arsip')
             ->latest()
             ->paginate($perPage);
     }

@@ -41,7 +41,7 @@
             <span class="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Auto-Sync Aktif</span>
             @endif
             <a href="{{ route('dinas.paket.show', $paket->id) }}"
-               class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+               class="btn-secondary">
                 Kembali
             </a>
         </div>
@@ -88,7 +88,7 @@
         </div>
         @endif
         <button type="submit"
-                class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                class="btn-primary">
             Filter
         </button>
         @if($search || $sekolahFilter)
@@ -200,7 +200,7 @@
                 </div>
                 <div x-show="availableSelected.length > 0" x-transition class="mt-3 pt-3 border-t">
                     <button type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                            class="btn-primary w-full">
                         Tambah <span x-text="availableSelected.length"></span> Peserta ke Sesi
                     </button>
                 </div>

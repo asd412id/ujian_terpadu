@@ -93,7 +93,7 @@
                     <option value="submit" {{ ($filters['status'] ?? '') === 'submit' ? 'selected' : '' }}>Submit</option>
                     <option value="belum" {{ ($filters['status'] ?? '') === 'belum' ? 'selected' : '' }}>Belum Mulai</option>
                 </select>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg">Cari</button>
+                <button type="submit" class="btn-primary">Cari</button>
                 @if(!empty($filters['search']) || !empty($filters['status']))
                 <a href="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="text-xs text-gray-500 hover:text-red-500">Reset</a>
                 @endif

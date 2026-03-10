@@ -92,7 +92,7 @@
             {{ isset($peserta) ? 'Simpan Perubahan' : 'Tambah Peserta' }}
         </button>
         <a href="{{ route('sekolah.peserta.index') }}"
-           class="border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+           class="btn-secondary">
             Batal
         </a>
     </div>

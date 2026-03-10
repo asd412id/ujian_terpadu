@@ -129,7 +129,7 @@
                 <div class="flex gap-2 pt-2">
                     <button type="submit" class="flex-1 btn-primary">Simpan</button>
                     <button type="button" @click="closeModal()"
-                            class="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium py-2.5 rounded-xl">Batal</button>
+                            class="flex-1 btn-secondary">Batal</button>
                 </div>
             </form>
         </div>

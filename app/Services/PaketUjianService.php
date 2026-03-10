@@ -153,13 +153,13 @@ class PaketUjianService
     }
 
     /**
-     * Archive a paket ujian (set status to 'arsip').
+     * Archive a paket ujian (soft-delete).
      * Also cancels any pending sesi that haven't started yet.
      */
     public function archivePaket(PaketUjian $paket): PaketUjian
     {
         $this->sesiService->cancelPendingSesiByPaket($paket);
-        $this->repository->update($paket, ['status' => 'arsip']);
+        $paket->delete();
         return $paket;
     }
 

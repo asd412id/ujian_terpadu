@@ -18,7 +18,7 @@
             <p class="text-sm text-gray-500 mt-1">Paket yang dihapus dapat dipulihkan atau dihapus permanen.</p>
         </div>
         <a href="{{ route('dinas.paket.index') }}"
-           class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors inline-flex items-center gap-1.5">
+           class="btn-secondary inline-flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>

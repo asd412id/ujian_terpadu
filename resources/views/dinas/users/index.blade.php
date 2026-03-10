@@ -45,10 +45,10 @@
             <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Nonaktif</option>
         </select>
         <button type="submit"
-                class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">Cari</button>
+                class="btn-primary">Cari</button>
         @if(request()->hasAny(['search', 'role', 'status']))
         <a href="{{ route('dinas.users.index') }}"
-           class="border border-gray-300 text-gray-600 text-sm font-medium px-4 py-2 rounded-lg text-center">Reset</a>
+           class="btn-secondary text-center">Reset</a>
         @endif
     </form>
 

@@ -17,8 +17,7 @@
         </div>
         <div class="flex items-center gap-2">
             <a href="{{ route('dinas.monitoring') }}"
-               class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium
-                      px-4 py-2 rounded-lg transition-colors">
+               class="btn-primary inline-flex items-center gap-1.5">
                 <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                 Monitoring Live
             </a>

@@ -68,7 +68,7 @@
             {{ isset($kategori) ? 'Simpan Perubahan' : 'Tambah Kategori' }}
         </button>
         <a href="{{ route('dinas.kategori.index') }}"
-           class="border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+           class="btn-secondary">
             Batal
         </a>
     </div>

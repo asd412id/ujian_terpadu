@@ -18,7 +18,7 @@
             <p class="text-gray-500 text-sm mt-1">{{ $sekolah->jenjang }} · NPSN: {{ $sekolah->npsn ?? '-' }}</p>
         </div>
         <a href="{{ route('dinas.sekolah.edit', $sekolah->id) }}"
-           class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+           class="btn-primary inline-flex items-center gap-2">
             Edit Sekolah
         </a>
     </div>

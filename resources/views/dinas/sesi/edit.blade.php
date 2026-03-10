@@ -100,11 +100,11 @@
 
             <div class="flex gap-2 pt-2">
                 <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
+                        class="btn-primary">
                     Simpan Perubahan
                 </button>
                 <a href="{{ route('dinas.paket.show', $paket->id) }}"
-                   class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                   class="btn-secondary">
                     Batal
                 </a>
             </div>
