@@ -201,11 +201,27 @@ class ImportSoalWordJob implements ShouldQueue
                         $current['opsi'][$label] = '';
                     }
 
-                // Menjodohkan: "kiri = kanan"
+                // Menjodohkan: "kiri = kanan" with optional image refs: "kiri | gambar: f.png = kanan | gambar: g.png"
                 } elseif ($current && $current['jenis'] === 'menjodohkan' && preg_match('/^(.+?)\s*=\s*(.+)$/', $text, $m)) {
+                    $kiriRaw  = trim($m[1]);
+                    $kananRaw = trim($m[2]);
+                    $kiriGambar  = null;
+                    $kananGambar = null;
+
+                    if (preg_match('/^(.*?)\s*\|\s*gambar:\s*(.+)$/i', $kiriRaw, $kg)) {
+                        $kiriRaw = trim($kg[1]);
+                        $kiriGambar = $this->saveImageFromFolder(trim($kg[2]));
+                    }
+                    if (preg_match('/^(.*?)\s*\|\s*gambar:\s*(.+)$/i', $kananRaw, $kg)) {
+                        $kananRaw = trim($kg[1]);
+                        $kananGambar = $this->saveImageFromFolder(trim($kg[2]));
+                    }
+
                     $current['pasangan'][] = [
-                        'kiri'  => trim($m[1]),
-                        'kanan' => trim($m[2]),
+                        'kiri'         => $kiriRaw,
+                        'kiri_gambar'  => $kiriGambar,
+                        'kanan'        => $kananRaw,
+                        'kanan_gambar' => $kananGambar,
                     ];
 
                 // Jawaban line
@@ -366,10 +382,12 @@ class ImportSoalWordJob implements ShouldQueue
     {
         foreach ($block['pasangan'] as $i => $pair) {
             PasanganSoal::create([
-                'soal_id'    => $soal->id,
-                'kiri_teks'  => $pair['kiri'],
-                'kanan_teks' => $pair['kanan'],
-                'urutan'     => $i,
+                'soal_id'      => $soal->id,
+                'kiri_teks'    => $pair['kiri'],
+                'kiri_gambar'  => $pair['kiri_gambar'] ?? null,
+                'kanan_teks'   => $pair['kanan'],
+                'kanan_gambar' => $pair['kanan_gambar'] ?? null,
+                'urutan'       => $i,
             ]);
         }
     }

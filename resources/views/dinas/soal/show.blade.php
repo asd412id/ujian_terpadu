@@ -119,11 +119,21 @@
             @foreach($soal->pasangan as $i => $p)
             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <span class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{{ $i + 1 }}</span>
-                <span class="flex-1 text-sm text-gray-800">{{ $p->kiri_teks }}</span>
+                <div class="flex-1">
+                    @if($p->kiri_gambar)
+                    <img src="{{ asset('storage/' . $p->kiri_gambar) }}" alt="Gambar kiri" class="max-h-20 rounded border mb-1">
+                    @endif
+                    <span class="text-sm text-gray-800">{{ $p->kiri_teks }}</span>
+                </div>
                 <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                 </svg>
-                <span class="flex-1 text-sm text-gray-800">{{ $p->kanan_teks }}</span>
+                <div class="flex-1">
+                    @if($p->kanan_gambar)
+                    <img src="{{ asset('storage/' . $p->kanan_gambar) }}" alt="Gambar kanan" class="max-h-20 rounded border mb-1">
+                    @endif
+                    <span class="text-sm text-gray-800">{{ $p->kanan_teks }}</span>
+                </div>
             </div>
             @endforeach
         </div>
@@ -138,7 +148,12 @@
             @foreach($soal->opsiJawaban->sortBy('urutan') as $opsi)
             <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ $opsi->label }}</span>
-                <span class="flex-1 text-sm text-gray-800">{{ $opsi->teks }}</span>
+                <div class="flex-1">
+                    <span class="text-sm text-gray-800">{{ $opsi->teks }}</span>
+                    @if($opsi->gambar)
+                    <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar pernyataan" class="mt-1 max-h-24 rounded border">
+                    @endif
+                </div>
                 @if($opsi->is_benar)
                 <span class="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">BENAR</span>
                 @else

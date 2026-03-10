@@ -153,25 +153,72 @@
             <div class="card space-y-4" x-show="jenis === 'menjodohkan'" x-transition>
                 <h2 class="font-semibold text-gray-900">Pasangan Soal</h2>
                 <template x-for="(pair, idx) in pasanganList" :key="idx">
-                    <div class="flex items-center gap-3">
-                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full text-xs font-bold text-blue-700 flex items-center justify-center"
-                              x-text="idx + 1"></span>
-                        <input type="text" :name="`pasangan[${idx}][kiri]`" x-model="pair.kiri"
-                               placeholder="Kolom kiri"
-                               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                        </svg>
-                        <input type="text" :name="`pasangan[${idx}][kanan]`" x-model="pair.kanan"
-                               placeholder="Kolom kanan"
-                               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button type="button" @click="removePasangan(idx)"
-                                x-show="pasanganList.length > 2"
-                                class="flex-shrink-0 text-red-400 hover:text-red-600">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
+                    <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full text-xs font-bold text-blue-700 flex items-center justify-center"
+                                  x-text="idx + 1"></span>
+                            <span class="text-xs text-gray-500 font-medium">Pasangan</span>
+                            <div class="flex-1"></div>
+                            <button type="button" @click="removePasangan(idx)"
+                                    x-show="pasanganList.length > 2"
+                                    class="flex-shrink-0 text-red-400 hover:text-red-600">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            {{-- Kolom Kiri --}}
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-gray-500">Kiri</label>
+                                <input type="text" :name="`pasangan[${idx}][kiri]`" x-model="pair.kiri"
+                                       placeholder="Teks kiri"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="hidden" :name="`pasangan[${idx}][kiri_gambar_existing]`" :value="pair.kiri_gambar || ''">
+                                <template x-if="pair.kiri_gambar && !pair.kiri_preview">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="'/storage/' + pair.kiri_gambar" class="h-10 w-10 rounded object-cover border">
+                                        <span class="text-xs text-gray-400">Gambar kiri</span>
+                                        <button type="button" @click="pair.kiri_gambar = null" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                    </div>
+                                </template>
+                                <template x-if="pair.kiri_preview">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="pair.kiri_preview" class="h-10 w-10 rounded object-cover border">
+                                        <span class="text-xs text-green-600">Gambar baru</span>
+                                        <button type="button" @click="removePasanganImage(idx, 'kiri')" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                    </div>
+                                </template>
+                                <input type="file" :name="`pasangan[${idx}][kiri_gambar]`" accept="image/*"
+                                       @change="handlePasanganImage($event, idx, 'kiri')"
+                                       class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
+                            </div>
+                            {{-- Kolom Kanan --}}
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-gray-500">Kanan</label>
+                                <input type="text" :name="`pasangan[${idx}][kanan]`" x-model="pair.kanan"
+                                       placeholder="Teks kanan"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <input type="hidden" :name="`pasangan[${idx}][kanan_gambar_existing]`" :value="pair.kanan_gambar || ''">
+                                <template x-if="pair.kanan_gambar && !pair.kanan_preview">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="'/storage/' + pair.kanan_gambar" class="h-10 w-10 rounded object-cover border">
+                                        <span class="text-xs text-gray-400">Gambar kanan</span>
+                                        <button type="button" @click="pair.kanan_gambar = null" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                    </div>
+                                </template>
+                                <template x-if="pair.kanan_preview">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="pair.kanan_preview" class="h-10 w-10 rounded object-cover border">
+                                        <span class="text-xs text-green-600">Gambar baru</span>
+                                        <button type="button" @click="removePasanganImage(idx, 'kanan')" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                    </div>
+                                </template>
+                                <input type="file" :name="`pasangan[${idx}][kanan_gambar]`" accept="image/*"
+                                       @change="handlePasanganImage($event, idx, 'kanan')"
+                                       class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
+                            </div>
+                        </div>
                     </div>
                 </template>
                 <button type="button" @click="addPasangan()"
@@ -197,6 +244,25 @@
                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                       :placeholder="`Pernyataan ke-${idx + 1}`"
                                       x-model="item.teks"></textarea>
+                            {{-- Gambar pernyataan --}}
+                            <input type="hidden" :name="`pernyataan_bs[${idx}][gambar_existing]`" :value="item.gambar || ''">
+                            <template x-if="item.gambar && !item.preview">
+                                <div class="flex items-center gap-2">
+                                    <img :src="'/storage/' + item.gambar" class="h-10 w-10 rounded object-cover border">
+                                    <span class="text-xs text-gray-400">Gambar saat ini</span>
+                                    <button type="button" @click="item.gambar = null" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                </div>
+                            </template>
+                            <template x-if="item.preview">
+                                <div class="flex items-center gap-2">
+                                    <img :src="item.preview" class="h-10 w-10 rounded object-cover border">
+                                    <span class="text-xs text-green-600">Gambar baru</span>
+                                    <button type="button" @click="removeBsImage(idx)" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                                </div>
+                            </template>
+                            <input type="file" :id="`bs-gambar-${idx}`" :name="`pernyataan_bs[${idx}][gambar]`" accept="image/*"
+                                   @change="handleBsImage($event, idx)"
+                                   class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
                             <div class="flex items-center gap-3">
                                 <span class="text-xs text-gray-500 font-medium">Kunci:</span>
                                 <label class="flex items-center gap-1.5 cursor-pointer">
@@ -359,11 +425,11 @@
         ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar, 'pastedPreview' => null])->toArray()
         : [['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null]];
     $pasanganListData = isset($soal) && $soal->pasangan->count()
-        ? $soal->pasangan->map(fn($p) => ['kiri' => $p->kiri_teks, 'kanan' => $p->kanan_teks])->toArray()
-        : [['kiri' => '', 'kanan' => ''], ['kiri' => '', 'kanan' => '']];
+        ? $soal->pasangan->map(fn($p) => ['kiri' => $p->kiri_teks, 'kanan' => $p->kanan_teks, 'kiri_gambar' => $p->kiri_gambar, 'kanan_gambar' => $p->kanan_gambar, 'kiri_preview' => null, 'kanan_preview' => null])->toArray()
+        : [['kiri' => '', 'kanan' => '', 'kiri_gambar' => null, 'kanan_gambar' => null, 'kiri_preview' => null, 'kanan_preview' => null], ['kiri' => '', 'kanan' => '', 'kiri_gambar' => null, 'kanan_gambar' => null, 'kiri_preview' => null, 'kanan_preview' => null]];
     $pernyataanBsData = isset($soal) && $soal->tipe_soal === 'benar_salah' && $soal->opsiJawaban->count()
-        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
-        : [['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true]];
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar, 'preview' => null])->toArray()
+        : [['teks' => '', 'benar' => true, 'gambar' => null, 'preview' => null], ['teks' => '', 'benar' => true, 'gambar' => null, 'preview' => null], ['teks' => '', 'benar' => true, 'gambar' => null, 'preview' => null]];
     $jenisMap = ['pg'=>'pilihan_ganda','pg_kompleks'=>'pilihan_ganda_kompleks','benar_salah'=>'benar_salah','menjodohkan'=>'menjodohkan','isian'=>'isian','essay'=>'essay'];
     $currentJenis = old('jenis_soal', isset($soal) ? ($jenisMap[$soal->tipe_soal] ?? 'pilihan_ganda') : 'pilihan_ganda');
 @endphp
@@ -437,16 +503,48 @@ function soalForm() {
             }
         },
         addPasangan() {
-            this.pasanganList.push({ kiri: '', kanan: '' });
+            this.pasanganList.push({ kiri: '', kanan: '', kiri_gambar: null, kanan_gambar: null, kiri_preview: null, kanan_preview: null });
         },
         removePasangan(idx) {
             this.pasanganList.splice(idx, 1);
         },
+        handlePasanganImage(event, idx, side) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.pasanganList[idx][side + '_preview'] = e.target.result;
+                    this.pasanganList[idx][side + '_gambar'] = null;
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+        removePasanganImage(idx, side) {
+            this.pasanganList[idx][side + '_preview'] = null;
+            this.pasanganList[idx][side + '_gambar'] = null;
+        },
         addPernyataanBs() {
-            this.pernyataanBsList.push({ teks: '', benar: true });
+            this.pernyataanBsList.push({ teks: '', benar: true, gambar: null, preview: null });
         },
         removePernyataanBs(idx) {
             this.pernyataanBsList.splice(idx, 1);
+        },
+        handleBsImage(event, idx) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.pernyataanBsList[idx].preview = e.target.result;
+                    this.pernyataanBsList[idx].gambar = null;
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+        removeBsImage(idx) {
+            this.pernyataanBsList[idx].preview = null;
+            this.pernyataanBsList[idx].gambar = null;
+            const fileInput = document.getElementById(`bs-gambar-${idx}`);
+            if (fileInput) fileInput.value = '';
         }
     };
 }

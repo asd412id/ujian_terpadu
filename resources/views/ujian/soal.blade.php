@@ -311,6 +311,14 @@
                                                 </option>
                                                 @endforeach
                                             </select>
+                                            @php $selectedKanan = null; @endphp
+                                            @foreach($soal['pasangan'] as $j => $opt)
+                                                @if(!empty($opt['kanan_gambar']))
+                                                <template x-if="getPasanganJawaban('{{ $soal['id'] }}', {{ $i }}) === {{ $j }}">
+                                                    <img src="{{ asset('storage/'.$opt['kanan_gambar']) }}" class="mt-1 max-h-16 object-contain rounded border" alt="">
+                                                </template>
+                                                @endif
+                                            @endforeach
                                         </div>
                                     </div>
                                     @endforeach
@@ -333,6 +341,9 @@
                                                      flex items-center justify-center text-xs font-bold">{{ $opsi['label'] }}</span>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm text-gray-800 leading-relaxed">{{ $opsi['teks'] }}</p>
+                                            @if(!empty($opsi['gambar']))
+                                            <img src="{{ asset('storage/'.$opsi['gambar']) }}" class="mt-1 max-h-20 object-contain rounded border" alt="">
+                                            @endif
                                         </div>
                                         <div class="flex-shrink-0 flex gap-2 mt-0.5">
                                             <button type="button"

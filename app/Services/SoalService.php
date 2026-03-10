@@ -109,6 +109,8 @@ class SoalService
     public function updateSoal(Soal $soal, array $validated, Request $request): Soal
     {
         return DB::transaction(function () use ($soal, $validated, $request) {
+            $soal->load(['opsiJawaban', 'pasangan']);
+
             $data = [
                 'kategori_id'       => $validated['kategori_soal_id'],
                 'tipe_soal'         => $this->jenisMap[$validated['jenis_soal']],
@@ -134,6 +136,9 @@ class SoalService
 
             $this->repository->update($soal, $data);
 
+            // Clean up old images from opsi/pasangan before re-saving
+            $this->deleteOpsiAndPasanganImages($soal);
+
             // Clear existing and re-save
             $this->repository->deleteOpsiJawaban($soal);
             $this->repository->deletePasangan($soal);
@@ -158,13 +163,42 @@ class SoalService
     public function deleteSoal(Soal $soal): bool
     {
         return DB::transaction(function () use ($soal) {
-            // Delete associated image
-            if ($soal->gambar_soal) {
-                Storage::disk('public')->delete($soal->gambar_soal);
-            }
+            $soal->load(['opsiJawaban', 'pasangan']);
+            $this->deleteAllSoalImages($soal);
 
             return (bool) $this->repository->delete($soal);
         });
+    }
+
+    private function deleteAllSoalImages(Soal $soal): void
+    {
+        $disk = Storage::disk('public');
+
+        if ($soal->gambar_soal) {
+            $disk->delete($soal->gambar_soal);
+        }
+
+        $this->deleteOpsiAndPasanganImages($soal);
+    }
+
+    private function deleteOpsiAndPasanganImages(Soal $soal): void
+    {
+        $disk = Storage::disk('public');
+
+        foreach ($soal->opsiJawaban as $opsi) {
+            if ($opsi->gambar) {
+                $disk->delete($opsi->gambar);
+            }
+        }
+
+        foreach ($soal->pasangan as $pas) {
+            if ($pas->kiri_gambar) {
+                $disk->delete($pas->kiri_gambar);
+            }
+            if ($pas->kanan_gambar) {
+                $disk->delete($pas->kanan_gambar);
+            }
+        }
     }
 
     /**
@@ -173,10 +207,13 @@ class SoalService
     public function deleteAllSoal(): void
     {
         DB::transaction(function () {
-            $soals = Soal::whereNotNull('gambar_soal')->get(['id', 'gambar_soal']);
-            foreach ($soals as $s) {
-                Storage::disk('public')->delete($s->gambar_soal);
-            }
+            $disk = Storage::disk('public');
+
+            Soal::with(['opsiJawaban', 'pasangan'])->chunk(100, function ($soals) use ($disk) {
+                foreach ($soals as $soal) {
+                    $this->deleteAllSoalImages($soal);
+                }
+            });
 
             Soal::query()->delete();
         });
@@ -228,11 +265,20 @@ class SoalService
         $opsiRecords = [];
         foreach ($pernyataanData as $i => $item) {
             $teks = $item['teks'] ?? null;
-            if ($teks) {
+            $file = $request->file("pernyataan_bs.$i.gambar");
+            $gambar = null;
+
+            if ($file) {
+                $gambar = $file->store('soal/opsi', 'public');
+            } elseif (!empty($item['gambar_existing'])) {
+                $gambar = $item['gambar_existing'];
+            }
+
+            if ($teks || $gambar) {
                 $opsiRecords[] = [
                     'label'    => (string) ($i + 1),
                     'teks'     => $teks,
-                    'gambar'   => null,
+                    'gambar'   => $gambar,
                     'is_benar' => !empty($item['benar']) && $item['benar'] !== '0',
                     'urutan'   => $i,
                 ];
@@ -255,11 +301,32 @@ class SoalService
         foreach ($pasanganData as $i => $pair) {
             $kiri  = $pair['kiri'] ?? null;
             $kanan = $pair['kanan'] ?? null;
-            if ($kiri || $kanan) {
+
+            $kiriGambar  = null;
+            $kananGambar = null;
+
+            $kiriFile  = $request->file("pasangan.$i.kiri_gambar");
+            $kananFile = $request->file("pasangan.$i.kanan_gambar");
+
+            if ($kiriFile) {
+                $kiriGambar = $kiriFile->store('soal/pasangan', 'public');
+            } elseif (!empty($pair['kiri_gambar_existing'])) {
+                $kiriGambar = $pair['kiri_gambar_existing'];
+            }
+
+            if ($kananFile) {
+                $kananGambar = $kananFile->store('soal/pasangan', 'public');
+            } elseif (!empty($pair['kanan_gambar_existing'])) {
+                $kananGambar = $pair['kanan_gambar_existing'];
+            }
+
+            if ($kiri || $kanan || $kiriGambar || $kananGambar) {
                 $pasanganRecords[] = [
-                    'kiri_teks'  => $kiri,
-                    'kanan_teks' => $kanan,
-                    'urutan'     => $i,
+                    'kiri_teks'    => $kiri,
+                    'kiri_gambar'  => $kiriGambar,
+                    'kanan_teks'   => $kanan,
+                    'kanan_gambar' => $kananGambar,
+                    'urutan'       => $i,
                 ];
             }
         }

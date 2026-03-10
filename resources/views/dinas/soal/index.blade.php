@@ -293,11 +293,17 @@
                                     <template x-for="(p, i) in previewData.pasangan" :key="i">
                                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                             <span class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold" x-text="i + 1"></span>
-                                            <span class="flex-1 text-sm text-gray-800" x-text="p.kiri"></span>
+                                            <div class="flex-1">
+                                                <template x-if="p.kiri_gambar"><img :src="p.kiri_gambar" class="max-h-16 rounded border mb-1"></template>
+                                                <span class="text-sm text-gray-800" x-text="p.kiri"></span>
+                                            </div>
                                             <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                                             </svg>
-                                            <span class="flex-1 text-sm text-gray-800" x-text="p.kanan"></span>
+                                            <div class="flex-1">
+                                                <template x-if="p.kanan_gambar"><img :src="p.kanan_gambar" class="max-h-16 rounded border mb-1"></template>
+                                                <span class="text-sm text-gray-800" x-text="p.kanan"></span>
+                                            </div>
                                         </div>
                                     </template>
                                 </div>
@@ -312,7 +318,10 @@
                                     <template x-for="opsi in previewData.opsi" :key="opsi.label">
                                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                             <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold" x-text="opsi.label"></span>
-                                            <span class="flex-1 text-sm text-gray-800" x-text="opsi.teks"></span>
+                                            <div class="flex-1">
+                                                <span class="text-sm text-gray-800" x-text="opsi.teks"></span>
+                                                <template x-if="opsi.gambar"><img :src="opsi.gambar" class="mt-1 max-h-16 rounded border"></template>
+                                            </div>
                                             <span x-show="opsi.is_benar" class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">BENAR</span>
                                             <span x-show="!opsi.is_benar" class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">SALAH</span>
                                         </div>

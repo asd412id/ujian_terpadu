@@ -111,8 +111,10 @@ class SoalController extends Controller
                     'is_benar' => (bool) $o->is_benar,
                 ]),
                 'pasangan'          => $soal->pasangan->values()->map(fn($p) => [
-                    'kiri'  => $p->kiri_teks,
-                    'kanan' => $p->kanan_teks,
+                    'kiri'         => $p->kiri_teks,
+                    'kiri_gambar'  => $p->kiri_gambar ? asset('storage/' . $p->kiri_gambar) : null,
+                    'kanan'        => $p->kanan_teks,
+                    'kanan_gambar' => $p->kanan_gambar ? asset('storage/' . $p->kanan_gambar) : null,
                 ]),
             ]);
         }
@@ -332,10 +334,11 @@ class SoalController extends Controller
         $section->addText('MENJODOHKAN', $headingStyle);
         $section->addTextBreak(0);
         $section->addText('4. [MENJODOHKAN] Jodohkan negara dengan ibu kotanya:', $boldStyle);
-        $section->addText('    Indonesia = Jakarta', $normalStyle);
+        $section->addText('    Indonesia | gambar: indonesia.png = Jakarta | gambar: jakarta.png', $normalStyle);
         $section->addText('    Jepang = Tokyo', $normalStyle);
         $section->addText('    Thailand = Bangkok', $normalStyle);
         $section->addText('    Malaysia = Kuala Lumpur', $normalStyle);
+        $section->addText('    (Format gambar opsional: kiri | gambar: file.png = kanan | gambar: file.png)', $italicStyle);
         $section->addTextBreak(1);
 
         // ── Isian ──
@@ -369,7 +372,7 @@ class SoalController extends Controller
         $section->addListItem('Soal tanpa tag yang memiliki opsi a/b/c/d dianggap Pilihan Ganda biasa.', 0, $normalStyle);
         $section->addListItem('Soal tanpa tag dan tanpa opsi dianggap Essay.', 0, $normalStyle);
         $section->addListItem('Untuk PG Kompleks, pisahkan jawaban benar dengan koma: Jawaban: A, C, E', 0, $normalStyle);
-        $section->addListItem('Untuk Menjodohkan, gunakan tanda = untuk memisahkan pasangan kiri dan kanan.', 0, $normalStyle);
+        $section->addListItem('Untuk Menjodohkan, gunakan tanda = untuk memisahkan pasangan kiri dan kanan. Gambar opsional: kiri | gambar: file.png = kanan | gambar: file.png', 0, $normalStyle);
         $section->addListItem('Untuk Benar/Salah, gunakan format: 1) Pernyataan (BENAR) atau 1) Pernyataan (SALAH)', 0, $normalStyle);
         $section->addTextBreak(1);
         $section->addText('TAG OPSIONAL:', $boldStyle);
@@ -452,8 +455,8 @@ class SoalController extends Controller
         $section->addText('CONTOH MENJODOHKAN', $titleStyle, ['alignment' => Jc::LEFT]);
         $section->addTextBreak(1);
 
-        $section->addText('3. Jodohkan negara dengan ibu kotanya:', $boldStyle);
-        $section->addText('Indonesia = Jakarta', $normalStyle);
+        $section->addText('3. [MENJODOHKAN] Jodohkan negara dengan ibu kotanya:', $boldStyle);
+        $section->addText('Indonesia | gambar: indonesia.png = Jakarta | gambar: jakarta.png', $normalStyle);
         $section->addText('Jepang = Tokyo', $normalStyle);
         $section->addText('Thailand = Bangkok', $normalStyle);
         $section->addTextBreak(1);
