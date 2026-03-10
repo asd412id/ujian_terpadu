@@ -1,6 +1,7 @@
 #!/bin/bash
 # =================================================================
 # deploy.sh — Ujian Terpadu Production Deployment
+# Laravel Octane + FrankenPHP + Horizon
 # Usage: ./deploy.sh [--fresh]
 #   --fresh : Run fresh migration + seed (WARNING: destroys data)
 # =================================================================
@@ -90,15 +91,19 @@ docker compose exec app php artisan event:cache
 log "Creating storage symlink..."
 docker compose exec app php artisan storage:link 2>/dev/null || true
 
-# --- Restart queue workers (pick up new code) ---
-log "Restarting queue workers..."
-docker compose exec app php artisan queue:restart
+# --- Restart Octane workers (pick up new code) ---
+log "Reloading Octane workers..."
+docker compose exec app php artisan octane:reload 2>/dev/null || warn "Octane reload failed, restarting container..."
+
+# --- Restart Horizon (pick up new code) ---
+log "Terminating Horizon for restart..."
+docker compose exec app php artisan horizon:terminate 2>/dev/null || true
 
 # --- Health check ---
 log "Running health check..."
 sleep 5
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${APP_PORT:-80}/ || echo "000")
-if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${APP_PORT:-80}/up || echo "000")
+if [ "$HTTP_CODE" = "200" ]; then
     log "Health check passed (HTTP $HTTP_CODE)"
 else
     warn "Health check returned HTTP $HTTP_CODE — check logs with: docker compose logs"
@@ -109,10 +114,11 @@ echo ""
 log "======================================"
 log "  Deployment complete!"
 log "======================================"
-log "  App:   http://localhost:${APP_PORT:-80}"
-log "  Logs:  docker compose logs -f"
-log "  FPM:   docker compose exec app curl -s http://localhost:9000/fpm-status"
-log "  MySQL: docker compose exec mysql mysql -u root -p"
+log "  App:      http://localhost:${APP_PORT:-80}"
+log "  Horizon:  http://localhost:${APP_PORT:-80}/horizon"
+log "  Logs:     docker compose logs -f"
+log "  Octane:   docker compose exec app php artisan octane:status"
+log "  MySQL:    docker compose exec mysql mysql -u root -p"
 echo ""
 
 # --- Show container status ---
