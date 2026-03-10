@@ -12,7 +12,12 @@ touch /app/storage/logs/laravel.log
 # --- Generate APP_KEY if empty ---
 if [ -z "$(grep '^APP_KEY=base64:' /app/.env 2>/dev/null)" ]; then
     echo "[entrypoint] Generating APP_KEY..."
-    php artisan key:generate --force --no-interaction
+    NEW_KEY=$(php artisan key:generate --show --no-interaction 2>/dev/null)
+    if [ -n "$NEW_KEY" ]; then
+        sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" /app/.env
+        export APP_KEY="$NEW_KEY"
+        echo "[entrypoint] APP_KEY set: ${NEW_KEY:0:20}..."
+    fi
 fi
 
 # --- Run migrations (retry until MySQL is ready) ---

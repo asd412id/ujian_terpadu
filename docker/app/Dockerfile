@@ -32,13 +32,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Symlink frankenphp binary so Octane can find it
-RUN ln -sf /usr/local/bin/frankenphp /usr/local/bin/frankenphp 2>/dev/null || true; \
-    FRANK=$(which frankenphp 2>/dev/null || find / -name frankenphp -type f 2>/dev/null | head -1); \
-    if [ -n "$FRANK" ] && [ "$FRANK" != "/usr/local/bin/frankenphp" ]; then \
-      ln -sf "$FRANK" /usr/local/bin/frankenphp; \
-    fi
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -51,6 +44,11 @@ RUN composer install --no-scripts --no-autoloader --no-dev --prefer-dist
 # Copy application
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
+
+# Restore the base image FrankenPHP binary (Octane/Composer downloads an
+# incompatible newer version to /app/frankenphp — overwrite it)
+RUN cp /usr/local/bin/frankenphp /app/frankenphp \
+    && chmod +x /app/frankenphp
 
 # Install npm dependencies and build frontend assets
 RUN npm ci --ignore-scripts && npm run build && rm -rf node_modules
