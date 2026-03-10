@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#1e40af">
     <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
     <link rel="apple-touch-icon" href="/images/icon-192.png">
     <title>@yield('title', config('app.name')) — {{ config('app.name') }}</title>
 
