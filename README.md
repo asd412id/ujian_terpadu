@@ -35,13 +35,15 @@ Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara d
 - Halaman selesai dengan ringkasan hasil
 
 ### Teknis
+- **Laravel Octane + FrankenPHP** — persistent worker architecture, menggantikan php-fpm + nginx
+- **Laravel Horizon** — queue dashboard dengan auto-scaling workers dan monitoring real-time
 - PWA support (offline fallback)
 - API offline sync untuk jawaban (IndexedDB + server sync dengan idempotency key)
 - Final submit menyertakan seluruh jawaban sebagai safety net
 - Multi-guard auth (admin via `web`, peserta via `peserta`)
-- Docker-ready deployment
+- Docker production-ready (optimasi untuk 2000 peserta bersamaan pada 4 core / 4GB RAM)
 - Automated tests (unit + feature)
-- MySQL sebagai database utama
+- MySQL sebagai database utama, Redis untuk cache & queue
 
 ## Tech Stack
 
@@ -49,21 +51,31 @@ Sistem Ujian Online Terpadu berbasis Laravel 12 untuk pelaksanaan ujian secara d
 |-------|-----------|
 | Framework | Laravel 12 |
 | PHP | 8.3+ |
+| App Server | Laravel Octane + FrankenPHP (Caddy built-in) |
+| Queue | Laravel Horizon + Redis (auto-scaling workers) |
 | Database | MySQL 8.0+ |
+| Cache & Session | Redis 7 |
 | Frontend | Blade + Alpine.js + Tailwind CSS + Vite |
 | Offline Storage | Dexie.js (IndexedDB) |
 | Export | Maatwebsite/Excel 3.1 (PhpSpreadsheet) |
 | Import | Maatwebsite/Excel 3.1, PhpWord |
-| Queue | Database driver |
 | Testing | PHPUnit |
-| Container | Docker + Nginx |
+| Container | Docker (FrankenPHP, tanpa Nginx) |
+| Process Manager | Supervisord (Octane + Horizon + Scheduler) |
 
 ## Persyaratan
 
+### Lokal
 - PHP 8.3+
 - Composer 2.x
 - Node.js 18+ & npm
 - MySQL 8.0+
+- Redis 7+
+
+### Docker (Production)
+- Docker & Docker Compose
+- Minimum: 4 core CPU, 4GB RAM
+- Dioptimasi untuk 2000 peserta bersamaan
 
 ## Instalasi
 
@@ -93,14 +105,21 @@ npm run build
 php artisan serve
 ```
 
-### Docker
+### Docker (Production)
 
 ```bash
+# Build & jalankan (FrankenPHP + Octane + Horizon)
 docker-compose up -d --build
 docker-compose exec app php artisan migrate --seed
+
+# Deploy ulang (zero-downtime)
+bash deploy.sh
 ```
 
-Akses aplikasi di `http://localhost:8080`
+Akses aplikasi di `http://localhost` (port 80) atau `https://localhost` (port 443).
+
+> FrankenPHP menangani HTTP/HTTPS/HTTP3 secara langsung — **tidak perlu Nginx/Apache**.
+> Horizon dashboard tersedia di `/horizon` (hanya super admin).
 
 ## Akun Default (Seeder)
 
@@ -125,8 +144,22 @@ app/
 ├── Exports/               # Excel export classes (Maatwebsite/Excel)
 ├── Models/                # Eloquent models
 ├── Imports/               # Excel/Word import classes
+├── Providers/
+│   └── HorizonServiceProvider.php  # Horizon auth gate
 ├── Repositories/          # Data access layer
 └── Services/              # Business logic services
+
+config/
+├── octane.php             # FrankenPHP server config (workers, GC, max exec time)
+└── horizon.php            # Queue supervisors & auto-balancing config
+
+docker/
+├── app/
+│   ├── Dockerfile         # FrankenPHP (dunglas/frankenphp:latest-php8.3)
+│   ├── php.ini            # PHP config (opcache CLI enabled)
+│   └── supervisord.conf   # 3 proses: Octane, Horizon, Scheduler
+└── mysql/
+    └── my.cnf             # MySQL tuning (InnoDB buffer, connections)
 
 database/
 ├── migrations/            # Schema migrations
@@ -145,6 +178,28 @@ resources/views/
 tests/
 ├── Unit/                  # Unit tests
 └── Feature/               # Feature tests (controllers, auth, API)
+```
+
+## Arsitektur Docker (Production)
+
+```
+┌─────────────────────────────────────────────────────┐
+│  app (FrankenPHP + Octane)          1856 MB / 3.5 CPU│
+│  ┌─────────────────────────────────────────────────┐ │
+│  │ supervisord                                     │ │
+│  │  ├── octane:start (FrankenPHP, 4 workers)       │ │
+│  │  ├── horizon (auto-scaling queue workers)       │ │
+│  │  └── scheduler (cron loop, 60s interval)        │ │
+│  └─────────────────────────────────────────────────┘ │
+│  Port 80 (HTTP) / 443 (HTTPS+HTTP3)                 │
+├─────────────────────────────────────────────────────┤
+│  mysql 8.0                           768 MB / 2 CPU  │
+│  InnoDB buffer 384M, max connections 500             │
+├─────────────────────────────────────────────────────┤
+│  redis 7-alpine                      256 MB / 0.5 CPU│
+│  Cache, session, queue broker, Horizon storage       │
+└─────────────────────────────────────────────────────┘
+Total: ~2880 MB (sisa ~1200 MB untuk OS + Docker overhead)
 ```
 
 ## Testing
