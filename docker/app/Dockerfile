@@ -1,26 +1,35 @@
 # =================================================================
 # Dockerfile — Ujian Terpadu (Production)
 # Laravel Octane + FrankenPHP + Horizon
-# Optimized for 4 core / 4GB RAM / 2000 concurrent users
-#
-# Ready-to-use: composer install, npm build, migrations, and
-# admin seeder all run automatically via entrypoint.
+# Multi-stage build for fast rebuilds and small final image
 # =================================================================
 
-FROM dunglas/frankenphp:1.12-php8.3 AS base
+# ==== Stage 1: Composer dependencies ====
+FROM composer:2 AS composer-deps
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-scripts --no-autoloader --no-dev --prefer-dist
 
-# Install system dependencies + Node.js 20
+# ==== Stage 2: Frontend build ====
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY vite.config.js ./
+COPY resources ./resources
+# Tailwind v4 @source scans blade views + vendor pagination views
+COPY --from=composer-deps /app/vendor/laravel/framework/src/Illuminate/Pagination/resources ./vendor/laravel/framework/src/Illuminate/Pagination/resources
+RUN npm run build
+
+# ==== Stage 3: Final production image ====
+FROM dunglas/frankenphp:1.12-php8.3
+
+# Install system deps (no Node.js needed at runtime!)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl libpng-dev libjpeg62-turbo-dev libwebp-dev \
     libxml2-dev zip unzip libonig-dev \
     libfreetype6-dev libzip-dev libicu-dev \
-    supervisor ca-certificates gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
-       > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update && apt-get install -y --no-install-recommends nodejs \
+    supervisor ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -32,28 +41,25 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
 WORKDIR /app
 
-# Copy composer files first for layer caching
-COPY composer.json composer.lock ./
-RUN composer install --no-scripts --no-autoloader --no-dev --prefer-dist
+# Copy composer binary + vendor from stage 1
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer-deps /app/vendor ./vendor
 
-# Copy application
+# Copy application code
 COPY . .
+
+# Dump optimized autoloader
 RUN composer dump-autoload --optimize --no-dev
 
-# Install npm dependencies and build frontend assets
-RUN npm ci --ignore-scripts && npm run build && rm -rf node_modules
+# Copy built frontend assets from stage 2
+COPY --from=frontend /app/public/build ./public/build
 
-# Pre-cache views, events, and publish Horizon assets at build time
-# (these don't depend on runtime .env values)
+# Pre-cache views, events at build time
 RUN cp .env.example .env \
     && php artisan view:cache --no-interaction \
     && php artisan event:cache --no-interaction \
-    && php artisan horizon:publish --no-interaction \
     && rm .env
 
 # Copy configs
@@ -66,7 +72,6 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
     && chmod -R 775 /app/storage /app/bootstrap/cache
 
-# FrankenPHP serves HTTP directly on port 8000 (Octane)
 EXPOSE 8000
 
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=20s \

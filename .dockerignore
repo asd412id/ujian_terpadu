@@ -39,3 +39,13 @@ yarn-error.log
 README.md
 AGENTS.md
 *.md
+
+# Storage (uses named volume, not needed in image)
+storage/app/public/*
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# Deploy script (not needed in image)
+deploy.sh

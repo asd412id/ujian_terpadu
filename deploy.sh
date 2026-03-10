@@ -70,20 +70,34 @@ else
     docker compose build app
 fi
 
-log "Starting services..."
-docker compose up -d
+# --- Ensure infra services are running (don't restart if already up) ---
+log "Ensuring MySQL, Redis are running..."
+docker compose up -d mysql redis
+
+log "Recreating app container with new image..."
+docker compose up -d --no-deps --force-recreate app
 
 # --- Wait for app to be ready (entrypoint handles migrations, caching, etc.) ---
 log "Waiting for app to be ready..."
 for i in $(seq 1 60); do
-    if docker compose exec app curl -sf http://localhost:8000/up > /dev/null 2>&1; then
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' ujian_app 2>/dev/null || echo "starting")
+    if [ "$STATUS" = "healthy" ]; then
+        log "App is healthy!"
+        break
+    fi
+    if [ "$STATUS" = "unhealthy" ]; then
+        warn "App is unhealthy — check logs: docker compose logs -f app"
         break
     fi
     sleep 3
     if [ $((i % 10)) -eq 0 ]; then
-        log "Still waiting... ($i/60) — check logs: docker compose logs -f app"
+        log "Still waiting... ($i/60) status=$STATUS — check logs: docker compose logs -f app"
     fi
 done
+
+# --- Ensure tunnel is running ---
+log "Ensuring tunnel is running..."
+docker compose up -d tunnel
 
 # --- Fresh migration if requested ---
 if [ "$FRESH" = true ]; then
@@ -92,14 +106,6 @@ if [ "$FRESH" = true ]; then
     docker compose exec app php artisan db:seed --class=AdminSeeder --force
     docker compose exec app php artisan config:cache
 fi
-
-# --- Reload Octane workers (pick up new code) ---
-log "Reloading Octane workers..."
-docker compose exec app php artisan octane:reload 2>/dev/null || warn "Octane reload skipped"
-
-# --- Restart Horizon (pick up new code) ---
-log "Terminating Horizon for restart..."
-docker compose exec app php artisan horizon:terminate 2>/dev/null || true
 
 # --- Health check ---
 log "Running health check..."
