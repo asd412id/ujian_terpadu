@@ -123,11 +123,11 @@ class LaporanService
     }
 
     /**
-     * Export hasil ujian data for Excel generation.
+     * Export hasil ujian data for Excel generation (enriched).
      */
     public function exportHasil(array $filters = []): array
     {
-        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket', 'jawaban'])
+        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket', 'jawaban.soal'])
             ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['sekolah_id'])) {
@@ -138,18 +138,115 @@ class LaporanService
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
         }
 
-        return $query->get()->map(fn ($sp) => [
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where('nilai_akhir', '<', 70);
+            }
+        }
+
+        $results = $query->latest('updated_at')->get();
+
+        $hasilData = $results->map(fn ($sp) => [
             'nama_peserta'   => $sp->peserta->nama ?? '-',
             'nis'            => $sp->peserta->nis ?? '-',
+            'nisn'           => $sp->peserta->nisn ?? '-',
+            'kelas'          => $sp->peserta->kelas ?? '-',
+            'jurusan'        => $sp->peserta->jurusan ?? '-',
             'sekolah'        => $sp->peserta->sekolah->nama ?? '-',
             'paket'          => $sp->sesi->paket->nama ?? '-',
+            'sesi'           => $sp->sesi->nama_sesi ?? '-',
             'nilai_akhir'    => $sp->nilai_akhir ?? 0,
             'jumlah_benar'   => $sp->jumlah_benar ?? 0,
             'jumlah_salah'   => $sp->jumlah_salah ?? 0,
             'jumlah_kosong'  => $sp->jumlah_kosong ?? 0,
-            'durasi'         => $sp->durasi_aktual_detik ? round($sp->durasi_aktual_detik / 60, 1) . ' menit' : '-',
+            'total_soal'     => ($sp->jumlah_benar ?? 0) + ($sp->jumlah_salah ?? 0) + ($sp->jumlah_kosong ?? 0),
+            'durasi_menit'   => $sp->durasi_aktual_detik ? round($sp->durasi_aktual_detik / 60, 1) : 0,
+            'status'         => ucfirst($sp->status),
+            'keterangan'     => ($sp->nilai_akhir ?? 0) >= 70 ? 'Lulus' : 'Tidak Lulus',
+            'mulai_at'       => $sp->mulai_at?->format('Y-m-d H:i:s') ?? '-',
             'submit_at'      => $sp->submit_at?->format('Y-m-d H:i:s') ?? '-',
         ])->toArray();
+
+        $perSoalData = $this->buildPerSoalAnalysis($results);
+
+        $filterNames = [
+            'paket_nama'   => null,
+            'sekolah_nama' => null,
+            'status'       => $filters['status'] ?? '',
+        ];
+        if (!empty($filters['paket_id'])) {
+            $filterNames['paket_nama'] = PaketUjian::find($filters['paket_id'])?->nama;
+        }
+        if (!empty($filters['sekolah_id'])) {
+            $filterNames['sekolah_nama'] = Sekolah::find($filters['sekolah_id'])?->nama;
+        }
+
+        return [
+            'hasil'      => $hasilData,
+            'perSoal'    => $perSoalData,
+            'rekap'      => $this->buildRekap($filters),
+            'filters'    => $filterNames,
+        ];
+    }
+
+    /**
+     * Build per-soal analysis from SesiPeserta collection.
+     */
+    protected function buildPerSoalAnalysis($sesiPesertaCollection): array
+    {
+        $soalStats = [];
+
+        foreach ($sesiPesertaCollection as $sp) {
+            foreach ($sp->jawaban as $jawaban) {
+                $soalId = $jawaban->soal_id;
+                if (!isset($soalStats[$soalId])) {
+                    $soal = $jawaban->soal;
+                    $soalStats[$soalId] = [
+                        'soal_id'       => $soalId,
+                        'tipe'          => $soal->tipe_soal ?? '-',
+                        'pertanyaan'    => mb_substr(strip_tags($soal->pertanyaan ?? ''), 0, 120),
+                        'total_dijawab' => 0,
+                        'benar'         => 0,
+                        'salah'         => 0,
+                        'kosong'        => 0,
+                        'total_skor'    => 0,
+                    ];
+                }
+
+                $soalStats[$soalId]['total_dijawab']++;
+
+                if (!$jawaban->is_terjawab) {
+                    $soalStats[$soalId]['kosong']++;
+                } elseif (($jawaban->skor_auto ?? 0) > 0 || ($jawaban->skor_manual ?? 0) > 0) {
+                    $soalStats[$soalId]['benar']++;
+                } else {
+                    $soalStats[$soalId]['salah']++;
+                }
+
+                $soalStats[$soalId]['total_skor'] += ($jawaban->skor_auto ?? 0) + ($jawaban->skor_manual ?? 0);
+            }
+        }
+
+        $result = [];
+        $nomor = 1;
+        foreach ($soalStats as $stat) {
+            $total = $stat['total_dijawab'] ?: 1;
+            $result[] = [
+                'nomor'         => $nomor++,
+                'tipe'          => $stat['tipe'],
+                'pertanyaan'    => $stat['pertanyaan'],
+                'total_dijawab' => $stat['total_dijawab'],
+                'benar'         => $stat['benar'],
+                'salah'         => $stat['salah'],
+                'kosong'        => $stat['kosong'],
+                'pct_benar'     => round(($stat['benar'] / $total) * 100, 1),
+                'rata_skor'     => round($stat['total_skor'] / $total, 2),
+            ];
+        }
+
+        return $result;
     }
 
     /**
