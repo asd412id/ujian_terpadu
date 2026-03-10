@@ -63,19 +63,24 @@
 
     {{-- Daftar Peserta --}}
     <div class="card overflow-hidden p-0">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+        <div class="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 class="font-semibold text-gray-900">Status Peserta</h2>
-            <div class="flex items-center gap-2">
-                <input type="text" placeholder="Cari peserta..." x-model="search"
+            <form method="GET" action="{{ route('pengawas.sesi', $sesi->id) }}" class="flex items-center gap-2">
+                <input type="text" name="search" placeholder="Cari peserta..."
+                       value="{{ $filters['search'] ?? '' }}"
                        class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <select x-model="filterStatus"
-                        class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
                     <option value="">Semua</option>
-                    <option value="mengerjakan">Online</option>
-                    <option value="submit">Submit</option>
-                    <option value="belum">Belum Mulai</option>
+                    <option value="mengerjakan" {{ ($filters['status'] ?? '') === 'mengerjakan' ? 'selected' : '' }}>Online</option>
+                    <option value="submit" {{ ($filters['status'] ?? '') === 'submit' ? 'selected' : '' }}>Submit</option>
+                    <option value="belum" {{ ($filters['status'] ?? '') === 'belum' ? 'selected' : '' }}>Belum Mulai</option>
                 </select>
-            </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg">Cari</button>
+                @if(!empty($filters['search']) || !empty($filters['status']))
+                <a href="{{ route('pengawas.sesi', $sesi->id) }}" class="text-xs text-gray-500 hover:text-red-500">Reset</a>
+                @endif
+            </form>
         </div>
 
         <div class="overflow-x-auto">
@@ -90,18 +95,16 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                    @forelse($sesi->sesiPeserta as $sp)
-                    <tr class="hover:bg-gray-50"
-                        x-show="(!search || '{{ strtolower($sp->peserta->nama_lengkap . ' ' . $sp->peserta->nis) }}'.includes(search.toLowerCase()))
-                                && (!filterStatus || filterStatus === '{{ $sp->status }}')">
+                    @forelse($pesertaPaginated as $sp)
+                    <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3">
-                            <p class="font-medium text-gray-900">{{ $sp->peserta->nama_lengkap }}</p>
+                            <p class="font-medium text-gray-900">{{ $sp->peserta->nama_lengkap ?? $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->kelas ?? '' }}</p>
                         </td>
                         <td class="px-5 py-3 text-center">
                             @if($sp->status === 'submit')
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
-                            @elseif($sp->status === 'mengerjakan')
+                            @elseif($sp->status === 'mengerjakan' || $sp->status === 'login')
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                     Online
@@ -128,11 +131,24 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" class="px-5 py-10 text-center text-gray-400">Belum ada peserta yang login.</td></tr>
+                    <tr>
+                        <td colspan="5" class="px-5 py-10 text-center text-gray-400">
+                            @if(!empty($filters['search']) || !empty($filters['status']))
+                                Tidak ada peserta yang cocok dengan filter.
+                            @else
+                                Belum ada peserta yang login.
+                            @endif
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        @if($pesertaPaginated->hasPages())
+        <div class="px-5 py-4 border-t border-gray-100">
+            {{ $pesertaPaginated->withQueryString()->links() }}
+        </div>
+        @endif
     </div>
 
 </div>
@@ -140,8 +156,6 @@
 <script>
 function pengawasApp() {
     return {
-        search: '',
-        filterStatus: '',
         lastUpdate: '{{ now()->format("H:i:s") }}',
         stats: { total: {{ $statsPeserta['total'] }}, online: {{ $statsPeserta['aktif'] }}, submit: {{ $statsPeserta['submit'] }}, belum: {{ $statsPeserta['belum_masuk'] }} },
 
@@ -151,7 +165,7 @@ function pengawasApp() {
 
         async loadStats() {
             try {
-                const res = await fetch('/pengawas/sesi/{{ $sesi->id }}/api', {
+                const res = await fetch('{{ route('pengawas.sesi.api', $sesi->id) }}', {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 if (res.ok) {

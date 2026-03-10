@@ -1,6 +1,6 @@
 @extends('layouts.base')
 
-@section('title', 'Login — Ujian Terpadu TKA')
+@section('title', 'Login — ' . config('app.name'))
 
 @push('head')
 <style>
@@ -23,14 +23,11 @@
         <div class="relative z-10 text-center max-w-md">
             {{-- App Icon --}}
             <div class="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-                <svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
+                <img src="/images/logo.svg" alt="Logo" class="w-14 h-14">
             </div>
 
-            <h1 class="text-4xl font-bold text-white tracking-tight mb-2">UJIAN TERPADU</h1>
-            <p class="text-blue-200 text-lg mb-10">Platform Ujian TKA Resmi<br>Dinas Pendidikan</p>
+            <h1 class="text-4xl font-bold text-white tracking-tight mb-2">{{ strtoupper(config('app.name')) }}</h1>
+            <p class="text-blue-200 text-lg mb-10">Platform Ujian Resmi<br>Dinas Pendidikan</p>
 
             {{-- Feature badges --}}
             <div class="space-y-3">
@@ -57,12 +54,9 @@
         {{-- Mobile logo --}}
         <div class="lg:hidden mb-8 text-center">
             <div class="w-16 h-16 bg-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <svg class="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
+                <img src="/images/logo.svg" alt="Logo" class="w-10 h-10">
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">UJIAN TERPADU</h1>
+            <h1 class="text-2xl font-bold text-gray-900">{{ strtoupper(config('app.name')) }}</h1>
         </div>
 
         <div class="w-full max-w-md">
@@ -150,7 +144,7 @@
             </p>
 
             <p class="text-center text-xs text-gray-400 mt-6">
-                © {{ date('Y') }} Dinas Pendidikan | Ujian Terpadu TKA v2.0
+                © {{ date('Y') }} Dinas Pendidikan | {{ config('app.name') }} v2.0
             </p>
         </div>
     </div>

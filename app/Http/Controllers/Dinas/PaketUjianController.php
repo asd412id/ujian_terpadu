@@ -115,10 +115,33 @@ class PaketUjianController extends Controller
 
     public function destroy(PaketUjian $paket)
     {
-        $this->paketUjianService->archivePaket($paket);
+        $this->paketUjianService->softDeletePaket($paket);
 
         return redirect()->route('dinas.paket.index')
-                         ->with('success', 'Paket ujian diarsipkan.');
+                         ->with('success', 'Paket ujian dihapus. Anda dapat memulihkannya dari halaman Sampah.');
+    }
+
+    public function trash()
+    {
+        $paket = $this->paketUjianService->getTrashedPaginated(20);
+
+        return view('dinas.paket.trash', compact('paket'));
+    }
+
+    public function restore(PaketUjian $paket)
+    {
+        $this->paketUjianService->restorePaket($paket);
+
+        return redirect()->route('dinas.paket.trash')
+                         ->with('success', 'Paket ujian berhasil dipulihkan.');
+    }
+
+    public function forceDelete(PaketUjian $paket)
+    {
+        $this->paketUjianService->forceDeletePaket($paket);
+
+        return redirect()->route('dinas.paket.trash')
+                         ->with('success', 'Paket ujian dihapus permanen beserta semua data terkait.');
     }
 
     public function publish(PaketUjian $paket)

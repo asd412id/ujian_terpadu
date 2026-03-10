@@ -1,6 +1,6 @@
 @extends('layouts.base')
 
-@section('title', 'Login Peserta — Ujian Terpadu TKA')
+@section('title', 'Login Peserta — ' . config('app.name'))
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-blue-700 to-indigo-800 flex items-center justify-center p-4">
@@ -111,7 +111,7 @@
         </div>
 
         <p class="text-center text-blue-200/70 text-xs mt-5">
-            © {{ date('Y') }} Ujian Terpadu TKA | Dinas Pendidikan
+            © {{ date('Y') }} {{ config('app.name') }} | Dinas Pendidikan
         </p>
     </div>
 </div>

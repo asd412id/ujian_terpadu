@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#1e40af">
     <link rel="manifest" href="/manifest.json">
-    <title>{{ $paket->nama }} — Ujian Terpadu</title>
+    <title>{{ $paket->nama }} — {{ config('app.name') }}</title>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap" rel="stylesheet">

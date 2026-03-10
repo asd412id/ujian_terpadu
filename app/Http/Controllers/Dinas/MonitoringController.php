@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Sekolah;
 use App\Models\SesiUjian;
 use App\Services\MonitoringService;
+use Illuminate\Http\Request;
 
 class MonitoringController extends Controller
 {
@@ -33,15 +34,17 @@ class MonitoringController extends Controller
         return view('dinas.monitoring.sekolah', compact('sekolah', 'sesiAktif'));
     }
 
-    public function sesi(SesiUjian $sesi)
+    public function sesi(Request $request, SesiUjian $sesi)
     {
-        $data = $this->monitoringService->getPesertaStatus($sesi->id);
+        $filters = $request->only(['search', 'status', 'per_page']);
+        $data = $this->monitoringService->getPesertaStatus($sesi->id, $filters);
 
         return view('dinas.monitoring.sesi', [
             'sesi'        => $data['sesi'],
             'alerts'      => $data['alerts'],
             'pesertaList' => $data['pesertaList'],
             'stats'       => $data['stats'],
+            'filters'     => $filters,
         ]);
     }
 

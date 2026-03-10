@@ -64,11 +64,11 @@ class MonitoringService
     }
 
     /**
-     * Get peserta status for a specific sesi ujian.
+     * Get peserta status for a specific sesi ujian (paginated).
      */
-    public function getPesertaStatus(string $sesiId): array
+    public function getPesertaStatus(string $sesiId, array $filters = []): array
     {
-        $sesi = SesiUjian::with(['paket.sekolah', 'sesiPeserta.peserta', 'sesiPeserta.jawaban'])
+        $sesi = SesiUjian::with(['paket.sekolah'])
             ->findOrFail($sesiId);
 
         $alerts = LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit', 'koneksi_putus'])
@@ -78,15 +78,41 @@ class MonitoringService
             ->take(20)
             ->get();
 
-        $pesertaList = $sesi->sesiPeserta;
-
+        // Stats from aggregate (not paginated)
+        $allPeserta = SesiPeserta::where('sesi_id', $sesi->id);
         $stats = [
-            'total'       => $pesertaList->count(),
-            'online'      => $pesertaList->whereIn('status', ['login', 'mengerjakan'])->count(),
-            'submit'      => $pesertaList->whereIn('status', ['submit', 'dinilai'])->count(),
-            'kosong'      => $pesertaList->whereIn('status', ['terdaftar', 'belum_login'])->count(),
-            'belum_mulai' => $pesertaList->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'total'       => (clone $allPeserta)->count(),
+            'online'      => (clone $allPeserta)->whereIn('status', ['login', 'mengerjakan'])->count(),
+            'submit'      => (clone $allPeserta)->whereIn('status', ['submit', 'dinilai'])->count(),
+            'kosong'      => (clone $allPeserta)->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'belum_mulai' => (clone $allPeserta)->whereIn('status', ['terdaftar', 'belum_login'])->count(),
         ];
+
+        // Paginated peserta list with optional search/filter
+        $query = SesiPeserta::with(['peserta', 'jawaban'])
+            ->where('sesi_id', $sesi->id);
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('peserta', fn ($q) => $q->where('nama', 'like', "%{$search}%")
+                ->orWhere('nis', 'like', "%{$search}%")
+                ->orWhere('nisn', 'like', "%{$search}%"));
+        }
+
+        if (!empty($filters['status'])) {
+            $s = $filters['status'];
+            if ($s === 'online') {
+                $query->whereIn('status', ['login', 'mengerjakan']);
+            } elseif ($s === 'submit') {
+                $query->whereIn('status', ['submit', 'dinilai']);
+            } elseif ($s === 'belum') {
+                $query->whereIn('status', ['terdaftar', 'belum_login']);
+            }
+        }
+
+        $perPage = $filters['per_page'] ?? 50;
+        $pesertaList = $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
+            ->paginate($perPage);
 
         return compact('sesi', 'alerts', 'pesertaList', 'stats');
     }
@@ -124,21 +150,46 @@ class MonitoringService
     }
 
     /**
-     * Get peserta list by ruang/sesi for pengawas.
+     * Get peserta list by ruang/sesi for pengawas (paginated).
      */
-    public function getPesertaByRuang(string $sesiId): array
+    public function getPesertaByRuang(string $sesiId, array $filters = []): array
     {
-        $sesi = SesiUjian::with(['paket', 'sesiPeserta.peserta', 'sesiPeserta.logAktivitas'])
+        $sesi = SesiUjian::with(['paket'])
             ->findOrFail($sesiId);
 
+        $allPeserta = SesiPeserta::where('sesi_id', $sesi->id);
         $statsPeserta = [
-            'total'        => $sesi->sesiPeserta->count(),
-            'aktif'        => $sesi->sesiPeserta->whereIn('status', ['login', 'mengerjakan'])->count(),
-            'submit'       => $sesi->sesiPeserta->where('status', 'submit')->count(),
-            'belum_masuk'  => $sesi->sesiPeserta->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'total'        => (clone $allPeserta)->count(),
+            'aktif'        => (clone $allPeserta)->whereIn('status', ['login', 'mengerjakan'])->count(),
+            'submit'       => (clone $allPeserta)->where('status', 'submit')->count(),
+            'belum_masuk'  => (clone $allPeserta)->whereIn('status', ['terdaftar', 'belum_login'])->count(),
         ];
 
-        return compact('sesi', 'statsPeserta');
+        $query = SesiPeserta::with(['peserta', 'logAktivitas'])
+            ->where('sesi_id', $sesi->id);
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('peserta', fn ($q) => $q->where('nama', 'like', "%{$search}%")
+                ->orWhere('nis', 'like', "%{$search}%"));
+        }
+
+        if (!empty($filters['status'])) {
+            $s = $filters['status'];
+            if ($s === 'mengerjakan') {
+                $query->whereIn('status', ['login', 'mengerjakan']);
+            } elseif ($s === 'submit') {
+                $query->where('status', 'submit');
+            } elseif ($s === 'belum') {
+                $query->whereIn('status', ['terdaftar', 'belum_login']);
+            }
+        }
+
+        $perPage = $filters['per_page'] ?? 50;
+        $pesertaPaginated = $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
+            ->paginate($perPage);
+
+        return compact('sesi', 'statsPeserta', 'pesertaPaginated');
     }
 
     /**

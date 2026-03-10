@@ -105,7 +105,47 @@ class PaketUjianService
     }
 
     /**
-     * Delete a paket ujian.
+     * Soft-delete a paket ujian.
+     */
+    public function softDeletePaket(PaketUjian $paket): bool
+    {
+        $this->sesiService->cancelPendingSesiByPaket($paket);
+        return (bool) $paket->delete();
+    }
+
+    /**
+     * Restore a soft-deleted paket ujian (back to draft).
+     */
+    public function restorePaket(PaketUjian $paket): bool
+    {
+        $paket->restore();
+        $paket->update(['status' => 'draft']);
+        return true;
+    }
+
+    /**
+     * Permanently delete a paket ujian and ALL related data.
+     * CASCADE in DB handles: paket_soal, sesi_ujian → sesi_peserta → jawaban_peserta, log_aktivitas_ujian
+     */
+    public function forceDeletePaket(PaketUjian $paket): bool
+    {
+        return (bool) $paket->forceDelete();
+    }
+
+    /**
+     * Get soft-deleted paket ujian, paginated.
+     */
+    public function getTrashedPaginated(int $perPage = 20): mixed
+    {
+        return PaketUjian::onlyTrashed()
+            ->with(['sekolah', 'pembuat'])
+            ->withCount(['paketSoal', 'sesi'])
+            ->latest('deleted_at')
+            ->paginate($perPage);
+    }
+
+    /**
+     * Delete a paket ujian (legacy).
      */
     public function deletePaket(PaketUjian $paket): bool
     {

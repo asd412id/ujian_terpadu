@@ -80,11 +80,24 @@
 
     {{-- Tabel Peserta --}}
     <div class="card overflow-hidden p-0">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+        <div class="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 class="font-semibold text-gray-900">Daftar Peserta</h2>
-            <input type="text" placeholder="Cari nama / NIS..."
-                   x-model="searchPeserta"
-                   class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <form method="GET" action="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="flex items-center gap-2">
+                <input type="text" name="search" placeholder="Cari nama / NIS..."
+                       value="{{ $filters['search'] ?? '' }}"
+                       class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
+                    <option value="">Semua Status</option>
+                    <option value="online" {{ ($filters['status'] ?? '') === 'online' ? 'selected' : '' }}>Online</option>
+                    <option value="submit" {{ ($filters['status'] ?? '') === 'submit' ? 'selected' : '' }}>Submit</option>
+                    <option value="belum" {{ ($filters['status'] ?? '') === 'belum' ? 'selected' : '' }}>Belum Mulai</option>
+                </select>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg">Cari</button>
+                @if(!empty($filters['search']) || !empty($filters['status']))
+                <a href="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="text-xs text-gray-500 hover:text-red-500">Reset</a>
+                @endif
+            </form>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -99,10 +112,9 @@
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Login</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100" id="peserta-tbody">
+                <tbody class="divide-y divide-gray-100">
                     @forelse($pesertaList as $sp)
-                    <tr class="hover:bg-gray-50"
-                        x-show="!searchPeserta || '{{ strtolower($sp->peserta->nama . ' ' . $sp->peserta->nis) }}'.includes(searchPeserta.toLowerCase())">
+                    <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3">
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->nis ?? $sp->peserta->nisn }}</p>
@@ -138,12 +150,23 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada peserta yang login.</td>
+                        <td colspan="7" class="px-5 py-10 text-center text-gray-400">
+                            @if(!empty($filters['search']) || !empty($filters['status']))
+                                Tidak ada peserta yang cocok dengan filter.
+                            @else
+                                Belum ada peserta yang login.
+                            @endif
+                        </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        @if($pesertaList->hasPages())
+        <div class="px-5 py-4 border-t border-gray-100">
+            {{ $pesertaList->withQueryString()->links() }}
+        </div>
+        @endif
     </div>
 
 </div>
@@ -151,7 +174,6 @@
 <script>
 function sesiMonitoringApp() {
     return {
-        searchPeserta: '',
         lastUpdate: '{{ now()->format("H:i:s") }}',
         stats: {
             total: {{ $stats['total'] }},

@@ -12,12 +12,21 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Paket Ujian</h1>
-        <a href="{{ route('dinas.paket.create') }}" class="btn-primary inline-flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Buat Paket Ujian
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('dinas.paket.trash') }}"
+               class="border border-gray-300 hover:bg-gray-50 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Sampah
+            </a>
+            <a href="{{ route('dinas.paket.create') }}" class="btn-primary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Buat Paket Ujian
+            </a>
+        </div>
     </div>
 
     {{-- Grid Paket --}}
@@ -91,7 +100,7 @@
                     Edit
                 </a>
                 <form action="{{ route('dinas.paket.destroy', $item->id) }}" method="POST"
-                      onsubmit="return confirm('Hapus paket ujian ini?')">
+                      onsubmit="return confirm('Hapus paket ujian ini? Paket akan dipindahkan ke Sampah.')">
                     @csrf @method('DELETE')
                     <button type="submit"
                             class="border border-red-200 hover:bg-red-50 text-red-600 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">

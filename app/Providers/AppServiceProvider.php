@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
+use App\Models\PaketUjian;
 
 // Repositories
 use App\Repositories\SoalRepository;
@@ -65,5 +67,9 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Paginator::defaultView('components.pagination');
+
+        Route::bind('paket_trashed', function (string $value) {
+            return PaketUjian::withTrashed()->where('id', $value)->firstOrFail();
+        });
     }
 }

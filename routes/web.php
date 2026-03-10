@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PesertaLoginController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Dinas\DashboardController as DinasDashboardController;
 use App\Http\Controllers\Dinas\MonitoringController;
 use App\Http\Controllers\Dinas\LaporanController as DinasLaporanController;
@@ -15,6 +16,27 @@ use App\Http\Controllers\Ujian\UjianController;
 use App\Http\Controllers\Ujian\JawabanController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+// Dynamic PWA manifest
+Route::get('/manifest.json', function () {
+    return response()->json([
+        'name' => config('app.name'),
+        'short_name' => config('app.name'),
+        'description' => 'Platform Ujian Resmi Dinas Pendidikan',
+        'start_url' => '/ujian/login',
+        'scope' => '/',
+        'display' => 'standalone',
+        'orientation' => 'portrait-primary',
+        'theme_color' => '#1e40af',
+        'background_color' => '#ffffff',
+        'lang' => 'id',
+        'icons' => [
+            ['src' => '/images/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => '/images/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+        ],
+        'categories' => ['education'],
+    ])->header('Cache-Control', 'public, max-age=3600');
+});
 
 // Root redirect
 Route::get('/', function () {
@@ -39,6 +61,12 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+// Account Settings (all authenticated admin/dinas/sekolah/pengawas users)
+Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
+    Route::get('/', [AccountController::class, 'edit'])->name('edit');
+    Route::put('/', [AccountController::class, 'update'])->name('update');
+});
 
 // =============================================================
 // AUTH — Peserta Ujian
@@ -112,6 +140,9 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::resource('kategori', \App\Http\Controllers\Dinas\KategoriSoalController::class)->names('kategori');
 
     // Paket Ujian
+    Route::get('/paket/trash', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'trash'])->name('paket.trash');
+    Route::post('/paket/{paket_trashed}/restore', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'restore'])->name('paket.restore');
+    Route::delete('/paket/{paket_trashed}/force-delete', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'forceDelete'])->name('paket.force-delete');
     Route::resource('paket', \App\Http\Controllers\Dinas\PaketUjianController::class)->names('paket');
     Route::post('/paket/{paket}/publish', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'publish'])->name('paket.publish');
     Route::post('/paket/{paket}/draft', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'draft'])->name('paket.draft');
@@ -184,6 +215,7 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
 Route::prefix('pengawas')->name('pengawas.')->middleware(['auth', 'role:pengawas,admin_sekolah,admin_dinas,super_admin'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Pengawas\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/sesi/{sesi}', [\App\Http\Controllers\Pengawas\MonitoringRuangController::class, 'index'])->name('sesi');
+    Route::get('/sesi/{sesi}/api', [\App\Http\Controllers\Pengawas\MonitoringRuangController::class, 'apiSesi'])->name('sesi.api');
 });
 
 // =============================================================

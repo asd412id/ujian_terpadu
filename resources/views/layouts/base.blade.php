@@ -6,8 +6,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#1e40af">
     <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/images/icon-192.png">
-    <title>@yield('title', 'Ujian Terpadu TKA') — {{ config('app.name') }}</title>
+    <title>@yield('title', config('app.name')) — {{ config('app.name') }}</title>
 
     {{-- Preconnect for performance --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -40,7 +42,7 @@
         <div class="flex items-center gap-3">
             <img src="/images/icon-192.png" class="w-10 h-10 rounded-xl" alt="App Icon">
             <div>
-                <p class="font-semibold text-sm">Pasang Ujian Terpadu</p>
+                <p class="font-semibold text-sm">Pasang {{ config('app.name') }}</p>
                 <p class="text-xs text-blue-200">Akses lebih cepat, bisa offline</p>
             </div>
         </div>
