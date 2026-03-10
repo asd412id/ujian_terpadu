@@ -29,9 +29,12 @@ for i in 1 2 3 4 5; do
     sleep 2
 done
 
-# --- First-run tasks (seed admin, create storage symlink) ---
+# --- First-run tasks (seed essential data, create storage symlink) ---
 FIRST_RUN_FLAG="/app/storage/.setup_done"
 if [ ! -f "$FIRST_RUN_FLAG" ]; then
+    echo "[entrypoint] Seeding essential data..."
+    php artisan db:seed --class=DinasPendidikanSeeder --force --no-interaction 2>&1 || true
+    php artisan db:seed --class=KategoriSoalSeeder --force --no-interaction 2>&1 || true
     if [ -n "${ADMIN_EMAIL:-}" ]; then
         echo "[entrypoint] Seeding admin user..."
         php artisan db:seed --class=AdminSeeder --force --no-interaction 2>&1 || true
