@@ -200,7 +200,7 @@ return [
         'supervisor-default' => [
             'connection' => 'redis',
             'queue' => ['default', 'imports', 'logging'],
-            'balance' => 'false',
+            'balance' => false,
             'maxTime' => 3600,
             'maxJobs' => 0,
             'memory' => 96,
@@ -215,7 +215,7 @@ return [
             'supervisor-default' => [
                 'connection' => 'redis',
                 'queue' => ['default', 'logging', 'imports'],
-                'balance' => 'false',
+                'balance' => false,
                 'processes' => 3,
                 'tries' => 3,
                 'timeout' => 300,
