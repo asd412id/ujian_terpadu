@@ -1,7 +1,7 @@
 # =================================================================
 # Docker Compose — Ujian Terpadu (Production)
 # Laravel Octane + FrankenPHP + Nginx LB + Horizon + Cloudflare Tunnel
-# Optimized for 4 core / 4GB RAM / 3000 concurrent users
+# Optimized for 4 core / 8GB RAM / 3000 concurrent users
 #
 # Architecture:
 #   Internet → Cloudflare Tunnel → Nginx LB → App replicas (×3)
@@ -13,13 +13,13 @@
 # Memory Budget:
 #   nginx:       64 MB
 #   app ×3:    1536 MB (3 × 512 MB, each 8 workers)
-#   horizon:    384 MB
-#   scheduler:   64 MB
+#   horizon:    384 MB  (custom php.ini: OPcache 64M, JIT 32M)
+#   scheduler:  128 MB  (custom php.ini: OPcache 32M, JIT off)
 #   mariadb:    512 MB
 #   redis:      448 MB
 #   cloudflared: 64 MB
 #   ─────────────
-#   Total: ~2944 MB (leaves ~1056 MB for OS + Docker overhead)
+#   Total: ~3136 MB (leaves ~5056 MB for OS + Docker overhead)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -122,6 +122,7 @@ services:
 
     # --- Horizon (Queue Worker) ---
   # Memory: 384MB for horizon master + 1 supervisor + 3 worker processes
+  # Custom php.ini: OPcache 64M + JIT 32M (reduced from app's 128M + 64M)
   horizon:
     build:
       context: .
@@ -136,7 +137,7 @@ services:
     volumes:
       - .env:/app/.env
       - app_storage:/app/storage
-      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+      - ./docker/horizon/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
       - ./docker/horizon/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
     depends_on:
       app-migrator:
@@ -161,6 +162,7 @@ services:
           memory: 128M
 
   # --- Scheduler (Cron) ---
+  # Custom php.ini: OPcache 32M, JIT disabled (saves ~96MB vs app config)
   scheduler:
     build:
       context: .
@@ -175,7 +177,7 @@ services:
     volumes:
       - .env:/app/.env
       - app_storage:/app/storage
-      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+      - ./docker/scheduler/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
       - ./docker/scheduler/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
     depends_on:
       app-migrator:
@@ -192,10 +194,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
-          memory: 64M
+          cpus: "0.25"
+          memory: 128M
         reservations:
-          memory: 32M
+          memory: 48M
 
   # --- Cloudflare Tunnel ---
   tunnel:
