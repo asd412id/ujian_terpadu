@@ -76,10 +76,13 @@ class JawabanService
             ]);
         }
 
-        $synced  = 0;
-        $skipped = 0;
         $errors  = [];
 
+        $maxRetries = 3;
+        $attempt = 0;
+
+        retry:
+        $attempt++;
         DB::beginTransaction();
         try {
             // --- Bulk idempotency check (1 query instead of N) ---
@@ -95,6 +98,8 @@ class JawabanService
             // --- Filter & prepare bulk upsert data ---
             $upsertRows = [];
             $now = now();
+            $synced = 0;
+            $skipped = 0;
             foreach ($answers as $ans) {
                 $key = $ans['idempotency_key'] ?? null;
                 if ($key && isset($existingKeys[$key])) {
@@ -121,14 +126,11 @@ class JawabanService
             // --- Single bulk UPSERT (1 query instead of N×updateOrCreate) ---
             if (!empty($upsertRows)) {
                 DB::table('jawaban_peserta')->upsert(
-                    // Rows that don't have an id yet need one for UUID primary key
                     collect($upsertRows)->map(fn ($row) => array_merge($row, [
                         'id'         => $row['id'] ?? Str::uuid()->toString(),
                         'created_at' => $row['created_at'] ?? $now,
                     ]))->all(),
-                    // Unique key for conflict detection
                     ['sesi_peserta_id', 'soal_id'],
-                    // Columns to update on conflict
                     ['jawaban_pg', 'jawaban_teks', 'jawaban_pasangan', 'is_terjawab', 'idempotency_key', 'waktu_jawab', 'updated_at']
                 );
             }
@@ -146,7 +148,6 @@ class JawabanService
             // --- Optimized tandai_list (skip if empty, single query if needed) ---
             if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
                 $tandaiIds = $requestMeta['tandai_list'];
-                // Single pass: reset non-tandai to false, set tandai to true
                 JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
                     ->whereNotIn('soal_id', $tandaiIds)
                     ->where('is_ditandai', true)
@@ -156,7 +157,6 @@ class JawabanService
                     ->where('is_ditandai', false)
                     ->update(['is_ditandai' => true]);
             } elseif (isset($requestMeta['tandai_list']) && empty($requestMeta['tandai_list'])) {
-                // Explicitly empty list — reset all only if any are marked
                 JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
                     ->where('is_ditandai', true)
                     ->update(['is_ditandai' => false]);
@@ -171,6 +171,14 @@ class JawabanService
                 ['synced' => $synced, 'skipped' => $skipped],
                 $requestMeta['ip_address'] ?? null,
             );
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            // MariaDB error 1020: "Record has changed since last read" — retry on concurrency conflict
+            if ($e->errorInfo[1] == 1020 && $attempt < $maxRetries) {
+                usleep(50000 * $attempt); // 50ms, 100ms, 150ms backoff
+                goto retry;
+            }
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
