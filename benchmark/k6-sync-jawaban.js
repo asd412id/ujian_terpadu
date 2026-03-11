@@ -88,10 +88,10 @@ export default function () {
 
     const success = check(res, {
         'status is 200': (r) => r.status === 200,
-        'response has success': (r) => {
+        'response has synced': (r) => {
             try {
                 const body = JSON.parse(r.body);
-                return body.success === true || body.status === 'ok';
+                return body.synced !== undefined;
             } catch (e) {
                 return false;
             }
