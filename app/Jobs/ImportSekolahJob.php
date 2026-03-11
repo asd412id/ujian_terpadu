@@ -21,8 +21,8 @@ class ImportSekolahJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 600;
-    public int $tries   = 3;
+    public int $timeout = 1200;
+    public int $tries   = 1;
 
     private const VALID_JENJANG = ['SD', 'SMP', 'SMA', 'SMK', 'MA', 'MTs', 'MI'];
     private const EXPECTED_HEADERS = ['nama', 'npsn', 'jenjang', 'alamat', 'kota', 'telepon', 'email', 'kepala_sekolah'];
@@ -32,6 +32,12 @@ class ImportSekolahJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Guard: skip if job was manually cancelled while waiting in queue
+        $this->importJob->refresh();
+        if ($this->importJob->status === 'gagal') {
+            return;
+        }
+
         $this->importJob->update(['status' => 'processing', 'started_at' => now()]);
 
         try {
@@ -163,10 +169,26 @@ class ImportSekolahJob implements ShouldQueue
 
         } catch (\Exception $e) {
             $this->importJob->update([
-                'status'  => 'gagal',
-                'catatan' => $e->getMessage(),
+                'status'       => 'gagal',
+                'catatan'      => $e->getMessage(),
+                'completed_at' => now(),
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Handle a job failure (called by Laravel when job fails or times out).
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $this->importJob->refresh();
+        if ($this->importJob->status === 'processing') {
+            $this->importJob->update([
+                'status'       => 'gagal',
+                'catatan'      => 'Job gagal/timeout: ' . $exception->getMessage(),
+                'completed_at' => now(),
+            ]);
         }
     }
 

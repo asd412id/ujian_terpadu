@@ -20,8 +20,8 @@ class ImportPesertaJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout  = 600;
-    public int $tries    = 3;
+    public int $timeout  = 1200;
+    public int $tries    = 1;
 
     private const SEKOLAH_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
     private const DINAS_HEADERS = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
@@ -34,6 +34,12 @@ class ImportPesertaJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Guard: skip if job was manually cancelled while waiting in queue
+        $this->importJob->refresh();
+        if ($this->importJob->status === 'gagal') {
+            return;
+        }
+
         $this->importJob->update(['status' => 'processing', 'started_at' => now()]);
 
         try {
@@ -202,8 +208,24 @@ class ImportPesertaJob implements ShouldQueue
             $this->importJob->update([
                 'status'  => 'gagal',
                 'catatan' => $e->getMessage(),
+                'completed_at' => now(),
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Handle a job failure (called by Laravel when job fails or times out).
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $this->importJob->refresh();
+        if ($this->importJob->status === 'processing') {
+            $this->importJob->update([
+                'status'       => 'gagal',
+                'catatan'      => 'Job gagal/timeout: ' . $exception->getMessage(),
+                'completed_at' => now(),
+            ]);
         }
     }
 
