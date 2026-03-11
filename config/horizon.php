@@ -197,15 +197,13 @@ return [
     */
 
     'defaults' => [
-        'supervisor-1' => [
+        'supervisor-default' => [
             'connection' => 'redis',
             'queue' => ['default', 'imports', 'logging'],
-            'balance' => 'auto',
-            'autoScalingStrategy' => 'time',
-            'maxProcesses' => 1,
+            'balance' => 'false',
             'maxTime' => 3600,
             'maxJobs' => 0,
-            'memory' => 128,
+            'memory' => 96,
             'tries' => 3,
             'timeout' => 120,
             'nice' => 0,
@@ -227,8 +225,8 @@ return [
         ],
 
         'local' => [
-            'supervisor-1' => [
-                'maxProcesses' => 3,
+            'supervisor-default' => [
+                'processes' => 3,
             ],
         ],
     ],
