@@ -328,7 +328,7 @@ class ImportSoalWordJob implements ShouldQueue
             $text = $element->getText();
         }
 
-        $text = trim((string) $text);
+        $text = html_entity_decode(trim((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         return ['text' => $text, 'images' => $images];
     }
