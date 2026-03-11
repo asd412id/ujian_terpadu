@@ -1,10 +1,10 @@
 # =================================================================
 # Docker Compose — Ujian Terpadu (Production)
 # Laravel Octane + FrankenPHP + Horizon + Cloudflare Tunnel
-# Optimized for 4 core / 4GB RAM / 2000 concurrent users
+# Optimized for 4 core / 4GB RAM / 3000 concurrent users
 #
 # Memory Budget:
-#   app:        1856 MB (Octane 4 workers + Horizon + Scheduler)
+#   app:        1856 MB (Octane 16 workers + Horizon + Scheduler)
 #   mysql:       768 MB
 #   redis:       256 MB
 #   cloudflared:  64 MB
@@ -24,6 +24,7 @@ services:
     env_file: .env
     environment:
       - SERVER_NAME=:8000
+      - OCTANE_WORKERS=${OCTANE_WORKERS:-16}
     volumes:
       - .env:/app/.env
       - app_storage:/app/storage

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Ujian;
 
 use App\Http\Controllers\Controller;
+use App\Models\Soal;
 use App\Services\JawabanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class JawabanController extends Controller
         $data = $request->validate([
             'sesi_token'         => 'required|string|size:64',
             'answers'            => 'required|array|max:200',
-            'answers.*.soal_id'  => 'required|string|exists:soal,id',
+            'answers.*.soal_id'  => 'required|string',
             'answers.*.jawaban'  => 'required',
             'answers.*.idempotency_key' => 'required|string|max:128',
             'answers.*.client_timestamp' => 'nullable|integer',
@@ -30,6 +31,16 @@ class JawabanController extends Controller
             'tandai_list'        => 'nullable|array',
             'tandai_list.*'      => 'string',
         ]);
+
+        // Bulk soal_id validation (1 query instead of N)
+        $soalIds = array_unique(array_column($data['answers'], 'soal_id'));
+        $validIds = Soal::whereIn('id', $soalIds)->pluck('id')->flip()->all();
+        $invalidIds = array_diff($soalIds, array_keys($validIds));
+        if (!empty($invalidIds)) {
+            throw ValidationException::withMessages([
+                'answers.soal_id' => 'Soal tidak ditemukan: ' . implode(', ', array_slice($invalidIds, 0, 5)),
+            ]);
+        }
 
         try {
             $result = $this->jawabanService->syncOfflineAnswers(

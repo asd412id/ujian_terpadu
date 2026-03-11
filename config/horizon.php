@@ -199,7 +199,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'imports'],
+            'queue' => ['default', 'imports', 'logging'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -241,6 +241,20 @@ return [
                 'timeout' => 300,
                 'maxTime' => 3600,
                 'memory' => 256,
+            ],
+            'supervisor-logging' => [
+                'connection' => 'redis',
+                'queue' => ['logging'],
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+                'tries' => 3,
+                'timeout' => 30,
+                'maxTime' => 3600,
+                'memory' => 64,
             ],
         ],
 

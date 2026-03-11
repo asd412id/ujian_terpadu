@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Jobs\LogAktivitasUjianJob;
 use App\Models\JawabanPeserta;
 use App\Models\LogAktivitasUjian;
 use App\Models\SesiPeserta;
 use App\Repositories\JawabanRepository;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class JawabanService
@@ -61,7 +63,9 @@ class JawabanService
      */
     public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = [], bool $isFinalSubmit = false): array
     {
-        $sesiPeserta = SesiPeserta::where('token_ujian', $sesiToken)
+        // Eager-load sesi.paket to avoid N+1 on sisa_waktu_detik
+        $sesiPeserta = SesiPeserta::with('sesi.paket')
+            ->where('token_ujian', $sesiToken)
             ->whereIn('status', ['mengerjakan', 'login', 'submit'])
             ->firstOrFail();
 
@@ -78,31 +82,58 @@ class JawabanService
 
         DB::beginTransaction();
         try {
+            // --- Bulk idempotency check (1 query instead of N) ---
+            $incomingKeys = array_filter(array_column($answers, 'idempotency_key'));
+            $existingKeys = [];
+            if (!empty($incomingKeys)) {
+                $existingKeys = JawabanPeserta::whereIn('idempotency_key', $incomingKeys)
+                    ->pluck('idempotency_key')
+                    ->flip()
+                    ->all();
+            }
+
+            // --- Filter & prepare bulk upsert data ---
+            $upsertRows = [];
+            $now = now();
             foreach ($answers as $ans) {
-                // Idempotency check — skip if already received
-                $idempotencyKey = $ans['idempotency_key'] ?? null;
-                if ($idempotencyKey) {
-                    $existing = JawabanPeserta::where('idempotency_key', $idempotencyKey)->first();
-                    if ($existing) {
-                        $skipped++;
-                        continue;
-                    }
+                $key = $ans['idempotency_key'] ?? null;
+                if ($key && isset($existingKeys[$key])) {
+                    $skipped++;
+                    continue;
                 }
 
                 $jawabanData = $this->parseJawaban($ans['jawaban'] ?? null);
 
-                JawabanPeserta::updateOrCreate(
-                    ['sesi_peserta_id' => $sesiPeserta->id, 'soal_id' => $ans['soal_id']],
-                    array_merge($jawabanData, [
-                        'idempotency_key' => $idempotencyKey,
-                        'waktu_jawab'     => now(),
-                    ])
-                );
-
+                $upsertRows[] = [
+                    'sesi_peserta_id' => $sesiPeserta->id,
+                    'soal_id'         => $ans['soal_id'],
+                    'jawaban_pg'      => isset($jawabanData['jawaban_pg']) ? json_encode($jawabanData['jawaban_pg']) : null,
+                    'jawaban_teks'    => $jawabanData['jawaban_teks'],
+                    'jawaban_pasangan'=> isset($jawabanData['jawaban_pasangan']) ? json_encode($jawabanData['jawaban_pasangan']) : null,
+                    'is_terjawab'     => $jawabanData['is_terjawab'],
+                    'idempotency_key' => $key,
+                    'waktu_jawab'     => $now,
+                    'updated_at'      => $now,
+                ];
                 $synced++;
             }
 
-            // Update answered count + tandai count
+            // --- Single bulk UPSERT (1 query instead of N×updateOrCreate) ---
+            if (!empty($upsertRows)) {
+                DB::table('jawaban_peserta')->upsert(
+                    // Rows that don't have an id yet need one for UUID primary key
+                    collect($upsertRows)->map(fn ($row) => array_merge($row, [
+                        'id'         => $row['id'] ?? Str::uuid()->toString(),
+                        'created_at' => $row['created_at'] ?? $now,
+                    ]))->all(),
+                    // Unique key for conflict detection
+                    ['sesi_peserta_id', 'soal_id'],
+                    // Columns to update on conflict
+                    ['jawaban_pg', 'jawaban_teks', 'jawaban_pasangan', 'is_terjawab', 'idempotency_key', 'waktu_jawab', 'updated_at']
+                );
+            }
+
+            // --- Update answered count (1 query) ---
             $terjawab = JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
                 ->where('is_terjawab', true)
                 ->count();
@@ -112,29 +143,34 @@ class JawabanService
             }
             $sesiPeserta->update($updateData);
 
-            // Update per-soal is_ditandai based on tandai_list
-            if (isset($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
+            // --- Optimized tandai_list (skip if empty, single query if needed) ---
+            if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
                 $tandaiIds = $requestMeta['tandai_list'];
-                // Reset all to false first
+                // Single pass: reset non-tandai to false, set tandai to true
                 JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
+                    ->whereNotIn('soal_id', $tandaiIds)
+                    ->where('is_ditandai', true)
                     ->update(['is_ditandai' => false]);
-                // Set marked ones to true
-                if (!empty($tandaiIds)) {
-                    JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
-                        ->whereIn('soal_id', $tandaiIds)
-                        ->update(['is_ditandai' => true]);
-                }
+                JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
+                    ->whereIn('soal_id', $tandaiIds)
+                    ->where('is_ditandai', false)
+                    ->update(['is_ditandai' => true]);
+            } elseif (isset($requestMeta['tandai_list']) && empty($requestMeta['tandai_list'])) {
+                // Explicitly empty list — reset all only if any are marked
+                JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
+                    ->where('is_ditandai', true)
+                    ->update(['is_ditandai' => false]);
             }
 
             DB::commit();
 
-            LogAktivitasUjian::create([
-                'sesi_peserta_id' => $sesiPeserta->id,
-                'tipe_event'      => 'sync_offline',
-                'detail'          => ['synced' => $synced, 'skipped' => $skipped],
-                'ip_address'      => $requestMeta['ip_address'] ?? null,
-                'created_at'      => now(),
-            ]);
+            // --- Async log via queue (removed from hot path) ---
+            LogAktivitasUjianJob::dispatch(
+                $sesiPeserta->id,
+                'sync_offline',
+                ['synced' => $synced, 'skipped' => $skipped],
+                $requestMeta['ip_address'] ?? null,
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -171,7 +207,8 @@ class JawabanService
      */
     public function getStatusByToken(string $token): array
     {
-        $sesiPeserta = SesiPeserta::where('token_ujian', $token)->firstOrFail();
+        $sesiPeserta = SesiPeserta::with('sesi.paket')
+            ->where('token_ujian', $token)->firstOrFail();
 
         return [
             'status'            => $sesiPeserta->status,
@@ -189,7 +226,8 @@ class JawabanService
      */
     public function submitByToken(string $token, array $finalAnswers = []): array
     {
-        $sesiPeserta = SesiPeserta::where('token_ujian', $token)
+        $sesiPeserta = SesiPeserta::with('sesi.paket')
+            ->where('token_ujian', $token)
             ->whereIn('status', ['login', 'mengerjakan'])
             ->firstOrFail();
 
