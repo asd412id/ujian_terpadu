@@ -69,6 +69,7 @@ else
 
     # --- Cache config & routes per-replica (bootstrap/cache is NOT a shared volume) ---
     echo "[entrypoint] Caching config & routes..."
+    php artisan config:clear --no-interaction 2>&1 || true
     php artisan config:cache --no-interaction 2>&1 || true
     php artisan route:cache --no-interaction 2>&1 || true
 fi
