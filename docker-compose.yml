@@ -1,38 +1,77 @@
 # =================================================================
 # Docker Compose — Ujian Terpadu (Production)
-# Laravel Octane + FrankenPHP + Horizon + Cloudflare Tunnel
+# Laravel Octane + FrankenPHP + Nginx LB + Horizon + Cloudflare Tunnel
 # Optimized for 4 core / 4GB RAM / 3000 concurrent users
 #
+# Architecture:
+#   Internet → Cloudflare Tunnel → Nginx LB → App replicas (×3)
+#                                                ↓
+#                              MariaDB 11.7 + Redis 7
+#                                                ↓
+#                              Horizon (queue) + Scheduler (cron)
+#
 # Memory Budget:
-#   app:        1856 MB (Octane 16 workers + Horizon + Scheduler)
-#   mysql:       768 MB
-#   redis:       256 MB
-#   cloudflared:  64 MB
+#   nginx:       64 MB
+#   app ×3:    1536 MB (3 × 512 MB, each 8 workers)
+#   horizon:    128 MB
+#   scheduler:   64 MB
+#   mariadb:    768 MB
+#   redis:      256 MB
+#   cloudflared: 64 MB
 #   ─────────────
-#   Total: ~2944 MB (leaves ~1056 MB for OS + Docker overhead)
+#   Total: ~2880 MB (leaves ~1120 MB for OS + Docker overhead)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
 
 services:
+  # --- Nginx Load Balancer ---
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ujian_nginx
+    restart: unless-stopped
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:80/nginx-status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - frontend
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+        reservations:
+          memory: 32M
+
+  # --- App (FrankenPHP + Octane) — scaled to 3 replicas ---
   app:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-    container_name: ujian_app
     restart: unless-stopped
     env_file: .env
     environment:
       - SERVER_NAME=:8000
-      - OCTANE_WORKERS=${OCTANE_WORKERS:-16}
+      - OCTANE_WORKERS=${OCTANE_WORKERS:-8}
+      - RUN_MIGRATIONS=false
     volumes:
       - .env:/app/.env
       - app_storage:/app/storage
       - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
       - ./docker/app/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
     depends_on:
-      mysql:
-        condition: service_healthy
+      app-migrator:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -42,16 +81,110 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - frontend
+      - backend
+    deploy:
+      replicas: ${APP_REPLICAS:-3}
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # --- App Migrator (one-shot: runs migrations then exits) ---
+  app-migrator:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    restart: "no"
+    env_file: .env
+    environment:
+      - SERVER_NAME=:8000
+      - RUN_MIGRATIONS=true
+    entrypoint: ["entrypoint.sh"]
+    command: ["echo", "Migrations complete, exiting."]
+    volumes:
+      - .env:/app/.env
+      - app_storage:/app/storage
+      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
       - backend
     deploy:
       resources:
         limits:
-          cpus: "3.5"
-          memory: 1856M
-        reservations:
+          cpus: "1.0"
           memory: 512M
 
+  # --- Horizon (Queue Worker) ---
+  horizon:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: ujian_horizon
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - RUN_MIGRATIONS=false
+    entrypoint: ["entrypoint.sh"]
+    command: ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+    volumes:
+      - .env:/app/.env
+      - app_storage:/app/storage
+      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+      - ./docker/horizon/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
+    depends_on:
+      app-migrator:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # --- Scheduler (Cron) ---
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: ujian_scheduler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - RUN_MIGRATIONS=false
+    entrypoint: ["entrypoint.sh"]
+    command: ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+    volumes:
+      - .env:/app/.env
+      - app_storage:/app/storage
+      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+      - ./docker/scheduler/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
+    depends_on:
+      app-migrator:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+        reservations:
+          memory: 32M
+
+  # --- Cloudflare Tunnel ---
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: ujian_tunnel
@@ -60,32 +193,33 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
-      app:
+      nginx:
         condition: service_healthy
     networks:
       - frontend
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: "0.25"
           memory: 64M
         reservations:
           memory: 32M
 
-  mysql:
-    image: mysql:8.0
-    container_name: ujian_mysql
+  # --- MariaDB 11.7 ---
+  mariadb:
+    image: mariadb:11.7
+    container_name: ujian_mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
-      MYSQL_DATABASE: ${DB_DATABASE:-ujian_terpadu}
-      MYSQL_USER: ${DB_USERNAME:-ujian_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-ujian_secret}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MARIADB_DATABASE: ${DB_DATABASE:-ujian_terpadu}
+      MARIADB_USER: ${DB_USERNAME:-ujian_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-ujian_secret}
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -95,11 +229,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
+          cpus: "1.5"
           memory: 768M
         reservations:
           memory: 384M
 
+  # --- Redis ---
   redis:
     image: redis:7-alpine
     container_name: ujian_redis
@@ -133,7 +268,7 @@ services:
           memory: 64M
 
 volumes:
-  mysql_data:
+  mariadb_data:
     driver: local
   redis_data:
     driver: local
