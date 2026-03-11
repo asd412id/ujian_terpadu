@@ -63,12 +63,14 @@ class ImportSoalWordJob implements ShouldQueue
 
             foreach ($chunks as $chunk) {
                 DB::transaction(function () use ($chunk, &$errors, &$success) {
+                    $soalBatch     = [];
                     $opsiBatch     = [];
                     $pasanganBatch = [];
 
                     foreach ($chunk as $index => $block) {
                         try {
                             $result = $this->processBlock($block);
+                            $soalBatch[] = $result['soal'];
                             if (!empty($result['opsi'])) {
                                 array_push($opsiBatch, ...$result['opsi']);
                             }
@@ -78,6 +80,13 @@ class ImportSoalWordJob implements ShouldQueue
                             $success++;
                         } catch (\Exception $e) {
                             $errors[] = "Soal " . ($index + 1) . ": " . $e->getMessage();
+                        }
+                    }
+
+                    // Bulk insert soal
+                    if (!empty($soalBatch)) {
+                        foreach (array_chunk($soalBatch, 50) as $subChunk) {
+                            Soal::insert($subChunk);
                         }
                     }
 
@@ -371,8 +380,11 @@ class ImportSoalWordJob implements ShouldQueue
         }
 
         $kategoriId = $this->importJob->meta['kategori_soal_id'] ?? null;
+        $now = now();
+        $soalId = Str::orderedUuid()->toString();
 
-        $soal = Soal::create([
+        $soalData = [
+            'id'                => $soalId,
             'kategori_id'       => $kategoriId,
             'sekolah_id'        => $this->importJob->sekolah_id,
             'created_by'        => $this->importJob->created_by,
@@ -382,16 +394,17 @@ class ImportSoalWordJob implements ShouldQueue
             'posisi_gambar'     => $block['gambar_soal'] ? 'bawah' : null,
             'tingkat_kesulitan' => $block['tingkat'] ?? 'sedang',
             'bobot'             => $block['bobot'] ?? 1.0,
-        ]);
+            'created_at'        => $now,
+            'updated_at'        => $now,
+        ];
 
-        $now = now();
-        $result = ['opsi' => [], 'pasangan' => []];
+        $result = ['soal' => $soalData, 'opsi' => [], 'pasangan' => []];
 
         match ($block['jenis']) {
-            'pg', 'pg_kompleks' => $result['opsi'] = $this->buildOpsiBatch($soal->id, $block, $now),
-            'benar_salah'       => $result['opsi'] = $this->buildBenarSalahBatch($soal->id, $block, $now),
-            'menjodohkan'       => $result['pasangan'] = $this->buildPasanganBatch($soal->id, $block, $now),
-            'isian', 'essay'    => $result['opsi'] = $this->buildIsianBatch($soal->id, $block, $now),
+            'pg', 'pg_kompleks' => $result['opsi'] = $this->buildOpsiBatch($soalId, $block, $now),
+            'benar_salah'       => $result['opsi'] = $this->buildBenarSalahBatch($soalId, $block, $now),
+            'menjodohkan'       => $result['pasangan'] = $this->buildPasanganBatch($soalId, $block, $now),
+            'isian', 'essay'    => $result['opsi'] = $this->buildIsianBatch($soalId, $block, $now),
             default             => null,
         };
 

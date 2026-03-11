@@ -123,7 +123,7 @@ class ImportPesertaJob implements ShouldQueue
                         }
 
                         // Generate unique username using in-memory set (no DB query)
-                        $username = $this->generateUsernameFromMemory($nisStr, $parsed['nisn']);
+                        $username = $this->generateUsernameFromMemory($parsed['nisn'], $nisStr);
 
                         // Generate password
                         $password = Peserta::generatePassword();
@@ -139,7 +139,7 @@ class ImportPesertaJob implements ShouldQueue
                             'jenis_kelamin'  => $parsed['jenis_kelamin'],
                             'tanggal_lahir'  => $parsed['tanggal_lahir'],
                             'username_ujian' => $username,
-                            'password_ujian' => Hash::make($password),
+                            'password_ujian' => Hash::make($password, ['rounds' => 10]),
                             'password_plain' => encrypt($password),
                             'is_active'      => true,
                             'created_at'     => $now,
@@ -189,13 +189,14 @@ class ImportPesertaJob implements ShouldQueue
 
     /**
      * Generate a unique username using in-memory set — zero DB queries.
+     * Priority: NISN > NIS > random
      */
-    private function generateUsernameFromMemory(?string $nis, ?string $nisn): string
+    private function generateUsernameFromMemory(?string $nisn, ?string $nis): string
     {
-        if ($nis && $nis !== '') {
-            $base = preg_replace('/\s+/', '', $nis);
-        } elseif ($nisn && $nisn !== '') {
+        if ($nisn && $nisn !== '') {
             $base = preg_replace('/\s+/', '', $nisn);
+        } elseif ($nis && $nis !== '') {
+            $base = preg_replace('/\s+/', '', $nis);
         } else {
             $base = strtoupper(Str::random(8));
         }

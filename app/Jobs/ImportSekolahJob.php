@@ -128,7 +128,7 @@ class ImportSekolahJob implements ShouldQueue
                                 User::create([
                                     'name'       => "Operator {$data['nama']}",
                                     'email'      => $email,
-                                    'password'   => Hash::make($npsn ?: 'password'),
+                                    'password'   => Hash::make($npsn ?: 'password', ['rounds' => 10]),
                                     'role'       => User::ROLE_ADMIN_SEKOLAH,
                                     'sekolah_id' => $sekolahId,
                                     'is_active'  => true,

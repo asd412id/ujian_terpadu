@@ -37,13 +37,13 @@ class Peserta extends Authenticatable
         return $this->hasMany(SesiPeserta::class);
     }
 
-    // Generate username dari NIS (prioritas) > NISN > auto
+    // Generate username dari NISN (prioritas) > NIS > auto
     public static function generateUsername(string $nis = null, string $nisn = null, ?string $sekolahId = null): string
     {
-        if ($nis && $nis !== '') {
-            $base = preg_replace('/\s+/', '', $nis);
-        } elseif ($nisn && $nisn !== '') {
+        if ($nisn && $nisn !== '') {
             $base = preg_replace('/\s+/', '', $nisn);
+        } elseif ($nis && $nis !== '') {
+            $base = preg_replace('/\s+/', '', $nis);
         } else {
             $base = strtoupper(Str::random(8));
         }
