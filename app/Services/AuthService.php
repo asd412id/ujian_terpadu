@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\AuthRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthService
@@ -80,8 +81,12 @@ class AuthService
 
         Auth::guard('peserta')->login($peserta);
 
+        $deviceToken = Str::random(64);
+        $peserta->update(['device_token' => $deviceToken]);
+
         return [
-            'peserta' => $peserta,
+            'peserta'      => $peserta,
+            'device_token' => $deviceToken,
         ];
     }
 

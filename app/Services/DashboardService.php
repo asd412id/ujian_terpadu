@@ -40,7 +40,7 @@ class DashboardService
                     ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
                     ->count(),
                 'total_soal'          => Soal::count(),
-                'total_kategori'      => KategoriSoal::count(),
+                'total_kategori'      => KategoriSoal::where('is_active', true)->count(),
             ];
         });
 
@@ -66,7 +66,17 @@ class DashboardService
             return null;
         }
 
-        $paketIds = $sekolah->paketUjian()->pluck('id');
+        $paketIds = PaketUjian::where('status', 'aktif')
+            ->where(function ($q) use ($sekolahId, $sekolah) {
+                $q->where('sekolah_id', $sekolahId)
+                  ->orWhere(function ($q2) use ($sekolah) {
+                      $q2->whereNull('sekolah_id');
+                      if ($sekolah->jenjang) {
+                          $q2->where(fn ($q3) => $q3->where('jenjang', $sekolah->jenjang)->orWhere('jenjang', 'SEMUA'));
+                      }
+                  });
+            })
+            ->pluck('id');
 
         $stats = [
             'total_peserta' => Peserta::where('sekolah_id', $sekolah->id)->count(),
@@ -75,7 +85,7 @@ class DashboardService
         ];
 
         $sesiMendatang = SesiUjian::whereIn('paket_id', $paketIds)
-            ->whereIn('status', ['menunggu', 'berlangsung'])
+            ->whereIn('status', ['persiapan', 'menunggu', 'berlangsung'])
             ->with('paket')
             ->orderBy('waktu_mulai')
             ->limit(5)

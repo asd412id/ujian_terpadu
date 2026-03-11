@@ -205,7 +205,7 @@
 
         <template x-if="selectedIds.length > 0">
             <div class="space-y-1.5">
-                <template x-for="(soal, idx) in allSoal.filter(s => selectedIds.includes(s.id))" :key="soal.id">
+                <template x-for="(soal, idx) in selectedSoal" :key="soal.id">
                     <div class="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2.5">
                         <span class="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full text-xs font-bold text-blue-700 flex items-center justify-center"
                               x-text="idx + 1"></span>
@@ -213,7 +213,7 @@
                         <span class="flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full"
                               :class="tipeBadge(soal.tipe_soal)" x-text="tipeLabel(soal.tipe_soal)"></span>
                         <span class="flex-shrink-0 text-xs text-gray-400" x-text="soal.kategori"></span>
-                        <button type="button" @click="toggleSoal(soal.id)"
+                        <button type="button" @click="toggleSoal(soal)"
                                 class="flex-shrink-0 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="Hapus dari paket">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -225,7 +225,7 @@
         </template>
     </div>
 
-    {{-- Bank Soal - Multi Select --}}
+    {{-- Bank Soal - AJAX Paginated --}}
     <div class="card">
         <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <h2 class="font-semibold text-gray-900">Bank Soal</h2>
@@ -263,11 +263,20 @@
                 ✗ Batal Pilih Terfilter
             </button>
             <span class="text-xs text-gray-400">|</span>
-            <span class="text-xs text-gray-500" x-text="filteredSoal().length + ' soal ditampilkan'"></span>
+            <span class="text-xs text-gray-500" x-text="bankMeta.total + ' soal ditemukan'"></span>
+        </div>
+
+        {{-- Loading Indicator --}}
+        <div x-show="loading" class="flex items-center justify-center py-8 gap-2 text-gray-400">
+            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span class="text-sm">Memuat soal...</span>
         </div>
 
         {{-- Grouped by Kategori --}}
-        <div class="space-y-4">
+        <div x-show="!loading" class="space-y-4">
             <template x-for="group in groupedByKategori()" :key="group.kategoriId">
                 <div class="border border-gray-200 rounded-xl overflow-hidden">
                     <div class="bg-gray-50 px-4 py-2.5 flex items-center justify-between cursor-pointer"
@@ -288,10 +297,10 @@
                     <div x-show="!collapsedKategori.includes(group.kategoriId)" x-transition>
                         <template x-for="soal in group.soal" :key="soal.id">
                             <label class="flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 hover:bg-blue-50/50 cursor-pointer transition-colors"
-                                   :class="selectedIds.includes(soal.id) && 'bg-blue-50'">
+                                   :class="isSelected(soal.id) && 'bg-blue-50'">
                                 <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                       :checked="selectedIds.includes(soal.id)"
-                                       @change="toggleSoal(soal.id)">
+                                       :checked="isSelected(soal.id)"
+                                       @change="toggleSoal(soal)">
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm text-gray-800 line-clamp-1" x-text="soal.pertanyaan"></p>
                                     <p class="text-xs text-gray-400 mt-0.5">
@@ -305,9 +314,35 @@
                     </div>
                 </div>
             </template>
-            <template x-if="filteredSoal().length === 0">
+            <template x-if="!loading && bankSoal.length === 0">
                 <p class="text-sm text-gray-400 text-center py-6">Tidak ada soal yang cocok dengan filter.</p>
             </template>
+        </div>
+
+        {{-- Pagination --}}
+        <div x-show="!loading && bankMeta.last_page > 1" class="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+            <span class="text-xs text-gray-500">
+                Halaman <span x-text="bankMeta.current_page"></span> dari <span x-text="bankMeta.last_page"></span>
+                (<span x-text="bankMeta.total"></span> soal)
+            </span>
+            <div class="flex items-center gap-1">
+                <button @click="fetchSoal(bankMeta.current_page - 1)"
+                        :disabled="bankMeta.current_page <= 1"
+                        class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    ← Prev
+                </button>
+                <template x-for="page in Array.from({length: bankMeta.last_page}, (_, i) => i + 1).filter(p => Math.abs(p - bankMeta.current_page) <= 2 || p === 1 || p === bankMeta.last_page)" :key="page">
+                    <button @click="fetchSoal(page)"
+                            :class="page === bankMeta.current_page ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50'"
+                            class="w-8 h-8 text-xs rounded-lg border transition-colors" x-text="page">
+                    </button>
+                </template>
+                <button @click="fetchSoal(bankMeta.current_page + 1)"
+                        :disabled="bankMeta.current_page >= bankMeta.last_page"
+                        class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    Next →
+                </button>
+            </div>
         </div>
     </div>
 
@@ -354,23 +389,36 @@
 
 <script>
 function paketSoalApp() {
-    const allSoal = @json($bankSoalJson);
-    const initialSelected = @json($terpilihIds);
+    const initialSelected = @json($terpilihSoalJson);
+    const bankUrl = "{{ route('dinas.paket.soal.bank', $paket->id) }}";
 
     return {
+        // Selected soal with full details
+        selectedSoal: [...initialSelected],
+        originalIds: initialSelected.map(s => s.id),
+
+        // Bank soal AJAX state
+        bankSoal: [],
+        bankMeta: { current_page: 1, last_page: 1, total: 0, per_page: 50 },
+        loading: false,
+
+        // Filters & UI
         search: '',
         filterJenis: '',
         filterKategori: '',
-        allSoal,
-        selectedIds: [...initialSelected],
-        originalIds: [...initialSelected],
         collapsedKategori: [],
         showConfirmClear: false,
+        _searchTimer: null,
+
+        get selectedIds() {
+            return this.selectedSoal.map(s => s.id);
+        },
 
         get hasChanges() {
-            if (this.selectedIds.length !== this.originalIds.length) return true;
-            return this.selectedIds.some(id => !this.originalIds.includes(id))
-                || this.originalIds.some(id => !this.selectedIds.includes(id));
+            const sel = this.selectedIds;
+            if (sel.length !== this.originalIds.length) return true;
+            return sel.some(id => !this.originalIds.includes(id))
+                || this.originalIds.some(id => !sel.includes(id));
         },
 
         get addedCount() {
@@ -381,19 +429,40 @@ function paketSoalApp() {
             return this.originalIds.filter(id => !this.selectedIds.includes(id)).length;
         },
 
-        filteredSoal() {
-            return this.allSoal.filter(s => {
-                if (this.search && !s.pertanyaan.toLowerCase().includes(this.search.toLowerCase())) return false;
-                if (this.filterJenis && s.tipe_soal !== this.filterJenis) return false;
-                if (this.filterKategori && s.kategoriId !== this.filterKategori) return false;
-                return true;
+        init() {
+            this.fetchSoal(1);
+            this.$watch('filterJenis',    () => this.fetchSoal(1));
+            this.$watch('filterKategori', () => this.fetchSoal(1));
+            this.$watch('search', () => {
+                clearTimeout(this._searchTimer);
+                this._searchTimer = setTimeout(() => this.fetchSoal(1), 350);
             });
         },
 
+        async fetchSoal(page = 1) {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams({ page });
+                if (this.search)         params.set('search',   this.search);
+                if (this.filterJenis)    params.set('jenis',    this.filterJenis);
+                if (this.filterKategori) params.set('kategori', this.filterKategori);
+
+                const res  = await fetch(`${bankUrl}?${params}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json();
+                this.bankSoal = json.data;
+                this.bankMeta = json.meta;
+            } catch (e) {
+                console.error('Failed to fetch soal', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
         groupedByKategori() {
-            const filtered = this.filteredSoal();
             const groups = {};
-            filtered.forEach(s => {
+            this.bankSoal.forEach(s => {
                 const key = s.kategoriId;
                 if (!groups[key]) groups[key] = { kategoriId: key, kategori: s.kategori, soal: [] };
                 groups[key].soal.push(s);
@@ -401,54 +470,72 @@ function paketSoalApp() {
             return Object.values(groups).sort((a, b) => a.kategori.localeCompare(b.kategori));
         },
 
-        toggleSoal(id) {
-            const idx = this.selectedIds.indexOf(id);
-            if (idx >= 0) this.selectedIds.splice(idx, 1);
-            else this.selectedIds.push(id);
+        isSelected(id) {
+            return this.selectedSoal.some(s => s.id === id);
+        },
+
+        toggleSoal(soal) {
+            const idx = this.selectedSoal.findIndex(s => s.id === soal.id);
+            if (idx >= 0) this.selectedSoal.splice(idx, 1);
+            else          this.selectedSoal.push(soal);
         },
 
         toggleKategori(group) {
             if (this.isAllKategoriSelected(group)) {
-                const groupIds = group.soal.map(s => s.id);
-                this.selectedIds = this.selectedIds.filter(id => !groupIds.includes(id));
+                const ids = group.soal.map(s => s.id);
+                this.selectedSoal = this.selectedSoal.filter(s => !ids.includes(s.id));
             } else {
                 group.soal.forEach(s => {
-                    if (!this.selectedIds.includes(s.id)) this.selectedIds.push(s.id);
+                    if (!this.isSelected(s.id)) this.selectedSoal.push(s);
                 });
             }
         },
 
         isAllKategoriSelected(group) {
-            return group.soal.every(s => this.selectedIds.includes(s.id));
+            return group.soal.length > 0 && group.soal.every(s => this.isSelected(s.id));
         },
 
         isSomeKategoriSelected(group) {
-            return group.soal.some(s => this.selectedIds.includes(s.id));
+            return group.soal.some(s => this.isSelected(s.id));
         },
 
         toggleKategoriCollapse(id) {
             const idx = this.collapsedKategori.indexOf(id);
             if (idx >= 0) this.collapsedKategori.splice(idx, 1);
-            else this.collapsedKategori.push(id);
+            else          this.collapsedKategori.push(id);
         },
 
-        selectAllFiltered() {
-            this.filteredSoal().forEach(s => {
-                if (!this.selectedIds.includes(s.id)) this.selectedIds.push(s.id);
-            });
+        async selectAllFiltered() {
+            const params = new URLSearchParams({ all: '1' });
+            if (this.search)         params.set('search',   this.search);
+            if (this.filterJenis)    params.set('jenis',    this.filterJenis);
+            if (this.filterKategori) params.set('kategori', this.filterKategori);
+
+            try {
+                const res  = await fetch(`${bankUrl}?${params}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json();
+                json.data.forEach(s => {
+                    if (!this.isSelected(s.id)) this.selectedSoal.push(s);
+                });
+            } catch (e) {
+                console.error('Failed to select all', e);
+            }
         },
 
         deselectAllFiltered() {
-            const filteredIds = this.filteredSoal().map(s => s.id);
-            this.selectedIds = this.selectedIds.filter(id => !filteredIds.includes(id));
+            // Deselect only soal visible on the current bank page
+            const bankIds = this.bankSoal.map(s => s.id);
+            this.selectedSoal = this.selectedSoal.filter(s => !bankIds.includes(s.id));
         },
 
         clearAll() {
-            this.selectedIds = [];
+            this.selectedSoal = [];
         },
 
         resetSelection() {
-            this.selectedIds = [...this.originalIds];
+            this.selectedSoal = [...initialSelected];
         },
 
         tipeLabel(tipe) {
@@ -458,9 +545,11 @@ function paketSoalApp() {
 
         tipeBadge(tipe) {
             const map = {
-                pg: 'bg-blue-100 text-blue-700', pg_kompleks: 'bg-purple-100 text-purple-700',
+                pg:          'bg-blue-100 text-blue-700',
+                pg_kompleks: 'bg-purple-100 text-purple-700',
                 benar_salah: 'bg-indigo-100 text-indigo-700',
-                isian: 'bg-green-100 text-green-700', essay: 'bg-amber-100 text-amber-700',
+                isian:       'bg-green-100 text-green-700',
+                essay:       'bg-amber-100 text-amber-700',
                 menjodohkan: 'bg-pink-100 text-pink-700',
             };
             return map[tipe] || 'bg-gray-100 text-gray-700';

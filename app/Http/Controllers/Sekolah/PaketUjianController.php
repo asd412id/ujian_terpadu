@@ -18,15 +18,22 @@ class PaketUjianController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
+        $user->loadMissing('sekolah');
 
-        $paketList = $this->paketUjianService->getForSekolah($user->sekolah_id);
+        $paketList = $this->paketUjianService->getForSekolah(
+            $user->sekolah_id,
+            $user->sekolah?->jenjang
+        );
 
         return view('sekolah.paket.index', compact('paketList'));
     }
 
     public function show(PaketUjian $paket)
     {
-        $paket = $this->paketUjianService->getDetail($paket->id);
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $paket = $this->paketUjianService->getDetail($paket->id, $user->sekolah_id);
 
         return view('sekolah.paket.show', compact('paket'));
     }

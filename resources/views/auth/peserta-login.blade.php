@@ -17,12 +17,7 @@
 
             {{-- Logo --}}
             <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                    </svg>
-                </div>
+                <img src="/images/logo.svg" alt="Logo" class="w-16 h-16 mx-auto mb-4">
                 <h1 class="text-xl font-bold text-gray-900">Login Peserta Ujian</h1>
                 <p class="text-gray-500 text-sm mt-1">Masukkan NIS/NISN dan password dari kartu ujian</p>
             </div>

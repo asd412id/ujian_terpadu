@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kartu Login Ujian — {{ auth()->user()->sekolah?->nama }}</title>
+@php
+    $logoFile = public_path('images/logo.svg');
+    $logoSrc  = file_exists($logoFile)
+        ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoFile))
+        : null;
+@endphp
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -152,9 +158,9 @@
                 <div class="kartu-header">
                     <div class="kartu-logo">
                         <div class="kartu-logo-icon">
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                            </svg>
+                            @if($logoSrc)
+                            <img src="{{ $logoSrc }}" width="16" height="16" alt="Logo" style="display:block;">
+                            @endif
                         </div>
                         <div class="kartu-logo-text">{{ strtoupper(config('app.name')) }}</div>
                     </div>

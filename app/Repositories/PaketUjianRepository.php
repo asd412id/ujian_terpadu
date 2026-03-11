@@ -29,12 +29,31 @@ class PaketUjianRepository
 
     /**
      * Get filtered paket ujian for a sekolah (active only, includes shared/null sekolah).
+     * Global paket (null sekolah_id) are further filtered by jenjang to avoid showing
+     * e.g. SD paket to SMP schools.
      */
-    public function getForSekolah(string $sekolahId, int $perPage = 20): LengthAwarePaginator
+    public function getForSekolah(string $sekolahId, ?string $jenjang = null, int $perPage = 20): LengthAwarePaginator
     {
         return $this->model
-            ->with(['sesi.sesiPeserta', 'paketSoal'])
-            ->where(fn ($q) => $q->where('sekolah_id', $sekolahId)->orWhereNull('sekolah_id'))
+            ->with([
+                'sesi' => fn ($q) => $q->with([
+                    'sesiPeserta' => fn ($q) => $q->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId)),
+                ]),
+                'paketSoal',
+            ])
+            ->where(function ($q) use ($sekolahId, $jenjang) {
+                // Paket milik sekolah ini langsung
+                $q->where('sekolah_id', $sekolahId);
+
+                // Paket global (null sekolah_id) — filter by jenjang if known
+                $q->orWhere(function ($q2) use ($jenjang) {
+                    $q2->whereNull('sekolah_id');
+                    if ($jenjang) {
+                        // Tampilkan global paket yang jenjangnya cocok ATAU 'SEMUA'
+                        $q2->where(fn ($q3) => $q3->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
+                    }
+                });
+            })
             ->where('status', 'aktif')
             ->latest()
             ->paginate($perPage);
@@ -60,11 +79,19 @@ class PaketUjianRepository
 
     /**
      * Find paket with sesi and peserta (sekolah view).
+     * If sekolahId is provided, only load sesiPeserta belonging to that school.
      */
-    public function findWithSesiPeserta(string $id): ?PaketUjian
+    public function findWithSesiPeserta(string $id, ?string $sekolahId = null): ?PaketUjian
     {
         return $this->model
-            ->with(['sesi.sesiPeserta.peserta', 'paketSoal'])
+            ->with([
+                'sesi' => fn ($q) => $q->with([
+                    'sesiPeserta' => fn ($q) => $sekolahId
+                        ? $q->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
+                        : $q->with('peserta'),
+                ]),
+                'paketSoal',
+            ])
             ->find($id);
     }
 

@@ -130,6 +130,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::resource('paket', \App\Http\Controllers\Dinas\PaketUjianController::class)->names('paket');
     Route::post('/paket/{paket}/publish', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'publish'])->name('paket.publish');
     Route::post('/paket/{paket}/draft', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'draft'])->name('paket.draft');
+    Route::get('/paket/{paket}/soal/bank', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'bankSoal'])->name('paket.soal.bank');
     Route::post('/paket/{paket}/soal/add', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalAdd'])->name('paket.soal.add');
     Route::put('/paket/{paket}/soal/sync', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalSync'])->name('paket.soal.sync');
     Route::delete('/paket/{paket}/soal/{soal}', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalRemove'])->name('paket.soal.remove');

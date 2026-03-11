@@ -18,9 +18,10 @@ class Peserta extends Authenticatable
         'sekolah_id', 'nisn', 'nis', 'nama', 'kelas', 'jurusan',
         'jenis_kelamin', 'tanggal_lahir', 'tempat_lahir', 'foto',
         'username_ujian', 'password_ujian', 'password_plain', 'is_active',
+        'device_token',
     ];
 
-    protected $hidden = ['password_ujian', 'password_plain'];
+    protected $hidden = ['password_ujian', 'password_plain', 'device_token'];
 
     protected $casts = [
         'is_active'     => 'boolean',

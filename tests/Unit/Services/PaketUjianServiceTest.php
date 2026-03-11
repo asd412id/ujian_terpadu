@@ -7,6 +7,7 @@ use Mockery;
 use Mockery\MockInterface;
 use App\Models\PaketUjian;
 use App\Services\PaketUjianService;
+use App\Services\SesiUjianService;
 use App\Repositories\PaketUjianRepository;
 use App\Repositories\KategoriSoalRepository;
 use App\Repositories\SekolahRepository;
@@ -24,6 +25,7 @@ class PaketUjianServiceTest extends TestCase
     protected MockInterface $kategoriRepository;
     protected MockInterface $sekolahRepository;
     protected MockInterface $soalRepository;
+    protected MockInterface $sesiService;
 
     protected function setUp(): void
     {
@@ -32,11 +34,13 @@ class PaketUjianServiceTest extends TestCase
         $this->kategoriRepository = Mockery::mock(KategoriSoalRepository::class);
         $this->sekolahRepository = Mockery::mock(SekolahRepository::class);
         $this->soalRepository = Mockery::mock(SoalRepository::class);
+        $this->sesiService = Mockery::mock(SesiUjianService::class);
         $this->service = new PaketUjianService(
             $this->repository,
             $this->kategoriRepository,
             $this->sekolahRepository,
-            $this->soalRepository
+            $this->soalRepository,
+            $this->sesiService
         );
     }
 
@@ -333,11 +337,12 @@ class PaketUjianServiceTest extends TestCase
     {
         $paket = Mockery::mock(PaketUjian::class);
 
-        $this->repository
-            ->shouldReceive('update')
+        $this->sesiService
+            ->shouldReceive('cancelPendingSesiByPaket')
             ->once()
-            ->with($paket, ['status' => 'arsip'])
-            ->andReturn(true);
+            ->with($paket);
+
+        $paket->shouldReceive('delete')->once();
 
         $result = $this->service->archivePaket($paket);
 
@@ -513,7 +518,7 @@ class PaketUjianServiceTest extends TestCase
         $this->repository
             ->shouldReceive('getForSekolah')
             ->once()
-            ->with('sekolah-1', 20)
+            ->with('sekolah-1', null, 20)
             ->andReturn($paginator);
 
         $result = $this->service->getForSekolah('sekolah-1');
@@ -530,7 +535,7 @@ class PaketUjianServiceTest extends TestCase
         $this->repository
             ->shouldReceive('findWithSesiPeserta')
             ->once()
-            ->with('paket-1')
+            ->with('paket-1', null)
             ->andReturn($paket);
 
         $result = $this->service->getDetail('paket-1');

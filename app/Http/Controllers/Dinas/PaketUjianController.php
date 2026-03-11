@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
+use App\Models\KategoriSoal;
 use App\Models\PaketUjian;
 use App\Models\Soal;
 use App\Models\User;
@@ -62,25 +63,75 @@ class PaketUjianController extends Controller
     {
         $paket->load(['paketSoal.soal.kategori', 'sesi.sesiPeserta', 'sesi.pengawas', 'sekolah']);
 
-        $terpilihIds = $paket->paketSoal->pluck('soal_id')->toArray();
-        $bankSoal = \App\Models\Soal::with('kategori')
-            ->where('is_active', true)
-            ->orderBy('kategori_id')
-            ->get();
+        // Only load details of SELECTED soal — not the entire bank
+        $terpilihSoalJson = $paket->paketSoal->map(fn ($ps) => [
+            'id'         => $ps->soal->id,
+            'pertanyaan' => strip_tags($ps->soal->pertanyaan),
+            'tipe_soal'  => $ps->soal->tipe_soal,
+            'bobot'      => $ps->soal->bobot,
+            'kategori'   => $ps->soal->kategori->nama ?? 'Tanpa Kategori',
+            'kategoriId' => $ps->soal->kategori_id ?? '_none',
+        ])->values();
 
-        $bankSoalJson = $bankSoal->map(fn ($s) => [
+        $kategoriList = KategoriSoal::where('is_active', true)->orderBy('nama')->get();
+        $pengawas = User::where('role', 'pengawas')->orderBy('name')->get();
+
+        return view('dinas.paket.show', compact('paket', 'terpilihSoalJson', 'kategoriList', 'pengawas'));
+    }
+
+    /**
+     * AJAX endpoint: paginated bank soal for the paket soal picker.
+     * GET /dinas/paket/{paket}/soal/bank?search=&jenis=&kategori=&page=&all=
+     */
+    public function bankSoal(Request $request, PaketUjian $paket)
+    {
+        $query = Soal::with('kategori')
+            ->where('is_active', true);
+
+        if ($search = trim($request->get('search', ''))) {
+            $query->where('pertanyaan', 'like', '%' . $search . '%');
+        }
+        if ($jenis = $request->get('jenis')) {
+            $query->where('tipe_soal', $jenis);
+        }
+        if ($kategori = $request->get('kategori')) {
+            $query->where('kategori_id', $kategori);
+        }
+
+        $query->orderBy('kategori_id')->orderBy('created_at');
+
+        // Special flag: return all matching soal (for "Pilih Semua Terfilter")
+        if ($request->boolean('all')) {
+            $soal = $query->get();
+            return response()->json([
+                'data' => $soal->map(fn ($s) => $this->mapSoal($s)),
+                'meta' => ['total' => $soal->count(), 'all' => true],
+            ]);
+        }
+
+        $paginated = $query->paginate(50);
+
+        return response()->json([
+            'data' => collect($paginated->items())->map(fn ($s) => $this->mapSoal($s))->values(),
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+            ],
+        ]);
+    }
+
+    private function mapSoal(Soal $s): array
+    {
+        return [
             'id'         => $s->id,
             'pertanyaan' => strip_tags($s->pertanyaan),
             'tipe_soal'  => $s->tipe_soal,
             'bobot'      => $s->bobot,
             'kategori'   => $s->kategori->nama ?? 'Tanpa Kategori',
             'kategoriId' => $s->kategori_id ?? '_none',
-        ])->values();
-
-        $kategoriList = \App\Models\KategoriSoal::where('is_active', true)->orderBy('nama')->get();
-        $pengawas = User::where('role', 'pengawas')->orderBy('name')->get();
-
-        return view('dinas.paket.show', compact('paket', 'bankSoal', 'bankSoalJson', 'terpilihIds', 'kategoriList', 'pengawas'));
+        ];
     }
 
     public function edit(PaketUjian $paket)

@@ -237,11 +237,11 @@ class PaketUjianService
     }
 
     /**
-     * Get paket ujian for a specific sekolah.
+     * Get paket ujian for a specific sekolah, filtered by jenjang for global paket.
      */
-    public function getForSekolah(string $sekolahId, int $perPage = 20): mixed
+    public function getForSekolah(string $sekolahId, ?string $jenjang = null, int $perPage = 20): mixed
     {
-        return $this->repository->getForSekolah($sekolahId, $perPage);
+        return $this->repository->getForSekolah($sekolahId, $jenjang, $perPage);
     }
 
     /**
@@ -283,10 +283,11 @@ class PaketUjianService
 
     /**
      * Get paket detail with sesi peserta and paket soal relations.
+     * Pass sekolahId to filter peserta count to that school only.
      */
-    public function getDetail(string $id): ?PaketUjian
+    public function getDetail(string $id, ?string $sekolahId = null): ?PaketUjian
     {
-        return $this->repository->findWithSesiPeserta($id);
+        return $this->repository->findWithSesiPeserta($id, $sekolahId);
     }
 
     /**

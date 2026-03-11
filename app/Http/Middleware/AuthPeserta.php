@@ -16,6 +16,18 @@ class AuthPeserta
                              ->with('error', 'Silakan login terlebih dahulu.');
         }
 
+        $peserta = Auth::guard('peserta')->user();
+        $sessionToken = $request->session()->get('device_token');
+
+        if ($peserta->device_token && $sessionToken !== $peserta->device_token) {
+            Auth::guard('peserta')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('ujian.login')
+                             ->with('error', 'Akun Anda telah login di perangkat lain. Sesi ini telah diakhiri.');
+        }
+
         return $next($request);
     }
 }

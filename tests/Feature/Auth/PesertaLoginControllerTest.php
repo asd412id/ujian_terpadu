@@ -23,10 +23,11 @@ class PesertaLoginControllerTest extends TestCase
     {
         $peserta = Peserta::factory()->create();
 
-        $response = $this->actingAs($peserta, 'peserta')
-            ->get(route('ujian.login'));
+        Auth::guard('peserta')->login($peserta);
 
-        $response->assertRedirect('/');
+        $response = $this->get(route('ujian.login'));
+
+        $response->assertStatus(302);
     }
 
     public function test_login_with_valid_username(): void

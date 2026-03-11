@@ -28,18 +28,24 @@ class PesertaLoginController extends Controller
             'password' => 'required|string',
         ]);
 
-        $this->authService->loginPeserta([
+        $result = $this->authService->loginPeserta([
             'username' => $request->username,
             'password' => $request->password,
         ]);
 
         $request->session()->regenerate();
+        $request->session()->put('device_token', $result['device_token']);
 
         return redirect()->route('ujian.lobby');
     }
 
     public function logout(Request $request)
     {
+        $peserta = Auth::guard('peserta')->user();
+        if ($peserta) {
+            $peserta->update(['device_token' => null]);
+        }
+
         $this->authService->logout('peserta');
         $request->session()->invalidate();
         $request->session()->regenerateToken();
