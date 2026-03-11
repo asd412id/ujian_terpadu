@@ -26,6 +26,8 @@ class LobbyService
                 $q->where('status', 'berlangsung');
             })
             ->get()
+            ->sortBy(fn ($sp) => $sp->sesi->waktu_mulai)
+            ->values()
             ->map(function ($sp) {
                 // Add schedule info for display
                 $sesi = $sp->sesi;
