@@ -19,8 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->alias([
-            'role'    => \App\Http\Middleware\RoleMiddleware::class,
-            'peserta' => \App\Http\Middleware\AuthPeserta::class,
+            'role'            => \App\Http\Middleware\RoleMiddleware::class,
+            'peserta'         => \App\Http\Middleware\AuthPeserta::class,
+            'no.active.exam'  => \App\Http\Middleware\EnsureNoActiveExam::class,
         ]);
 
         // Where to redirect authenticated users who hit "guest" routes (e.g. /login)

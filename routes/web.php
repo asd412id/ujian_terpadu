@@ -61,8 +61,10 @@ Route::prefix('ujian')->name('ujian.')->group(function () {
 
     // Lobby & Ujian (auth peserta)
     Route::middleware('peserta')->group(function () {
-        Route::get('/lobby', [LobbyController::class, 'index'])->name('lobby');
-        Route::get('/{sesiPeserta}/konfirmasi', [UjianController::class, 'konfirmasi'])->name('konfirmasi');
+        Route::middleware('no.active.exam')->group(function () {
+            Route::get('/lobby', [LobbyController::class, 'index'])->name('lobby');
+            Route::get('/{sesiPeserta}/konfirmasi', [UjianController::class, 'konfirmasi'])->name('konfirmasi');
+        });
         Route::get('/{sesiPeserta}/mengerjakan', [UjianController::class, 'mengerjakan'])->name('mengerjakan');
         Route::post('/{sesiPeserta}/submit', [UjianController::class, 'submit'])->name('submit');
         Route::get('/{sesiPeserta}/selesai', [UjianController::class, 'selesai'])->name('selesai');
