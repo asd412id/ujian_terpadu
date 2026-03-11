@@ -217,9 +217,8 @@ return [
             'supervisor-default' => [
                 'connection' => 'redis',
                 'queue' => ['default', 'logging', 'imports'],
-                'balance' => 'simple',
-                'minProcesses' => 2,
-                'maxProcesses' => 2,
+                'balance' => 'false',
+                'processes' => 3,
                 'tries' => 3,
                 'timeout' => 300,
                 'maxTime' => 3600,
