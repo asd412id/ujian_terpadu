@@ -72,7 +72,7 @@ Route::prefix('ujian')->name('ujian.')->group(function () {
 // =============================================================
 // API — Offline Sync (token-based, no CSRF)
 // =============================================================
-Route::prefix('api/ujian')->name('api.ujian.')->middleware('throttle:50000,1')->group(function () {
+Route::prefix('api/ujian')->name('api.ujian.')->middleware('throttle:200,1')->group(function () {
     Route::post('/sync-jawaban', [JawabanController::class, 'syncOffline'])->name('sync');
     Route::get('/status/{token}', [JawabanController::class, 'status'])->name('status');
     Route::post('/submit/{token}', [JawabanController::class, 'submitApi'])->name('submit');
