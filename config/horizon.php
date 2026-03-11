@@ -216,7 +216,8 @@ return [
                 'connection' => 'redis',
                 'queue' => ['default', 'logging', 'imports'],
                 'balance' => false,
-                'processes' => 3,
+                'minProcesses' => 3,
+                'maxProcesses' => 3,
                 'tries' => 3,
                 'timeout' => 300,
                 'maxTime' => 3600,
@@ -226,7 +227,8 @@ return [
 
         'local' => [
             'supervisor-default' => [
-                'processes' => 3,
+                'minProcesses' => 2,
+                'maxProcesses' => 3,
             ],
         ],
     ],
