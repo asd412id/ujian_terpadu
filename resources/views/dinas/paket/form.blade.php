@@ -105,12 +105,11 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Sekolah</label>
-                <select name="sekolah_id" class="form-input">
-                    <option value="">Semua Sekolah</option>
-                    @foreach($sekolah as $s)
-                    <option value="{{ $s->id }}" {{ old('sekolah_id', $paket->sekolah_id ?? '') == $s->id ? 'selected' : '' }}>{{ $s->nama }}</option>
-                    @endforeach
-                </select>
+                <x-searchable-select
+                    name="sekolah_id"
+                    :options="$sekolah->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
+                    :value="old('sekolah_id', $paket->sekolah_id ?? '')"
+                    placeholder="Semua Sekolah" />
             </div>
         </div>
     </div>

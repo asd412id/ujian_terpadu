@@ -25,13 +25,13 @@
                 <option value="{{ $p->id }}" {{ request('paket_id') == $p->id ? 'selected' : '' }}>{{ $p->nama }}</option>
                 @endforeach
             </select>
-            <select name="sekolah_id" onchange="this.form.submit()"
-                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Semua Sekolah</option>
-                @foreach($sekolahList as $s)
-                <option value="{{ $s->id }}" {{ request('sekolah_id') == $s->id ? 'selected' : '' }}>{{ $s->nama }}</option>
-                @endforeach
-            </select>
+            <div class="w-56" x-data x-on:change="$el.closest('form').submit()">
+                <x-searchable-select
+                    name="sekolah_id"
+                    :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
+                    :value="request('sekolah_id')"
+                    placeholder="Semua Sekolah" />
+            </div>
         </form>
     </div>
 

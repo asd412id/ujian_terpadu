@@ -193,9 +193,9 @@ class ImportPesertaJob implements ShouldQueue
     private function generateUsernameFromMemory(?string $nis, ?string $nisn): string
     {
         if ($nis && $nis !== '') {
-            $base = $nis;
+            $base = preg_replace('/\s+/', '', $nis);
         } elseif ($nisn && $nisn !== '') {
-            $base = $nisn;
+            $base = preg_replace('/\s+/', '', $nisn);
         } else {
             $base = strtoupper(Str::random(8));
         }
@@ -257,8 +257,8 @@ class ImportPesertaJob implements ShouldQueue
             'sekolah_id'    => $sekolahId,
             'npsn'          => $npsnStr,
             'nama'          => trim((string) $nama),
-            'nis'           => $nis  ? (string) trim($nis)  : null,
-            'nisn'          => $nisn ? (string) trim($nisn) : null,
+            'nis'           => $nis  ? preg_replace('/\s+/', '', trim((string) $nis))  : null,
+            'nisn'          => $nisn ? preg_replace('/\s+/', '', trim((string) $nisn)) : null,
             'kelas'         => $kelas   ? trim((string) $kelas)   : null,
             'jurusan'       => $jurusan ? trim((string) $jurusan) : null,
             'jenis_kelamin' => in_array(strtoupper((string) $jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
@@ -278,8 +278,8 @@ class ImportPesertaJob implements ShouldQueue
             'sekolah_id'    => $this->importJob->sekolah_id,
             'npsn'          => null,
             'nama'          => trim((string) $nama),
-            'nis'           => $nis  ? (string) trim($nis)  : null,
-            'nisn'          => $nisn ? (string) trim($nisn) : null,
+            'nis'           => $nis  ? preg_replace('/\s+/', '', trim((string) $nis))  : null,
+            'nisn'          => $nisn ? preg_replace('/\s+/', '', trim((string) $nisn)) : null,
             'kelas'         => $kelas   ? trim((string) $kelas)   : null,
             'jurusan'       => $jurusan ? trim((string) $jurusan) : null,
             'jenis_kelamin' => in_array(strtoupper((string) $jk), ['L', 'P']) ? strtoupper((string) $jk) : null,

@@ -60,9 +60,10 @@ class PesertaService
      */
     public function create(array $data): mixed
     {
-        // Generate username_ujian if not provided
+        // Generate username_ujian if not provided (strip spaces from NIS/NISN)
         if (empty($data['username_ujian'])) {
-            $data['username_ujian'] = $data['nis'] ?? $data['nisn'] ?? Str::random(8);
+            $raw = $data['nis'] ?? $data['nisn'] ?? Str::random(8);
+            $data['username_ujian'] = preg_replace('/\s+/', '', $raw);
         }
 
         // Generate and hash password
@@ -172,7 +173,7 @@ class PesertaService
                         'kelas'          => $row['kelas'] ?? null,
                         'jenis_kelamin'  => $row['jenis_kelamin'] ?? $row['jk'] ?? null,
                         'sekolah_id'     => $sekolahId,
-                        'username_ujian' => $row['username'] ?? $nis ?? Str::random(8),
+                        'username_ujian' => preg_replace('/\s+/', '', $row['username'] ?? $nis ?? Str::random(8)),
                         'password_ujian' => Hash::make($plainPassword),
                         'password_plain' => encrypt($plainPassword),
                         'is_active'      => true,

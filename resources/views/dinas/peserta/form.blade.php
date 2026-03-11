@@ -32,15 +32,12 @@
         {{-- Sekolah (wajib untuk dinas admin) --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Sekolah <span class="text-red-500">*</span></label>
-            <select name="sekolah_id" required
-                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('sekolah_id') border-red-400 @enderror">
-                <option value="">— Pilih Sekolah —</option>
-                @foreach($sekolahList as $s)
-                <option value="{{ $s->id }}" {{ old('sekolah_id', $peserta->sekolah_id ?? '') == $s->id ? 'selected' : '' }}>
-                    [{{ $s->jenjang }}] {{ $s->nama }}
-                </option>
-                @endforeach
-            </select>
+            <x-searchable-select
+                name="sekolah_id"
+                :required="true"
+                :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => '[' . $s->jenjang . '] ' . $s->nama])"
+                :value="old('sekolah_id', $peserta->sekolah_id ?? '')"
+                placeholder="— Pilih Sekolah —" />
         </div>
 
         {{-- Nama --}}

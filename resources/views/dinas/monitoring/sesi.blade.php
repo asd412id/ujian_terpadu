@@ -86,13 +86,13 @@
                 <input type="text" name="search" placeholder="Cari nama / NIS..."
                        value="{{ $filters['search'] ?? '' }}"
                        class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <select name="sekolah_id" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onchange="this.form.submit()">
-                    <option value="">Semua Sekolah</option>
-                    @foreach($sekolahList as $sekolah)
-                    <option value="{{ $sekolah->id }}" {{ ($filters['sekolah_id'] ?? '') == $sekolah->id ? 'selected' : '' }}>{{ $sekolah->nama }}</option>
-                    @endforeach
-                </select>
+                <div class="w-56" x-data x-on:change="$el.closest('form').submit()">
+                    <x-searchable-select
+                        name="sekolah_id"
+                        :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
+                        :value="$filters['sekolah_id'] ?? ''"
+                        placeholder="Semua Sekolah" />
+                </div>
                 <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onchange="this.form.submit()">
                     <option value="">Semua Status</option>

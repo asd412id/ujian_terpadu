@@ -41,9 +41,9 @@ class Peserta extends Authenticatable
     public static function generateUsername(string $nis = null, string $nisn = null, ?string $sekolahId = null): string
     {
         if ($nis && $nis !== '') {
-            $base = $nis;
+            $base = preg_replace('/\s+/', '', $nis);
         } elseif ($nisn && $nisn !== '') {
-            $base = $nisn;
+            $base = preg_replace('/\s+/', '', $nisn);
         } else {
             $base = strtoupper(Str::random(8));
         }

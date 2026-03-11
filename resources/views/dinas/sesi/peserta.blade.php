@@ -78,13 +78,11 @@
         @if(!$paket->sekolah_id && $sekolahList->count() > 1)
         <div class="min-w-[180px]">
             <label class="block text-xs text-gray-600 mb-1">Sekolah</label>
-            <select name="sekolah_id"
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Semua Sekolah</option>
-                @foreach($sekolahList as $s)
-                <option value="{{ $s->id }}" @selected($sekolahFilter == $s->id)>{{ $s->nama }}</option>
-                @endforeach
-            </select>
+            <x-searchable-select
+                name="sekolah_id"
+                :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
+                :value="$sekolahFilter"
+                placeholder="Semua Sekolah" />
         </div>
         @endif
         <button type="submit"

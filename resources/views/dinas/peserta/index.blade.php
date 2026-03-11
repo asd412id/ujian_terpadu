@@ -47,15 +47,13 @@
     {{-- Filter + Search --}}
     <form method="GET" action="{{ route('dinas.peserta.index') }}"
           class="card flex flex-col sm:flex-row gap-3 p-4">
-        <select name="sekolah_id"
-                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-64">
-            <option value="">Semua Sekolah</option>
-            @foreach($sekolahList as $s)
-            <option value="{{ $s->id }}" {{ request('sekolah_id') == $s->id ? 'selected' : '' }}>
-                [{{ $s->jenjang }}] {{ $s->nama }}
-            </option>
-            @endforeach
-        </select>
+        <div class="sm:w-64">
+            <x-searchable-select
+                name="sekolah_id"
+                :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => '[' . $s->jenjang . '] ' . $s->nama])"
+                :value="request('sekolah_id')"
+                placeholder="Semua Sekolah" />
+        </div>
         <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama, NIS, NISN..."
                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         <input type="text" name="kelas" value="{{ request('kelas') }}" placeholder="Filter kelas..."

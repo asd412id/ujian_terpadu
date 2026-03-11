@@ -53,16 +53,11 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Sekolah (untuk Operator/Pengawas)</label>
-            <select name="sekolah_id"
-                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style="color: #111827;">
-                <option value="" style="color: #111827;">— Dinas Pendidikan —</option>
-                @foreach($sekolahList as $sekolah)
-                <option value="{{ $sekolah->id }}" style="color: #111827;" {{ old('sekolah_id', $user->sekolah_id ?? '') == $sekolah->id ? 'selected' : '' }}>
-                    {{ $sekolah->nama }} ({{ $sekolah->npsn }})
-                </option>
-                @endforeach
-            </select>
+            <x-searchable-select
+                name="sekolah_id"
+                :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama . ' (' . $s->npsn . ')'])"
+                :value="old('sekolah_id', $user->sekolah_id ?? '')"
+                placeholder="— Dinas Pendidikan —" />
         </div>
 
         <div>
