@@ -135,17 +135,14 @@ class PesertaController extends Controller
 
     public function showImport(Request $request)
     {
-        $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama', 'jenjang']);
-        $selectedSekolahId = $request->sekolah_id;
-        return view('dinas.peserta.import', compact('sekolahList', 'selectedSekolahId'));
+        return view('dinas.peserta.import');
     }
 
     public function import(Request $request)
     {
         $request->validate([
-            'file'       => 'required|file|mimes:xlsx,xls|max:10240',
-            'sekolah_id' => 'required|exists:sekolah,id',
-            'mode'       => 'required|in:update,replace_all',
+            'file' => 'required|file|mimes:xlsx,xls|max:10240',
+            'mode' => 'required|in:update,replace_all',
         ]);
 
         $file     = $request->file('file');
@@ -154,15 +151,18 @@ class PesertaController extends Controller
 
         $importJob = $this->pesertaService->createImportJob([
             'created_by' => Auth::id(),
-            'sekolah_id' => $request->input('sekolah_id'),
+            'sekolah_id' => null,
             'tipe'       => 'peserta_excel',
             'filename'   => $filename,
             'filepath'   => $path,
             'status'     => 'pending',
-            'meta'       => ['mode' => $request->input('mode')],
+            'meta'       => [
+                'mode'   => $request->input('mode'),
+                'source' => 'dinas',
+            ],
         ]);
 
-        return redirect()->route('dinas.peserta.import', ['sekolah_id' => $request->input('sekolah_id')])
+        return redirect()->route('dinas.peserta.import')
                          ->with('success', 'File import sedang diproses. Data peserta akan diperbarui sebentar lagi.')
                          ->with('import_job_id', $importJob->id);
     }
@@ -184,28 +184,30 @@ class PesertaController extends Controller
         $spreadsheet = new Spreadsheet();
         $sheet       = $spreadsheet->getActiveSheet();
 
-        // Header row
-        $headers = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
+        // Header row — NPSN sebagai kolom pertama untuk identifikasi sekolah
+        $headers = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
         foreach ($headers as $col => $header) {
             $sheet->setCellValueByColumnAndRow($col + 1, 1, $header);
         }
 
-        // Contoh data
-        $sheet->setCellValueByColumnAndRow(1, 2, 'Ahmad Fauzi');
-        $sheet->setCellValueByColumnAndRow(2, 2, '12345');
-        $sheet->setCellValueByColumnAndRow(3, 2, '1234567890');
-        $sheet->setCellValueByColumnAndRow(4, 2, 'XII IPA 1');
-        $sheet->setCellValueByColumnAndRow(5, 2, 'IPA');
-        $sheet->setCellValueByColumnAndRow(6, 2, 'L');
-        $sheet->setCellValueByColumnAndRow(7, 2, '2006-05-20');
+        // Contoh data — 2 peserta dari sekolah berbeda
+        $sheet->setCellValueByColumnAndRow(1, 2, '20100001');
+        $sheet->setCellValueByColumnAndRow(2, 2, 'Ahmad Fauzi');
+        $sheet->setCellValueByColumnAndRow(3, 2, '12345');
+        $sheet->setCellValueByColumnAndRow(4, 2, '1234567890');
+        $sheet->setCellValueByColumnAndRow(5, 2, 'XII IPA 1');
+        $sheet->setCellValueByColumnAndRow(6, 2, 'IPA');
+        $sheet->setCellValueByColumnAndRow(7, 2, 'L');
+        $sheet->setCellValueByColumnAndRow(8, 2, '2006-05-20');
 
-        $sheet->setCellValueByColumnAndRow(1, 3, 'Siti Aminah');
-        $sheet->setCellValueByColumnAndRow(2, 3, '12346');
-        $sheet->setCellValueByColumnAndRow(3, 3, '1234567891');
-        $sheet->setCellValueByColumnAndRow(4, 3, 'XII IPA 1');
-        $sheet->setCellValueByColumnAndRow(5, 3, 'IPA');
-        $sheet->setCellValueByColumnAndRow(6, 3, 'P');
-        $sheet->setCellValueByColumnAndRow(7, 3, '2006-08-15');
+        $sheet->setCellValueByColumnAndRow(1, 3, '20100002');
+        $sheet->setCellValueByColumnAndRow(2, 3, 'Siti Aminah');
+        $sheet->setCellValueByColumnAndRow(3, 3, '12346');
+        $sheet->setCellValueByColumnAndRow(4, 3, '1234567891');
+        $sheet->setCellValueByColumnAndRow(5, 3, 'XII IPA 1');
+        $sheet->setCellValueByColumnAndRow(6, 3, 'IPA');
+        $sheet->setCellValueByColumnAndRow(7, 3, 'P');
+        $sheet->setCellValueByColumnAndRow(8, 3, '2006-08-15');
 
         // Style header
         $headerStyle = [
@@ -216,10 +218,10 @@ class PesertaController extends Controller
             ],
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
         ];
-        $sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
 
         // Auto-size columns
-        foreach (range('A', 'G') as $col) {
+        foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -229,7 +231,7 @@ class PesertaController extends Controller
         $tmpFile = tempnam(sys_get_temp_dir(), 'peserta_template_') . '.xlsx';
         $writer->save($tmpFile);
 
-        return response()->download($tmpFile, 'template_import_peserta.xlsx', [
+        return response()->download($tmpFile, 'template_import_peserta_dinas.xlsx', [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
     }

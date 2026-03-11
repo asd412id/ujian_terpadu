@@ -49,6 +49,14 @@ class PesertaController extends Controller
 
     public function showImport()
     {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Dinas admin seharusnya menggunakan fitur import di menu dinas
+        if ($user->isDinas()) {
+            return redirect()->route('dinas.peserta.import');
+        }
+
         return view('sekolah.peserta.import');
     }
 
@@ -60,7 +68,18 @@ class PesertaController extends Controller
         ]);
 
         /** @var \App\Models\User $user */
-        $user     = Auth::user();
+        $user = Auth::user();
+
+        // Dinas admin seharusnya menggunakan fitur import di menu dinas
+        if ($user->isDinas()) {
+            return redirect()->route('dinas.peserta.import');
+        }
+
+        if (!$user->sekolah_id) {
+            return redirect()->route('sekolah.peserta.index')
+                             ->with('error', 'Akun Anda tidak terkait dengan sekolah manapun.');
+        }
+
         $file     = $request->file('file');
         $path     = $file->store('imports/peserta', 'local');
         $filename = $file->getClientOriginalName();
@@ -82,6 +101,14 @@ class PesertaController extends Controller
 
     public function importStatus(ImportJob $job)
     {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Operator sekolah hanya bisa melihat status import milik sekolahnya
+        if ($user->isAdminSekolah() && $job->sekolah_id !== $user->sekolah_id) {
+            abort(403);
+        }
+
         return response()->json([
             'status'         => $job->status,
             'total_rows'     => $job->total_rows,

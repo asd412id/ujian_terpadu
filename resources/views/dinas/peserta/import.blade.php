@@ -13,7 +13,23 @@
 @section('page-content')
 <div class="space-y-5 max-w-2xl" x-data="{ mode: 'update', confirm_replace: false }">
 
-    <h1 class="text-xl font-bold text-gray-900">Import Data Peserta</h1>
+    <h1 class="text-xl font-bold text-gray-900">Import Data Peserta (Semua Sekolah)</h1>
+
+    {{-- Info Card --}}
+    <div class="card bg-indigo-50 border-indigo-200">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div class="text-xs text-indigo-700 leading-relaxed">
+                <p class="font-semibold text-sm text-indigo-800 mb-1">Import Multi-Sekolah</p>
+                File Excel harus memiliki kolom <strong>NPSN</strong> sebagai kolom pertama untuk mengidentifikasi sekolah masing-masing peserta.
+                Anda bisa mengimport peserta dari banyak sekolah sekaligus dalam satu file.
+            </div>
+        </div>
+    </div>
 
     {{-- Template Download --}}
     <div class="card bg-blue-50 border-blue-200">
@@ -53,6 +69,7 @@
                 </thead>
                 <tbody>
                     @foreach([
+                        ['npsn',         'NPSN sekolah (8 digit) untuk identifikasi sekolah', 'Ya'],
                         ['nama',         'Nama lengkap peserta',               'Ya'],
                         ['nis',          'Nomor Induk Siswa (jadi username)',   'Tidak'],
                         ['nisn',         'NISN 10 digit',                      'Tidak'],
@@ -76,7 +93,7 @@
     @if(session('import_job_id'))
     @php
         $importJobStatusUrl = route('dinas.peserta.import.status', session('import_job_id'));
-        $importRedirectUrl  = route('dinas.peserta.index', array_filter(['sekolah_id' => $selectedSekolahId ?? null]));
+        $importRedirectUrl  = route('dinas.peserta.index');
     @endphp
     <div class="card bg-amber-50 border-amber-200 space-y-3"
          x-data="importProgressCard"
@@ -110,22 +127,15 @@
           class="card space-y-5">
         @csrf
 
-        {{-- Pilih Sekolah --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Sekolah <span class="text-red-500">*</span></label>
-            <select name="sekolah_id" required
-                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('sekolah_id') border-red-400 @enderror">
-                <option value="">— Pilih Sekolah —</option>
-                @foreach($sekolahList as $s)
-                <option value="{{ $s->id }}" {{ ($selectedSekolahId == $s->id || old('sekolah_id') == $s->id) ? 'selected' : '' }}>
-                    [{{ $s->jenjang }}] {{ $s->nama }}
-                </option>
+        @if($errors->any())
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            <ul class="list-disc list-inside space-y-1">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
                 @endforeach
-            </select>
-            @error('sekolah_id')
-                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-            @enderror
+            </ul>
         </div>
+        @endif
 
         {{-- Mode Import --}}
         <div>
@@ -138,7 +148,7 @@
                     <div>
                         <p class="text-sm font-medium text-gray-800">Tambah / Perbarui</p>
                         <p class="text-xs text-gray-500 mt-0.5">
-                            Peserta baru ditambahkan. Jika NIS sudah ada, baris dilewati (tidak dihapus).
+                            Peserta baru ditambahkan. Jika NIS sudah ada di sekolah yang sama, baris dilewati.
                         </p>
                     </div>
                 </label>
@@ -149,7 +159,7 @@
                     <div>
                         <p class="text-sm font-medium text-red-700">Ganti Semua Data</p>
                         <p class="text-xs text-gray-500 mt-0.5">
-                            Seluruh peserta sekolah terpilih dihapus, kemudian diganti data dari file Excel.
+                            Peserta dari sekolah-sekolah yang ada di file akan dihapus semua, kemudian diganti data dari file Excel.
                         </p>
                     </div>
                 </label>
@@ -161,7 +171,7 @@
                 <input type="checkbox" id="confirm_replace" x-model="confirm_replace"
                        class="mt-0.5 w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500 shrink-0">
                 <label for="confirm_replace" class="text-xs text-red-700 cursor-pointer leading-relaxed">
-                    Saya mengerti bahwa <strong>seluruh data peserta sekolah terpilih akan dihapus permanen</strong>
+                    Saya mengerti bahwa <strong>seluruh data peserta dari sekolah-sekolah yang tercantum dalam file Excel akan dihapus permanen</strong>
                     dan diganti dengan data dari file Excel ini.
                 </label>
             </div>
@@ -224,7 +234,6 @@ document.addEventListener('alpine:init', () => {
                     this.progress    = 100;
                     this.statusLabel = 'Selesai';
                     this.statusText  = `Berhasil: ${data.success_rows} baris. Gagal: ${data.error_rows} baris.`;
-                    // Auto-redirect ke halaman peserta setelah 2 detik agar data sudah tersedia
                     if (this.redirectUrl && data.error_rows === 0) {
                         setTimeout(() => { window.location.href = this.redirectUrl; }, 2000);
                     }
@@ -239,17 +248,14 @@ document.addEventListener('alpine:init', () => {
                     this.progress    = pct;
                     this.statusLabel = 'Memproses...';
                     this.statusText  = `${data.processed_rows} / ${data.total_rows} baris`;
-                } else {
-                    this.statusLabel = 'Antrian...';
-                    this.statusText  = 'Menunggu proses dimulai';
-                    this.progress    = 5;
                 }
             } catch (e) {
-                // silent
+                // ignore fetch errors, will retry
             }
         }
     }));
 });
 </script>
 @endpush
+
 @endsection
