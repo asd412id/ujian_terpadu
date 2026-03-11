@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Ujian;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\LogAktivitasUjianJob;
+use App\Models\SesiPeserta;
 use App\Models\Soal;
 use App\Services\JawabanService;
 use Illuminate\Http\JsonResponse;
@@ -95,5 +97,34 @@ class JawabanController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Log cheating/anti-cheat events dari browser
+     */
+    public function logCheating(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'token'  => 'required|string|size:64',
+            'event'  => 'required|string|in:ganti_tab,fullscreen_exit,fullscreen_enter,copy_paste,klik_kanan,tidak_fokus,screenshot_attempt,browser_minimize',
+            'detail' => 'nullable|array',
+        ]);
+
+        $sesiPeserta = SesiPeserta::where('token_ujian', $data['token'])
+            ->whereIn('status', ['mengerjakan', 'login'])
+            ->first();
+
+        if (!$sesiPeserta) {
+            return response()->json(['ok' => false, 'error' => 'Sesi tidak ditemukan'], 404);
+        }
+
+        LogAktivitasUjianJob::dispatch(
+            $sesiPeserta->id,
+            $data['event'],
+            $data['detail'] ?? [],
+            $request->ip(),
+        );
+
+        return response()->json(['ok' => true]);
     }
 }

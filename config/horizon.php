@@ -183,7 +183,7 @@ return [
     |
     */
 
-    'memory_limit' => 128,
+    'memory_limit' => 256,
 
     /*
     |--------------------------------------------------------------------------
@@ -220,13 +220,13 @@ return [
                 'balance' => 'auto',
                 'autoScalingStrategy' => 'time',
                 'minProcesses' => 1,
-                'maxProcesses' => 4,
+                'maxProcesses' => 3,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
                 'tries' => 3,
                 'timeout' => 120,
                 'maxTime' => 3600,
-                'memory' => 128,
+                'memory' => 64,
             ],
             'supervisor-imports' => [
                 'connection' => 'redis',
@@ -234,13 +234,13 @@ return [
                 'balance' => 'auto',
                 'autoScalingStrategy' => 'size',
                 'minProcesses' => 1,
-                'maxProcesses' => 3,
+                'maxProcesses' => 2,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
                 'tries' => 2,
                 'timeout' => 300,
                 'maxTime' => 3600,
-                'memory' => 256,
+                'memory' => 128,
             ],
             'supervisor-logging' => [
                 'connection' => 'redis',

@@ -37,6 +37,7 @@
             syncUrl:        "{{ route('api.ujian.sync') }}",
             statusUrl:      "{{ route('api.ujian.status', $sesiPeserta->token_ujian) }}",
             submitUrl:      "{{ route('api.ujian.submit', $sesiPeserta->token_ujian) }}",
+            logCheatingUrl: "{{ route('api.ujian.log-cheating') }}",
             soalList:       @json($soalListJs),
             jawabanExisting: @json($jawabanExisting->map(fn($j) => [
                 'soal_id'          => $j->soal_id,
@@ -50,14 +51,12 @@
     </script>
 </head>
 
-<body class="h-full bg-gray-50 font-['Inter'] overflow-hidden"
+<body class="h-full bg-gray-50 font-['Inter'] overflow-hidden select-none"
       x-data="ujianApp()"
       x-init="init()"
       @visibilitychange.window="onVisibilityChange()"
       @online.window="onOnline()"
-      @offline.window="onOffline()"
-      @keydown.window.f5.prevent
-      @contextmenu.window.prevent="logCheating('klik_kanan')">
+      @offline.window="onOffline()">
 
     {{-- ===== OFFLINE BANNER ===== --}}
     <div x-show="isOffline"
@@ -590,6 +589,77 @@
                     <span x-text="isSubmitting ? 'Mengirim...' : 'Ya, Kumpulkan'"></span>
                 </button>
             </div>
+        </div>
+    </div>
+
+    {{-- ========== VIOLATION OVERLAY (Anti-Cheat) ========== --}}
+    <div x-show="showViolationOverlay" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+         style="background: rgba(127, 29, 29, 0.92);">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-center" @click.stop>
+            {{-- Warning Icon --}}
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-9 h-9 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+
+            {{-- Title --}}
+            <h3 class="text-xl font-bold text-red-800 mb-2">Peringatan Pelanggaran!</h3>
+
+            {{-- Violation Counter --}}
+            <div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-4 py-1.5 mb-4">
+                <span class="text-sm font-semibold text-red-700">Pelanggaran ke-</span>
+                <span class="text-lg font-bold text-red-800" x-text="violationCount"></span>
+                <span class="text-sm text-red-600">dari</span>
+                <span class="text-lg font-bold text-red-800" x-text="maxViolations"></span>
+            </div>
+
+            {{-- Message --}}
+            <p class="text-gray-700 text-sm leading-relaxed mb-5" x-text="violationMessage"></p>
+
+            {{-- Progress bar showing violations --}}
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-5">
+                <div class="bg-red-600 h-2.5 rounded-full transition-all duration-500"
+                     :style="'width: ' + Math.min(100, (violationCount / maxViolations) * 100) + '%'"></div>
+            </div>
+
+            {{-- Warning text if close to max --}}
+            <template x-if="violationCount >= maxViolations">
+                <div class="bg-red-50 border border-red-300 rounded-xl p-3 mb-4">
+                    <p class="text-sm font-bold text-red-700">Ujian akan otomatis dikumpulkan...</p>
+                    <div class="flex justify-center mt-2">
+                        <svg class="w-5 h-5 text-red-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="violationCount < maxViolations">
+                <div>
+                    <p class="text-xs text-gray-500 mb-4">
+                        Jika pelanggaran mencapai <strong x-text="maxViolations"></strong> kali,
+                        ujian akan <strong>otomatis dikumpulkan</strong>.
+                    </p>
+                    <button @click="returnToFullscreen()"
+                            class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-6
+                                   rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                        </svg>
+                        Kembali ke Fullscreen & Lanjutkan Ujian
+                    </button>
+                </div>
+            </template>
         </div>
     </div>
 

@@ -76,6 +76,7 @@ Route::prefix('api/ujian')->name('api.ujian.')->middleware('throttle:200,1')->gr
     Route::post('/sync-jawaban', [JawabanController::class, 'syncOffline'])->name('sync');
     Route::get('/status/{token}', [JawabanController::class, 'status'])->name('status');
     Route::post('/submit/{token}', [JawabanController::class, 'submitApi'])->name('submit');
+    Route::post('/log-cheating', [JawabanController::class, 'logCheating'])->name('log-cheating');
 });
 
 // =============================================================

@@ -36,6 +36,16 @@ function ujianApp() {
         cacheDone:       0,
         cacheReady:      false,
 
+        // Anti-cheat
+        violationCount:        0,
+        maxViolations:         3,
+        showViolationOverlay:  false,
+        violationMessage:      '',
+        violationType:         '',
+        isFullscreen:          false,
+        _cheatingQueue:        [],
+        _cheatingFlushTimer:   null,
+
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
         },
@@ -66,10 +76,147 @@ function ujianApp() {
             // Pre-cache semua gambar soal + opsi
             this.preCacheImages(cfg.soalList);
 
-            // Fullscreen request (desktop)
-            if (window.innerWidth >= 1024) {
-                this.requestFullscreen();
+            // Init anti-cheat system
+            this.initAntiCheat();
+        },
+
+        // ===== ANTI-CHEAT SYSTEM =====
+        initAntiCheat() {
+            // 1. Request fullscreen on init
+            this.requestFullscreen();
+
+            // 2. Track fullscreen state
+            this.isFullscreen = !!document.fullscreenElement;
+
+            // 3. Fullscreen change listener
+            document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
+            document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
+
+            // 4. Window blur detection
+            window.addEventListener('blur', () => this.handleWindowBlur());
+
+            // 5. Copy/Cut/Paste blocking
+            document.addEventListener('copy', (e) => this.handleClipboard(e));
+            document.addEventListener('cut', (e) => this.handleClipboard(e));
+            document.addEventListener('paste', (e) => this.handleClipboard(e));
+
+            // 6. Keyboard shortcut blocking (DevTools, etc)
+            document.addEventListener('keydown', (e) => this.handleKeydown(e));
+
+            // 7. Right-click blocking
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.logCheating('klik_kanan', { target: e.target?.tagName });
+            });
+
+            // 8. Beforeunload warning
+            window.addEventListener('beforeunload', (e) => {
+                if (!this.isSubmitting) {
+                    e.preventDefault();
+                    e.returnValue = 'Ujian sedang berlangsung. Yakin ingin keluar?';
+                }
+            });
+
+            // 9. Print screen detection
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'PrintScreen') {
+                    this.logCheating('screenshot_attempt', { key: 'PrintScreen' });
+                }
+            });
+        },
+
+        handleFullscreenChange() {
+            const wasFullscreen = this.isFullscreen;
+            this.isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+
+            if (wasFullscreen && !this.isFullscreen) {
+                // Exited fullscreen
+                this.logCheating('fullscreen_exit');
+                this.recordViolation('fullscreen_exit', 'Anda keluar dari mode layar penuh. Klik tombol di bawah untuk kembali ke mode fullscreen.');
+            } else if (!wasFullscreen && this.isFullscreen) {
+                // Entered fullscreen
+                this.logCheating('fullscreen_enter');
             }
+        },
+
+        handleWindowBlur() {
+            // Only count if not caused by our own overlay
+            if (!this.showViolationOverlay && !this.showSubmitModal) {
+                this.logCheating('tidak_fokus', { timestamp: Date.now() });
+            }
+        },
+
+        handleClipboard(e) {
+            e.preventDefault();
+            this.logCheating('copy_paste', { action: e.type });
+        },
+
+        handleKeydown(e) {
+            // Block F5 (refresh)
+            if (e.key === 'F5') {
+                e.preventDefault();
+                return;
+            }
+
+            // Block F12 (DevTools)
+            if (e.key === 'F12') {
+                e.preventDefault();
+                this.logCheating('klik_kanan', { key: 'F12' });
+                return;
+            }
+
+            // Block Ctrl+Shift+I/J/C (DevTools)
+            if (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c'].includes(e.key)) {
+                e.preventDefault();
+                this.logCheating('klik_kanan', { key: `Ctrl+Shift+${e.key}` });
+                return;
+            }
+
+            // Block Ctrl+U (view source)
+            if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+                e.preventDefault();
+                this.logCheating('klik_kanan', { key: 'Ctrl+U' });
+                return;
+            }
+
+            // Block Ctrl+S (save)
+            if (e.ctrlKey && (e.key === 's' || e.key === 'S') && !e.shiftKey) {
+                e.preventDefault();
+                return;
+            }
+
+            // Block Ctrl+P (print)
+            if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
+                e.preventDefault();
+                return;
+            }
+        },
+
+        recordViolation(type, message) {
+            this.violationCount++;
+            this.violationType = type;
+            this.violationMessage = message;
+            this.showViolationOverlay = true;
+
+            if (this.violationCount >= this.maxViolations) {
+                // Auto-submit after short delay so they see the message
+                this.violationMessage = 'Anda telah melakukan pelanggaran sebanyak ' + this.maxViolations + ' kali. Ujian akan otomatis dikumpulkan.';
+                setTimeout(() => {
+                    this.showViolationOverlay = false;
+                    this.logCheating('tidak_fokus', { reason: 'auto_submit_pelanggaran', count: this.violationCount });
+                    this.autoSubmitViolation();
+                }, 3000);
+            }
+        },
+
+        async returnToFullscreen() {
+            this.showViolationOverlay = false;
+            await this.requestFullscreen();
+        },
+
+        async autoSubmitViolation() {
+            console.log('[Anti-Cheat] Max violations reached, auto-submit...');
+            await this.doSubmit();
         },
 
         // ===== RESTORE STATE =====
@@ -457,6 +604,11 @@ function ujianApp() {
                 console.warn('[Submit] Could not read IndexedDB:', e.message);
             }
 
+            // Exit fullscreen before navigating
+            if (document.fullscreenElement) {
+                try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
+            }
+
             if (!navigator.onLine) {
                 // Offline submit — queue untuk dikirim nanti
                 await this.queueOfflineSubmit(cfg);
@@ -526,26 +678,58 @@ function ujianApp() {
             });
         },
 
-        // ===== ANTI-CHEAT =====
+        // ===== ANTI-CHEAT: LOGGING =====
         onVisibilityChange() {
             if (document.hidden) {
                 this.logCheating('ganti_tab');
+                this.recordViolation('ganti_tab', 'Anda berpindah tab atau meminimalkan browser. Tindakan ini tercatat sebagai pelanggaran.');
             }
         },
 
-        logCheating(event) {
+        logCheating(event, detail = {}) {
+            // Queue cheating events and send in batch to reduce requests
+            this._cheatingQueue.push({ event, detail, ts: Date.now() });
+
+            if (this._cheatingFlushTimer) clearTimeout(this._cheatingFlushTimer);
+            this._cheatingFlushTimer = setTimeout(() => this.flushCheatingQueue(), 1000);
+        },
+
+        async flushCheatingQueue() {
+            if (this._cheatingQueue.length === 0) return;
+
             const cfg = window.UJIAN_CONFIG;
-            fetch('/api/ujian/status/' + cfg.sesiToken, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ event, token: cfg.sesiToken }),
-            }).catch(() => {}); // silent fail
+            const batch = [...this._cheatingQueue];
+            this._cheatingQueue = [];
+
+            // Send each event (batch could be consolidated, but enum constraint means per-event)
+            for (const item of batch) {
+                try {
+                    await fetch('/api/ujian/log-cheating', {
+                        method:  'POST',
+                        headers: {
+                            'Content-Type':  'application/json',
+                            'Accept':        'application/json',
+                            'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        },
+                        body: JSON.stringify({
+                            token:  cfg.sesiToken,
+                            event:  item.event,
+                            detail: item.detail,
+                        }),
+                    });
+                } catch (e) {
+                    // Silent fail - don't break exam for logging failure
+                    console.warn('[Anti-Cheat] Log failed:', e.message);
+                }
+            }
         },
 
         requestFullscreen() {
             const el = document.documentElement;
             if (el.requestFullscreen) {
                 el.requestFullscreen().catch(() => {});
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
             }
         },
 
@@ -553,6 +737,8 @@ function ujianApp() {
         onOnline() {
             this.isOffline = false;
             this.syncToServer();
+            // Flush any pending cheating logs
+            this.flushCheatingQueue();
         },
 
         onOffline() {

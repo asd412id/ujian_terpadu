@@ -13,13 +13,13 @@
 # Memory Budget:
 #   nginx:       64 MB
 #   app ×3:    1536 MB (3 × 512 MB, each 8 workers)
-#   horizon:    128 MB
+#   horizon:    384 MB
 #   scheduler:   64 MB
 #   mariadb:    768 MB
-#   redis:      256 MB
+#   redis:      384 MB
 #   cloudflared: 64 MB
 #   ─────────────
-#   Total: ~2880 MB (leaves ~1120 MB for OS + Docker overhead)
+#   Total: ~3264 MB (leaves ~736 MB for OS + Docker overhead)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -120,7 +120,8 @@ services:
           cpus: "1.0"
           memory: 512M
 
-  # --- Horizon (Queue Worker) ---
+    # --- Horizon (Queue Worker) ---
+  # Memory: 384MB for horizon master + 3 supervisors + up to 6 worker processes
   horizon:
     build:
       context: .
@@ -154,10 +155,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 128M
+          cpus: "1.0"
+          memory: 384M
         reservations:
-          memory: 64M
+          memory: 128M
 
   # --- Scheduler (Cron) ---
   scheduler:
@@ -254,7 +255,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 192mb
+      --maxmemory 384mb
       --maxmemory-policy allkeys-lru
       --save 900 1
       --save 300 10
@@ -275,9 +276,9 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 512M
         reservations:
-          memory: 64M
+          memory: 128M
 
 volumes:
   mariadb_data:
