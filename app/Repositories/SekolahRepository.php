@@ -18,6 +18,7 @@ class SekolahRepository
     public function getAll(int $perPage = 20): LengthAwarePaginator
     {
         return $this->model
+            ->where('is_active', true)
             ->with('dinas')
             ->withCount(['peserta', 'soal'])
             ->orderBy('nama')
@@ -33,6 +34,7 @@ class SekolahRepository
         int $perPage = 20
     ): LengthAwarePaginator {
         return $this->model
+            ->where('is_active', true)
             ->withCount(['peserta', 'soal'])
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
