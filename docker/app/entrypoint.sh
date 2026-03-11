@@ -66,6 +66,11 @@ else
         echo "[entrypoint] Database not ready yet... (attempt $i/10)"
         sleep 3
     done
+
+    # --- Cache config & routes per-replica (bootstrap/cache is NOT a shared volume) ---
+    echo "[entrypoint] Caching config & routes..."
+    php artisan config:cache --no-interaction 2>&1 || true
+    php artisan route:cache --no-interaction 2>&1 || true
 fi
 
 # --- Create storage symlink ---
