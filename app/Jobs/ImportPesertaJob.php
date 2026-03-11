@@ -10,8 +10,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ImportPesertaJob implements ShouldQueue
@@ -21,15 +23,12 @@ class ImportPesertaJob implements ShouldQueue
     public int $timeout  = 600;
     public int $tries    = 3;
 
-    /**
-     * Header template peserta untuk akun SEKOLAH (tanpa NPSN).
-     */
     private const SEKOLAH_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
-
-    /**
-     * Header template peserta untuk akun DINAS (dengan NPSN sebagai kolom pertama).
-     */
     private const DINAS_HEADERS = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
+    private const CHUNK_SIZE = 200;
+
+    /** In-memory set of existing username_ujian for uniqueness check */
+    private array $usedUsernames = [];
 
     public function __construct(public ImportJob $importJob) {}
 
@@ -44,23 +43,19 @@ class ImportPesertaJob implements ShouldQueue
             $path     = Storage::disk('local')->path($this->importJob->filepath);
             $rows     = Excel::toArray([], $path)[0] ?? [];
 
-            // Ambil header row dan validasi
             $headers = array_shift($rows);
             $this->validateHeaders($headers, $isDinas);
             $this->importJob->update(['total_rows' => count($rows)]);
 
-            // Cache NPSN -> sekolah_id (hanya untuk dinas)
+            // Pre-load caches
             $npsnCache = [];
             if ($isDinas) {
-                $npsnCache = Sekolah::whereNotNull('npsn')
-                    ->pluck('id', 'npsn')
-                    ->toArray();
+                $npsnCache = Sekolah::whereNotNull('npsn')->pluck('id', 'npsn')->toArray();
             }
 
             // Mode replace_all
             if ($mode === 'replace_all') {
                 if ($isDinas) {
-                    // Kumpulkan semua NPSN unik dari file, lalu hapus peserta per sekolah
                     $npsnList = collect($rows)
                         ->map(fn ($row) => trim((string) ($row[0] ?? '')))
                         ->filter()
@@ -78,24 +73,100 @@ class ImportPesertaJob implements ShouldQueue
                 }
             }
 
+            // Pre-load existing usernames into memory for O(1) uniqueness checks
+            $this->usedUsernames = Peserta::pluck('username_ujian')
+                ->flip()
+                ->toArray();
+
+            // Pre-load existing NIS per sekolah for duplicate checking
+            $relevantSekolahIds = $isDinas
+                ? array_values($npsnCache)
+                : [$this->importJob->sekolah_id];
+
+            $existingNis = Peserta::whereIn('sekolah_id', $relevantSekolahIds)
+                ->whereNotNull('nis')
+                ->select('nis', 'sekolah_id')
+                ->get()
+                ->groupBy('sekolah_id')
+                ->map(fn ($items) => $items->pluck('nis')->flip()->toArray())
+                ->toArray();
+
             $errors  = [];
             $success = 0;
 
-            foreach ($rows as $index => $row) {
-                try {
-                    if ($isDinas) {
-                        $this->processDinasRow($row, $index + 2, $npsnCache);
-                    } else {
-                        $this->processSekolahRow($row, $index + 2);
+            $chunks = array_chunk($rows, self::CHUNK_SIZE, true);
+
+            foreach ($chunks as $chunk) {
+                $insertBatch = [];
+                $chunkErrors = [];
+                $now = now();
+
+                foreach ($chunk as $index => $row) {
+                    try {
+                        $parsed = $isDinas
+                            ? $this->parseDinasRow($row, $index + 2, $npsnCache)
+                            : $this->parseSekolahRow($row, $index + 2);
+
+                        $sekolahId = $parsed['sekolah_id'];
+                        $nisStr    = $parsed['nis'];
+
+                        // Duplicate NIS check using in-memory cache
+                        if ($nisStr) {
+                            if (isset($existingNis[$sekolahId][$nisStr])) {
+                                $errMsg = $isDinas
+                                    ? "NIS $nisStr sudah terdaftar di sekolah NPSN {$parsed['npsn']}"
+                                    : "NIS $nisStr sudah terdaftar";
+                                throw new \Exception($errMsg);
+                            }
+                            // Mark as used for subsequent rows in this batch
+                            $existingNis[$sekolahId][$nisStr] = true;
+                        }
+
+                        // Generate unique username using in-memory set (no DB query)
+                        $username = $this->generateUsernameFromMemory($nisStr, $parsed['nisn']);
+
+                        // Generate password
+                        $password = Peserta::generatePassword();
+
+                        $insertBatch[] = [
+                            'id'             => Str::orderedUuid()->toString(),
+                            'sekolah_id'     => $sekolahId,
+                            'nama'           => $parsed['nama'],
+                            'nis'            => $nisStr,
+                            'nisn'           => $parsed['nisn'],
+                            'kelas'          => $parsed['kelas'],
+                            'jurusan'        => $parsed['jurusan'],
+                            'jenis_kelamin'  => $parsed['jenis_kelamin'],
+                            'tanggal_lahir'  => $parsed['tanggal_lahir'],
+                            'username_ujian' => $username,
+                            'password_ujian' => Hash::make($password),
+                            'password_plain' => encrypt($password),
+                            'is_active'      => true,
+                            'created_at'     => $now,
+                            'updated_at'     => $now,
+                        ];
+
+                        $success++;
+                    } catch (\Exception $e) {
+                        $chunkErrors[] = ['baris' => $index + 2, 'pesan' => $e->getMessage()];
                     }
-                    $success++;
-                } catch (\Exception $e) {
-                    $errors[] = ['baris' => $index + 2, 'pesan' => $e->getMessage()];
                 }
 
-                if (($index + 1) % 50 === 0) {
-                    $this->importJob->update(['processed_rows' => $index + 1]);
+                // Bulk insert the entire chunk in a single transaction
+                if (!empty($insertBatch)) {
+                    DB::transaction(function () use ($insertBatch) {
+                        // Insert in sub-chunks of 50 to avoid query size limits
+                        foreach (array_chunk($insertBatch, 50) as $subChunk) {
+                            Peserta::insert($subChunk);
+                        }
+                    });
                 }
+
+                $errors = array_merge($errors, $chunkErrors);
+
+                // Update progress per chunk
+                $lastIndex = array_key_last($chunk);
+                $this->importJob->update(['processed_rows' => $lastIndex + 1]);
             }
 
             $this->importJob->update([
@@ -117,8 +188,31 @@ class ImportPesertaJob implements ShouldQueue
     }
 
     /**
-     * Validasi header baris pertama sesuai sumber import.
+     * Generate a unique username using in-memory set — zero DB queries.
      */
+    private function generateUsernameFromMemory(?string $nis, ?string $nisn): string
+    {
+        if ($nis && $nis !== '') {
+            $base = $nis;
+        } elseif ($nisn && $nisn !== '') {
+            $base = $nisn;
+        } else {
+            $base = strtoupper(Str::random(8));
+        }
+
+        $username = $base;
+        $counter  = 1;
+        while (isset($this->usedUsernames[$username])) {
+            $username = $base . $counter;
+            $counter++;
+        }
+
+        // Reserve this username for subsequent rows
+        $this->usedUsernames[$username] = true;
+
+        return $username;
+    }
+
     private function validateHeaders(?array $headerRow, bool $isDinas): void
     {
         if (empty($headerRow)) {
@@ -141,10 +235,7 @@ class ImportPesertaJob implements ShouldQueue
         }
     }
 
-    /**
-     * Proses satu baris untuk import DINAS (kolom: npsn, nama, nis, nisn, kelas, jurusan, jk, tgl_lahir).
-     */
-    private function processDinasRow(array $row, int $baris, array $npsnCache): void
+    private function parseDinasRow(array $row, int $baris, array $npsnCache): array
     {
         [$npsn, $nama, $nis, $nisn, $kelas, $jurusan, $jk, $tgl_lahir] = array_pad($row, 8, null);
 
@@ -162,35 +253,20 @@ class ImportPesertaJob implements ShouldQueue
             throw new \Exception("Nama tidak boleh kosong");
         }
 
-        $nisStr  = $nis  ? (string) trim($nis)  : null;
-        $nisnStr = $nisn ? (string) trim($nisn) : null;
-
-        if ($nisStr && Peserta::where('nis', $nisStr)->where('sekolah_id', $sekolahId)->exists()) {
-            throw new \Exception("NIS $nisStr sudah terdaftar di sekolah NPSN $npsnStr");
-        }
-
-        $password = Peserta::generatePassword();
-        $username = Peserta::generateUsername($nisStr, $nisnStr, $sekolahId);
-
-        Peserta::create([
+        return [
             'sekolah_id'    => $sekolahId,
+            'npsn'          => $npsnStr,
             'nama'          => trim((string) $nama),
-            'nis'           => $nisStr,
-            'nisn'          => $nisnStr,
-            'kelas'         => $kelas  ? trim((string) $kelas)  : null,
+            'nis'           => $nis  ? (string) trim($nis)  : null,
+            'nisn'          => $nisn ? (string) trim($nisn) : null,
+            'kelas'         => $kelas   ? trim((string) $kelas)   : null,
             'jurusan'       => $jurusan ? trim((string) $jurusan) : null,
-            'jenis_kelamin' => in_array(strtoupper((string)$jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
+            'jenis_kelamin' => in_array(strtoupper((string) $jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
             'tanggal_lahir' => $tgl_lahir ? date('Y-m-d', strtotime((string) $tgl_lahir)) : null,
-            'username_ujian'=> $username,
-            'password_ujian'=> Hash::make($password),
-            'password_plain'=> encrypt($password),
-        ]);
+        ];
     }
 
-    /**
-     * Proses satu baris untuk import SEKOLAH (kolom: nama, nis, nisn, kelas, jurusan, jk, tgl_lahir).
-     */
-    private function processSekolahRow(array $row, int $baris): void
+    private function parseSekolahRow(array $row, int $baris): array
     {
         [$nama, $nis, $nisn, $kelas, $jurusan, $jk, $tgl_lahir] = array_pad($row, 7, null);
 
@@ -198,28 +274,16 @@ class ImportPesertaJob implements ShouldQueue
             throw new \Exception("Nama tidak boleh kosong");
         }
 
-        $nisStr  = $nis  ? (string) trim($nis)  : null;
-        $nisnStr = $nisn ? (string) trim($nisn) : null;
-
-        if ($nisStr && Peserta::where('nis', $nisStr)->where('sekolah_id', $this->importJob->sekolah_id)->exists()) {
-            throw new \Exception("NIS $nisStr sudah terdaftar");
-        }
-
-        $password = Peserta::generatePassword();
-        $username = Peserta::generateUsername($nisStr, $nisnStr, $this->importJob->sekolah_id);
-
-        Peserta::create([
+        return [
             'sekolah_id'    => $this->importJob->sekolah_id,
+            'npsn'          => null,
             'nama'          => trim((string) $nama),
-            'nis'           => $nisStr,
-            'nisn'          => $nisnStr,
-            'kelas'         => $kelas  ? trim((string) $kelas)  : null,
+            'nis'           => $nis  ? (string) trim($nis)  : null,
+            'nisn'          => $nisn ? (string) trim($nisn) : null,
+            'kelas'         => $kelas   ? trim((string) $kelas)   : null,
             'jurusan'       => $jurusan ? trim((string) $jurusan) : null,
-            'jenis_kelamin' => in_array(strtoupper((string)$jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
+            'jenis_kelamin' => in_array(strtoupper((string) $jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
             'tanggal_lahir' => $tgl_lahir ? date('Y-m-d', strtotime((string) $tgl_lahir)) : null,
-            'username_ujian'=> $username,
-            'password_ujian'=> Hash::make($password),
-            'password_plain'=> encrypt($password),
-        ]);
+        ];
     }
 }

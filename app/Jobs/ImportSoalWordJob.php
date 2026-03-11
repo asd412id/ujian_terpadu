@@ -21,12 +21,21 @@ use PhpOffice\PhpWord\Element\Text;
 use PhpOffice\PhpWord\Element\ListItem;
 use PhpOffice\PhpWord\Element\ListItemRun;
 
+/**
+ * Import soal from Word document.
+ *
+ * Optimized: processes blocks in chunks with batch insert for
+ * opsi_jawaban and pasangan_soal instead of individual creates.
+ */
+
 class ImportSoalWordJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 600;
     public int $tries   = 1;
+
+    private const CHUNK_SIZE = 50;
 
     public function __construct(
         public ImportJob $importJob,
@@ -49,20 +58,46 @@ class ImportSoalWordJob implements ShouldQueue
             $errors  = [];
             $success = 0;
 
-            DB::transaction(function () use ($soalBlocks, &$errors, &$success) {
-                foreach ($soalBlocks as $index => $block) {
-                    try {
-                        $this->processBlock($block);
-                        $success++;
-                    } catch (\Exception $e) {
-                        $errors[] = "Soal " . ($index + 1) . ": " . $e->getMessage();
+            // Process in chunks instead of one giant transaction
+            $chunks = array_chunk($soalBlocks, self::CHUNK_SIZE, true);
+
+            foreach ($chunks as $chunk) {
+                DB::transaction(function () use ($chunk, &$errors, &$success) {
+                    $opsiBatch     = [];
+                    $pasanganBatch = [];
+
+                    foreach ($chunk as $index => $block) {
+                        try {
+                            $result = $this->processBlock($block);
+                            if (!empty($result['opsi'])) {
+                                array_push($opsiBatch, ...$result['opsi']);
+                            }
+                            if (!empty($result['pasangan'])) {
+                                array_push($pasanganBatch, ...$result['pasangan']);
+                            }
+                            $success++;
+                        } catch (\Exception $e) {
+                            $errors[] = "Soal " . ($index + 1) . ": " . $e->getMessage();
+                        }
                     }
 
-                    if (($index + 1) % 50 === 0) {
-                        $this->importJob->update(['processed_rows' => $index + 1]);
+                    // Bulk insert all opsi and pasangan for this chunk
+                    if (!empty($opsiBatch)) {
+                        foreach (array_chunk($opsiBatch, 100) as $subChunk) {
+                            OpsiJawaban::insert($subChunk);
+                        }
                     }
-                }
-            });
+                    if (!empty($pasanganBatch)) {
+                        foreach (array_chunk($pasanganBatch, 100) as $subChunk) {
+                            PasanganSoal::insert($subChunk);
+                        }
+                    }
+                });
+
+                // Update progress per chunk
+                $lastIndex = array_key_last($chunk);
+                $this->importJob->update(['processed_rows' => $lastIndex + 1]);
+            }
 
             // Clean up extracted images folder
             if ($this->imagesPath && is_dir($this->imagesPath)) {
@@ -329,7 +364,7 @@ class ImportSoalWordJob implements ShouldQueue
         return $name;
     }
 
-    private function processBlock(array $block): void
+    private function processBlock(array $block): array
     {
         if (empty($block['pertanyaan'])) {
             throw new \Exception('Pertanyaan tidak ditemukan');
@@ -349,75 +384,100 @@ class ImportSoalWordJob implements ShouldQueue
             'bobot'             => $block['bobot'] ?? 1.0,
         ]);
 
+        $now = now();
+        $result = ['opsi' => [], 'pasangan' => []];
+
         match ($block['jenis']) {
-            'pg', 'pg_kompleks' => $this->saveOpsi($soal, $block),
-            'benar_salah'       => $this->saveBenarSalah($soal, $block),
-            'menjodohkan'       => $this->savePasangan($soal, $block),
-            'isian', 'essay'    => $this->saveIsian($soal, $block),
+            'pg', 'pg_kompleks' => $result['opsi'] = $this->buildOpsiBatch($soal->id, $block, $now),
+            'benar_salah'       => $result['opsi'] = $this->buildBenarSalahBatch($soal->id, $block, $now),
+            'menjodohkan'       => $result['pasangan'] = $this->buildPasanganBatch($soal->id, $block, $now),
+            'isian', 'essay'    => $result['opsi'] = $this->buildIsianBatch($soal->id, $block, $now),
             default             => null,
         };
+
+        return $result;
     }
 
-    private function saveOpsi(Soal $soal, array $block): void
+    private function buildOpsiBatch(string $soalId, array $block, $now): array
     {
         $kunciStr = strtoupper(str_replace(' ', '', (string) ($block['kunci'] ?? '')));
         $kunciArr = $kunciStr ? explode(',', $kunciStr) : [];
 
+        $batch = [];
         $i = 0;
         foreach ($block['opsi'] as $label => $teks) {
             $gambar = $block['opsi_gambar'][$label] ?? null;
 
-            OpsiJawaban::create([
-                'soal_id'  => $soal->id,
-                'label'    => $label,
-                'teks'     => $teks ?: null,
-                'gambar'   => $gambar,
-                'is_benar' => in_array($label, $kunciArr),
-                'urutan'   => $i++,
-            ]);
+            $batch[] = [
+                'id'         => Str::orderedUuid()->toString(),
+                'soal_id'    => $soalId,
+                'label'      => $label,
+                'teks'       => $teks ?: null,
+                'gambar'     => $gambar,
+                'is_benar'   => in_array($label, $kunciArr),
+                'urutan'     => $i++,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
+        return $batch;
     }
 
-    private function savePasangan(Soal $soal, array $block): void
+    private function buildPasanganBatch(string $soalId, array $block, $now): array
     {
+        $batch = [];
         foreach ($block['pasangan'] as $i => $pair) {
-            PasanganSoal::create([
-                'soal_id'      => $soal->id,
-                'kiri_teks'    => $pair['kiri'],
-                'kiri_gambar'  => $pair['kiri_gambar'] ?? null,
-                'kanan_teks'   => $pair['kanan'],
-                'kanan_gambar' => $pair['kanan_gambar'] ?? null,
-                'urutan'       => $i,
-            ]);
+            $batch[] = [
+                'id'            => Str::orderedUuid()->toString(),
+                'soal_id'       => $soalId,
+                'kiri_teks'     => $pair['kiri'],
+                'kiri_gambar'   => $pair['kiri_gambar'] ?? null,
+                'kanan_teks'    => $pair['kanan'],
+                'kanan_gambar'  => $pair['kanan_gambar'] ?? null,
+                'urutan'        => $i,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ];
         }
+        return $batch;
     }
 
-    private function saveBenarSalah(Soal $soal, array $block): void
+    private function buildBenarSalahBatch(string $soalId, array $block, $now): array
     {
+        $batch = [];
         $pernyataanList = $block['pernyataan_bs'] ?? [];
         foreach ($pernyataanList as $i => $item) {
-            OpsiJawaban::create([
-                'soal_id'  => $soal->id,
-                'label'    => (string) ($i + 1),
-                'teks'     => $item['teks'],
-                'is_benar' => $item['benar'],
-                'urutan'   => $i,
-            ]);
+            $batch[] = [
+                'id'         => Str::orderedUuid()->toString(),
+                'soal_id'    => $soalId,
+                'label'      => (string) ($i + 1),
+                'teks'       => $item['teks'],
+                'gambar'     => null,
+                'is_benar'   => $item['benar'],
+                'urutan'     => $i,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
+        return $batch;
     }
 
-    private function saveIsian(Soal $soal, array $block): void
+    private function buildIsianBatch(string $soalId, array $block, $now): array
     {
         $kunci = $block['kunci'] ?? null;
-        if ($kunci) {
-            OpsiJawaban::create([
-                'soal_id'  => $soal->id,
-                'label'    => 'KUNCI',
-                'teks'     => $kunci,
-                'is_benar' => true,
-                'urutan'   => 0,
-            ]);
-        }
+        if (!$kunci) return [];
+
+        return [[
+            'id'         => Str::orderedUuid()->toString(),
+            'soal_id'    => $soalId,
+            'label'      => 'KUNCI',
+            'teks'       => $kunci,
+            'gambar'     => null,
+            'is_benar'   => true,
+            'urutan'     => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]];
     }
 
     private function cleanupDirectory(string $dir): void
