@@ -142,7 +142,7 @@
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Belum</span>
                             @endif
                         </td>
-                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->soal_terjawab ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->soal_terjawab ?? 0 }}/{{ $sesi->paket?->jumlah_soal ?? '?' }}</td>
                         <td class="px-5 py-3 text-center text-amber-600 font-medium">{{ $sp->soal_ditandai ?? 0 }}</td>
                         <td class="px-5 py-3 text-center">
                             @if(in_array($sp->status, ['submit', 'dinilai']) && $sp->nilai_akhir !== null)

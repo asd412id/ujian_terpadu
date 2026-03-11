@@ -54,7 +54,7 @@ class SesiPeserta extends Model
     {
         if (! $this->mulai_at) return 0;
         $durasi  = $this->sesi->paket->durasi_menit * 60;
-        $elapsed = now()->diffInSeconds($this->mulai_at);
+        $elapsed = (int) $this->mulai_at->diffInSeconds(now(), false);
         return max(0, $durasi - $elapsed);
     }
 }
