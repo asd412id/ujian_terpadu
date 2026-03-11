@@ -152,14 +152,34 @@ class ImportPesertaJob implements ShouldQueue
                     }
                 }
 
-                // Bulk insert the entire chunk in a single transaction
+                // Bulk insert with per-row fallback on duplicate
                 if (!empty($insertBatch)) {
-                    DB::transaction(function () use ($insertBatch) {
-                        // Insert in sub-chunks of 50 to avoid query size limits
-                        foreach (array_chunk($insertBatch, 50) as $subChunk) {
+                    foreach (array_chunk($insertBatch, 50) as $subChunk) {
+                        try {
                             Peserta::insert($subChunk);
+                        } catch (\Illuminate\Database\QueryException $qe) {
+                            // Bulk failed (likely duplicate) — insert one by one
+                            foreach ($subChunk as $row) {
+                                try {
+                                    Peserta::insert([$row]);
+                                } catch (\Illuminate\Database\QueryException $rowEx) {
+                                    if (str_contains($rowEx->getMessage(), 'Duplicate entry')) {
+                                        // Try with suffixed username
+                                        $row['username_ujian'] = $row['username_ujian'] . '_' . substr(md5($row['id']), 0, 4);
+                                        try {
+                                            Peserta::insert([$row]);
+                                        } catch (\Exception $e2) {
+                                            $success--;
+                                            $chunkErrors[] = ['baris' => 0, 'pesan' => "Duplikat username: {$row['nama']} ({$row['nis']})"];
+                                        }
+                                    } else {
+                                        $success--;
+                                        $chunkErrors[] = ['baris' => 0, 'pesan' => $rowEx->getMessage()];
+                                    }
+                                }
+                            }
                         }
-                    });
+                    }
                 }
 
                 $errors = array_merge($errors, $chunkErrors);
