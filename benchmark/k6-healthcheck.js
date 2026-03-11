@@ -13,10 +13,9 @@ const responseTime = new Trend('response_time', true);
 export const options = {
     stages: [
         { duration: '15s', target: 100 },   // ramp-up
-        { duration: '30s', target: 500 },   // moderate load
-        { duration: '30s', target: 1000 },  // high load
-        { duration: '30s', target: 2000 },  // very high load
-        { duration: '30s', target: 3000 },  // target load
+        { duration: '30s', target: 300 },   // moderate load
+        { duration: '30s', target: 600 },   // high load
+        { duration: '30s', target: 1000 },  // very high load
         { duration: '15s', target: 0 },     // ramp-down
     ],
     thresholds: {

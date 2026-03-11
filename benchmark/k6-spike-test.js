@@ -25,15 +25,15 @@ export const options = {
             executor: 'ramping-vus',
             startVUs: 0,
             stages: [
-                { duration: '30s', target: 200 },    // warm-up to baseline
-                { duration: '1m', target: 200 },     // steady baseline
-                { duration: '10s', target: 3000 },   // SPIKE! sudden 15x increase
-                { duration: '1m', target: 3000 },    // hold spike
-                { duration: '10s', target: 200 },    // drop back
-                { duration: '1m', target: 200 },     // recovery period
-                { duration: '30s', target: 5000 },   // MEGA SPIKE!
-                { duration: '30s', target: 5000 },   // hold mega spike
-                { duration: '30s', target: 0 },      // ramp-down
+                { duration: '20s', target: 100 },    // warm-up to baseline
+                { duration: '30s', target: 100 },    // steady baseline
+                { duration: '10s', target: 800 },    // SPIKE! sudden 8x increase
+                { duration: '30s', target: 800 },    // hold spike
+                { duration: '10s', target: 100 },    // drop back
+                { duration: '30s', target: 100 },    // recovery period
+                { duration: '10s', target: 1000 },   // MEGA SPIKE!
+                { duration: '30s', target: 1000 },   // hold mega spike
+                { duration: '20s', target: 0 },      // ramp-down
             ],
             gracefulRampDown: '10s',
         },

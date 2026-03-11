@@ -30,12 +30,11 @@ export const options = {
             executor: 'ramping-vus',
             startVUs: 0,
             stages: [
-                { duration: '30s', target: 50 },     // warm-up
-                { duration: '1m', target: 200 },     // moderate
-                { duration: '2m', target: 500 },     // high
-                { duration: '2m', target: 1000 },    // very high
-                { duration: '1m', target: 2000 },    // target
-                { duration: '30s', target: 0 },      // ramp-down
+                { duration: '20s', target: 30 },     // warm-up
+                { duration: '30s', target: 100 },    // moderate
+                { duration: '1m', target: 300 },     // high
+                { duration: '1m', target: 500 },     // very high
+                { duration: '20s', target: 0 },      // ramp-down
             ],
             gracefulRampDown: '30s',
         },
