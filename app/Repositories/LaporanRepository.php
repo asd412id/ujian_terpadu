@@ -224,12 +224,14 @@ class LaporanRepository
         }
 
         $rows = JawabanPeserta::join('soal', 'jawaban_peserta.soal_id', '=', 'soal.id')
+            ->leftJoin('kategori_soal', 'soal.kategori_id', '=', 'kategori_soal.id')
             ->whereIn('jawaban_peserta.sesi_peserta_id', $sesiPesertaIds)
-            ->groupBy('jawaban_peserta.soal_id', 'soal.tipe_soal', 'soal.pertanyaan')
+            ->groupBy('jawaban_peserta.soal_id', 'soal.tipe_soal', 'soal.pertanyaan', 'kategori_soal.nama')
             ->selectRaw('
                 jawaban_peserta.soal_id,
                 soal.tipe_soal,
                 LEFT(soal.pertanyaan, 200) as pertanyaan_raw,
+                kategori_soal.nama as kategori_nama,
                 COUNT(*) as total_dijawab,
                 SUM(CASE WHEN jawaban_peserta.is_terjawab = 0 THEN 1 ELSE 0 END) as kosong,
                 SUM(CASE WHEN jawaban_peserta.is_terjawab = 1 AND (COALESCE(jawaban_peserta.skor_auto, 0) > 0 OR COALESCE(jawaban_peserta.skor_manual, 0) > 0) THEN 1 ELSE 0 END) as benar,
@@ -247,6 +249,7 @@ class LaporanRepository
             $result[] = [
                 'nomor'         => $nomor++,
                 'tipe'          => $row->tipe_soal ?? '-',
+                'kategori'      => $row->kategori_nama ?? '-',
                 'pertanyaan'    => mb_substr(strip_tags($row->pertanyaan_raw ?? ''), 0, 120),
                 'total_dijawab' => (int) $row->total_dijawab,
                 'benar'         => $benar,

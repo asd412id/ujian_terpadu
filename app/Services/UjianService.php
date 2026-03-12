@@ -132,7 +132,7 @@ class UjianService
         }
 
         $durasi = $sesiPeserta->mulai_at
-            ? now()->diffInSeconds($sesiPeserta->mulai_at)
+            ? (int) $sesiPeserta->mulai_at->diffInSeconds(now(), false)
             : 0;
 
         $sesiPeserta->update([

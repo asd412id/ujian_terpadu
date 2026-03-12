@@ -209,7 +209,7 @@ class JawabanService
         }
 
         $durasi = $sesiPeserta->mulai_at
-            ? now()->diffInSeconds($sesiPeserta->mulai_at) : 0;
+            ? (int) $sesiPeserta->mulai_at->diffInSeconds(now(), false) : 0;
 
         $sesiPeserta->update([
             'status'              => 'submit',

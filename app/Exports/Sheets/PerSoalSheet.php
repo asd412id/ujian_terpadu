@@ -29,6 +29,7 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
         $rows[] = [
             'No Soal',
             'Tipe Soal',
+            'Kategori Soal',
             'Pertanyaan',
             'Total Dijawab',
             'Benar',
@@ -42,13 +43,14 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
             $rows[] = [
                 $row['nomor'],
                 strtoupper($row['tipe']),
+                $row['kategori'] ?? '-',
                 $row['pertanyaan'],
-                $row['total_dijawab'],
-                $row['benar'],
-                $row['salah'],
-                $row['kosong'],
-                $row['pct_benar'] . '%',
-                $row['rata_skor'],
+                $row['total_dijawab'] ?? 0,
+                $row['benar'] ?? 0,
+                $row['salah'] ?? 0,
+                $row['kosong'] ?? 0,
+                ($row['pct_benar'] ?? 0) . '%',
+                $row['rata_skor'] ?? 0,
             ];
         }
 
@@ -62,7 +64,7 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
                 $sheet = $event->sheet->getDelegate();
                 $totalRows = count($this->data) + 1;
 
-                $sheet->getStyle('A1:I1')->applyFromArray([
+                $sheet->getStyle('A1:J1')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 11],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
@@ -83,7 +85,7 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
                 $sheet->getRowDimension(1)->setRowHeight(30);
 
                 if ($totalRows > 1) {
-                    $sheet->getStyle("A2:I{$totalRows}")->applyFromArray([
+                    $sheet->getStyle("A2:J{$totalRows}")->applyFromArray([
                         'borders' => [
                             'allBorders' => [
                                 'borderStyle' => Border::BORDER_THIN,
@@ -93,16 +95,16 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
                         'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                     ]);
 
-                    $sheet->getStyle("A2:B{$totalRows}")->getAlignment()
+                    $sheet->getStyle("A2:C{$totalRows}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("D2:I{$totalRows}")->getAlignment()
+                    $sheet->getStyle("E2:J{$totalRows}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                    $sheet->getColumnDimension('C')->setWidth(60);
+                    $sheet->getColumnDimension('D')->setWidth(60);
 
                     for ($row = 2; $row <= $totalRows; $row++) {
                         if ($row % 2 === 0) {
-                            $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
+                            $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
                                 'fill' => [
                                     'fillType' => Fill::FILL_SOLID,
                                     'startColor' => ['argb' => 'FFF9FAFB'],
@@ -112,7 +114,7 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
                     }
                 }
 
-                $sheet->setAutoFilter("A1:I1");
+                $sheet->setAutoFilter("A1:J1");
                 $sheet->freezePane('A2');
             },
         ];
