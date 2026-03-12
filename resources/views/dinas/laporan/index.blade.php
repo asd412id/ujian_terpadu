@@ -77,6 +77,18 @@
         </div>
     </form>
 
+    {{-- Recalculate Form --}}
+    <form method="POST" action="{{ route('dinas.laporan.recalculate') }}"
+          id="recalculate-form" class="hidden">
+        @csrf
+        @if(request('paket_id'))
+        <input type="hidden" name="paket_id" value="{{ request('paket_id') }}">
+        @endif
+        @if(request('sekolah_id'))
+        <input type="hidden" name="sekolah_id" value="{{ request('sekolah_id') }}">
+        @endif
+    </form>
+
     {{-- Rekap Statistik --}}
     @if(isset($rekap))
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -106,6 +118,17 @@
     {{-- Tabel Hasil --}}
     @if(isset($data) && is_object($data) && $data->count() > 0)
     <div class="card overflow-hidden p-0">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+            <p class="text-sm text-gray-500">Menampilkan {{ $data->count() }} dari {{ $data->total() }} data</p>
+            <button type="button"
+                    onclick="if(confirm('Hitung ulang semua nilai{{ request('paket_id') || request('sekolah_id') ? ' (sesuai filter aktif)' : '' }}? Proses ini mungkin membutuhkan waktu beberapa detik.')) { document.getElementById('recalculate-form').submit(); }"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Hitung Ulang Nilai
+            </button>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">

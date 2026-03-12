@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Exports\LaporanUjianExport;
 use App\Http\Controllers\Controller;
+use App\Models\SesiPeserta;
 use App\Services\LaporanService;
+use App\Services\PenilaianService;
 use Illuminate\Http\Request;
 
 class LaporanController extends Controller
@@ -66,5 +68,49 @@ class LaporanController extends Controller
             filters: $exportData['filters'],
             perSoalData: $exportData['perSoal'],
         ))->download($filename);
+    }
+
+    public function recalculate(Request $request, PenilaianService $penilaianService)
+    {
+        $filters = $request->only(['sekolah_id', 'paket_id']);
+
+        $query = SesiPeserta::whereIn('status', ['submit', 'dinilai'])
+            ->with(['sesi.paket.paketSoal.soal', 'jawaban.soal.opsiJawaban']);
+
+        if (! empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (! empty($filters['sekolah_id'])) {
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+        }
+
+        $updated = 0;
+        $changed = 0;
+
+        $query->chunkById(50, function ($chunk) use ($penilaianService, &$updated, &$changed) {
+            foreach ($chunk as $sp) {
+                $oldNilai = (float) $sp->nilai_akhir;
+                $hasil = $penilaianService->hitungNilai($sp);
+                $newNilai = (float) $hasil['nilai_akhir'];
+
+                if ($oldNilai !== $newNilai) {
+                    $sp->update($hasil);
+                    $changed++;
+                }
+
+                $updated++;
+            }
+        });
+
+        if ($changed > 0) {
+            return back()
+                ->withInput()
+                ->with('success', "Recalculate selesai: {$changed} dari {$updated} nilai diperbarui.");
+        }
+
+        return back()
+            ->withInput()
+            ->with('info', "Recalculate selesai: semua {$updated} nilai sudah benar, tidak ada perubahan.");
     }
 }
