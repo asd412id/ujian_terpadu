@@ -16,7 +16,7 @@
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Informasi Paket</h2>
         <div class="grid grid-cols-2 gap-4 text-sm">
             <div><span class="text-gray-500">Nama:</span> <span class="font-medium">{{ $paket->nama }}</span></div>
-            <div><span class="text-gray-500">Jenis Ujian:</span> <span class="font-medium">{{ $paket->jenis_ujian }}</span></div>
+            <div><span class="text-gray-500">Jenis Ujian:</span> <span class="font-medium">{{ $paket->jenis_ujian_label }}</span></div>
             <div><span class="text-gray-500">Durasi:</span> <span class="font-medium">{{ $paket->durasi_menit }} menit</span></div>
             <div><span class="text-gray-500">Jumlah Soal:</span> <span class="font-medium">{{ $paket->paketSoal->count() }}</span></div>
             <div><span class="text-gray-500">Status:</span> <span class="font-medium">{{ ucfirst($paket->status) }}</span></div>

@@ -139,7 +139,8 @@ class UjianController extends Controller
         $result     = $this->ujianService->getHasilUjian($sesiPeserta->id);
         $sesiPeserta = $result['sesiPeserta'];
         $ringkasan   = $result['ringkasan'];
+        $sesiToken   = $sesiPeserta->token_ujian;
 
-        return view('ujian.selesai', compact('sesiPeserta', 'peserta', 'ringkasan'));
+        return view('ujian.selesai', compact('sesiPeserta', 'peserta', 'ringkasan', 'sesiToken'));
     }
 }

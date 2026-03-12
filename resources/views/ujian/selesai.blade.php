@@ -171,16 +171,45 @@
     </div>
 </main>
 
+<script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
 <script>
+window.SELESAI_CONFIG = {
+    sesiPesertaId: '{{ $sesiPeserta->id }}',
+    sesiToken: '{{ $sesiToken ?? '' }}',
+};
+
 function selesaiApp() {
     return {
         isOnline: navigator.onLine,
         isSyncing: false,
         hasPendingSync: false,
+        syncRetries: 0,
+        maxRetries: 10,
+        _db: null,
+        _retryTimer: null,
+
+        _getDb() {
+            if (!this._db) {
+                this._db = new Dexie('UjianTerpaduDB');
+                this._db.version(1).stores({
+                    exam_answers: '++id, sesiPesertaId, soalId, jawaban, synced, idempotencyKey, updatedAt',
+                    exam_state:   'sesiPesertaId, currentIndex, tandaiList, lastSyncAt',
+                    image_status: 'url, cached, error',
+                });
+            }
+            return this._db;
+        },
 
         async init() {
-            window.addEventListener('online',  () => { this.isOnline = true; this.trySyncPending(); });
+            window.addEventListener('online',  () => { this.isOnline = true; this.syncRetries = 0; this.trySyncPending(); });
             window.addEventListener('offline', () => this.isOnline = false);
+
+            // Listen for SW trigger
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('message', (e) => {
+                    if (e.data?.type === 'TRIGGER_SYNC') this.trySyncPending();
+                });
+            }
 
             await this.checkPendingSync();
             if (this.hasPendingSync && this.isOnline) {
@@ -189,29 +218,111 @@ function selesaiApp() {
         },
 
         async checkPendingSync() {
-            if (typeof Dexie === 'undefined') return;
             try {
-                const db = new Dexie('UjianTerpadu');
-                db.version(1).stores({ exam_answers: '++id, sesiPesertaId, soalId, synced, idempotency_key' });
-                const pending = await db.exam_answers.where('synced').equals(0).count();
+                const db = this._getDb();
+                const pending = await db.exam_answers.filter(a => !a.synced).count();
                 this.hasPendingSync = pending > 0;
-            } catch (e) { /* IndexedDB not available */ }
+            } catch (e) {
+                console.warn('[Selesai] checkPendingSync error:', e.message);
+            }
         },
 
         async trySyncPending() {
-            if (!this.hasPendingSync || this.isSyncing) return;
+            if (this.isSyncing || !this.isOnline) return;
             this.isSyncing = true;
+
             try {
-                if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                    const reg = await navigator.serviceWorker.ready;
-                    await reg.sync.register('jawaban-sync');
+                const db = this._getDb();
+
+                // Find all sessions with pending answers
+                const pending = await db.exam_answers.filter(a => !a.synced).toArray();
+                if (pending.length === 0) {
+                    this.hasPendingSync = false;
+                    this.isSyncing = false;
+                    return;
                 }
-                await new Promise(r => setTimeout(r, 3000));
+
+                // Group by sesiPesertaId
+                const bySesi = {};
+                pending.forEach(a => {
+                    if (!bySesi[a.sesiPesertaId]) bySesi[a.sesiPesertaId] = [];
+                    bySesi[a.sesiPesertaId].push(a);
+                });
+
+                // Get sesi token from exam_state
+                for (const [sesiPesertaId, answers] of Object.entries(bySesi)) {
+                    const state = await db.exam_state.get(sesiPesertaId);
+
+                    // Format answers for API
+                    const formattedAnswers = answers.map(item => ({
+                        soal_id:         item.soalId,
+                        jawaban:         this._formatJawaban(item.jawaban),
+                        idempotency_key: item.idempotencyKey,
+                        client_timestamp: item.updatedAt,
+                    }));
+
+                    // Try to get token - check window config or use stored token
+                    const sesiToken = window.SELESAI_CONFIG?.sesiToken || state?.sesiToken;
+                    if (!sesiToken) {
+                        console.warn('[Selesai] No sesi token for', sesiPesertaId);
+                        continue;
+                    }
+
+                    const res = await fetch('/api/ujian/sync-jawaban', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            sesi_token: sesiToken,
+                            answers: formattedAnswers,
+                            tandai_list: state?.tandaiList ?? [],
+                        }),
+                    });
+
+                    if (res.ok) {
+                        // Mark synced
+                        await Promise.all(answers.map(a => db.exam_answers.update(a.id, { synced: true })));
+                        this.syncRetries = 0;
+
+                        // If pendingSubmit, also submit
+                        if (state?.pendingSubmit) {
+                            await fetch('/api/ujian/submit/' + sesiToken, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                body: JSON.stringify({ sesi_token: sesiToken }),
+                            });
+                            await db.exam_state.update(sesiPesertaId, { pendingSubmit: false });
+                        }
+
+                        // Cleanup synced answers
+                        await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId)
+                            .filter(a => a.synced).delete();
+                    } else {
+                        throw new Error(`Server returned ${res.status}`);
+                    }
+                }
+
                 await this.checkPendingSync();
-            } catch (e) { /* fallback */ } finally {
+            } catch (e) {
+                console.warn('[Selesai] Sync failed:', e.message);
+                this.syncRetries++;
+                // Retry with exponential backoff
+                if (this.syncRetries < this.maxRetries) {
+                    const delay = Math.min(2000 * Math.pow(2, this.syncRetries - 1), 30000);
+                    this._retryTimer = setTimeout(() => this.trySyncPending(), delay);
+                }
+            } finally {
                 this.isSyncing = false;
             }
-        }
+        },
+
+        _formatJawaban(jawaban) {
+            if (!jawaban) return null;
+            if (jawaban.pg?.length > 0) return jawaban.pg;
+            if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
+            if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0) return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
+            if (jawaban.teks !== undefined && jawaban.teks !== '') return jawaban.teks;
+            return null;
+        },
     };
 }
 </script>

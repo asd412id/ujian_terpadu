@@ -76,6 +76,25 @@ class PaketUjian extends Model
         return $this->hasMany(SesiUjian::class, 'paket_id');
     }
 
+    public function getJenisUjianLabelAttribute(): ?string
+    {
+        if (!$this->jenis_ujian) {
+            return null;
+        }
+
+        $labels = [
+            'TKA_SEKOLAH'  => 'TKA Sekolah',
+            'SIMULASI_UTBK' => 'Simulasi UTBK',
+            'TRYOUT'        => 'Try Out',
+            'ULANGAN'       => 'Ulangan',
+            'PAS'           => 'PAS',
+            'PAT'           => 'PAT',
+            'LAINNYA'       => 'Lainnya',
+        ];
+
+        return $labels[$this->jenis_ujian] ?? str_replace('_', ' ', $this->jenis_ujian);
+    }
+
     public function isAktif(): bool
     {
         return $this->status === 'aktif';

@@ -27,6 +27,13 @@ function ujianApp() {
         tandaiList:      [], // [soalId, ...]
         pendingSync:     0,
 
+        // Sync control
+        isSyncing:       false,
+        _syncTimer:      null,
+        _syncRetries:    0,
+        _maxRetries:     5,
+        _retryTimer:     null,
+
         // Timer
         sisaWaktu:       0,
         timerInterval:   null,
@@ -104,7 +111,6 @@ function ujianApp() {
                 const res = await fetch(cfg.statusUrl, {
                     headers: {
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     },
                 });
 
@@ -191,6 +197,22 @@ function ujianApp() {
                     this.logCheating('screenshot_attempt', { key: 'PrintScreen' });
                 }
             });
+
+            // 10. Resize fallback — detect fullscreen exit that bypasses Fullscreen API (e.g. F11/ESC)
+            this._lastInnerHeight = window.innerHeight;
+            window.addEventListener('resize', () => this.handleResizeFullscreenCheck());
+        },
+
+        handleResizeFullscreenCheck() {
+            // If screen height shrunk significantly and we're not in API fullscreen,
+            // it likely means the user exited browser fullscreen (F11 or ESC)
+            const heightDropped = window.innerHeight < screen.height * 0.85;
+            const notInApiFullscreen = !document.fullscreenElement && !document.webkitFullscreenElement;
+
+            if (heightDropped && notInApiFullscreen && !this.showViolationOverlay && !this.isSubmitting) {
+                this.logCheating('fullscreen_exit', { trigger: 'resize_detection' });
+                this.recordViolation('fullscreen_exit', 'Anda keluar dari mode layar penuh. Klik tombol di bawah untuk kembali ke mode fullscreen.');
+            }
         },
 
         handleFullscreenChange() {
@@ -220,6 +242,16 @@ function ujianApp() {
         },
 
         handleKeydown(e) {
+            // Block F11 (browser fullscreen toggle — bypasses Fullscreen API)
+            if (e.key === 'F11') {
+                e.preventDefault();
+                // If not in fullscreen, re-enter via API
+                if (!document.fullscreenElement) {
+                    this.requestFullscreen();
+                }
+                return;
+            }
+
             // Block F5 (refresh)
             if (e.key === 'F5') {
                 e.preventDefault();
@@ -255,6 +287,12 @@ function ujianApp() {
 
             // Block Ctrl+P (print)
             if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
+                e.preventDefault();
+                return;
+            }
+
+            // Block Escape (prevent exiting fullscreen without overlay)
+            if (e.key === 'Escape') {
                 e.preventDefault();
                 return;
             }
@@ -546,13 +584,15 @@ function ujianApp() {
                 });
             }
 
-            this.pendingSync++;
             this.lastSaved  = true;
             this.isSaving   = false;
 
-            // 2. Coba sync ke server jika online
+            // Recalculate pendingSync from IndexedDB (prevents drift)
+            await this.recalcPendingSync();
+
+            // 2. Debounced sync ke server jika online (coalesce rapid clicks)
             if (navigator.onLine) {
-                this.syncToServer();
+                this.debouncedSync();
             }
         },
 
@@ -562,14 +602,35 @@ function ujianApp() {
                 sesiPesertaId: cfg.sesiPesertaId,
                 currentIndex:  this.currentIndex,
                 tandaiList:    this.tandaiList,
+                sesiToken:     cfg.sesiToken,
                 lastSyncAt:    Date.now(),
             });
         },
 
         // ===== SYNC TO SERVER =====
+        async recalcPendingSync() {
+            try {
+                const cfg = window.UJIAN_CONFIG;
+                const count = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .and(item => !item.synced)
+                    .count();
+                this.pendingSync = count;
+            } catch { /* ignore */ }
+        },
+
+        debouncedSync() {
+            if (this._syncTimer) clearTimeout(this._syncTimer);
+            this._syncTimer = setTimeout(() => this.syncToServer(), 800);
+        },
+
         async autoSync() {
-            if (navigator.onLine && this.pendingSync > 0) {
-                await this.syncToServer();
+            if (navigator.onLine) {
+                // Recalculate in case something drifted
+                await this.recalcPendingSync();
+                if (this.pendingSync > 0) {
+                    await this.syncToServer();
+                }
             }
         },
 
@@ -585,6 +646,7 @@ function ujianApp() {
 
             if (pending.length === 0) {
                 this.isSyncing = false;
+                this.pendingSync = 0;
                 return;
             }
 
@@ -602,7 +664,6 @@ function ujianApp() {
                     headers: {
                         'Content-Type':  'application/json',
                         'Accept':        'application/json',
-                        'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     },
                     body: JSON.stringify({
                         sesi_token: cfg.sesiToken,
@@ -620,19 +681,47 @@ function ujianApp() {
                         db.exam_answers.update(item.id, { synced: true })
                     ));
 
-                    this.pendingSync = Math.max(0, this.pendingSync - data.synced);
+                    // Recalculate from IndexedDB (source of truth)
+                    await this.recalcPendingSync();
+                    this._syncRetries = 0;
 
                     // Show toast jika ada sync
                     if (data.synced > 0) {
                         this.showSyncToast = true;
                         setTimeout(() => { this.showSyncToast = false; }, 3000);
                     }
+                } else if (res.status === 422) {
+                    // Validation error — answers may be invalid, don't retry
+                    console.warn('[Sync] Validation error (422), skipping retry');
+                    this._syncRetries = 0;
+                } else if (res.status === 429) {
+                    // Rate limited — retry after longer delay
+                    console.warn('[Sync] Rate limited (429), backing off...');
+                    this._scheduleRetry(10000);
+                } else {
+                    // 500, 503, etc — retry with backoff
+                    console.warn('[Sync] Server error:', res.status);
+                    this._scheduleRetry();
                 }
             } catch (err) {
-                console.warn('[Sync] Failed, will retry:', err.message);
+                // Network error — retry with backoff
+                console.warn('[Sync] Network error, will retry:', err.message);
+                this._scheduleRetry();
             } finally {
                 this.isSyncing = false;
             }
+        },
+
+        _scheduleRetry(forceDelay) {
+            this._syncRetries++;
+            if (this._syncRetries > this._maxRetries) {
+                console.warn('[Sync] Max retries reached, waiting for next auto-sync interval');
+                this._syncRetries = 0;
+                return;
+            }
+            const delay = forceDelay ?? Math.min(1000 * Math.pow(2, this._syncRetries - 1), 30000);
+            if (this._retryTimer) clearTimeout(this._retryTimer);
+            this._retryTimer = setTimeout(() => this.syncToServer(), delay);
         },
 
         formatJawabanForApi(jawaban) {
@@ -690,7 +779,6 @@ function ujianApp() {
                     headers: {
                         'Content-Type':  'application/json',
                         'Accept':        'application/json',
-                        'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                     },
                     body: JSON.stringify({
                         sesi_token: cfg.sesiToken,
@@ -736,12 +824,13 @@ function ujianApp() {
         },
 
         async queueOfflineSubmit(cfg) {
-            // Tag semua jawaban sebagai perlu submit
+            // Tag semua jawaban sebagai perlu submit + store token for selesai page sync
             await db.exam_state.put({
                 sesiPesertaId:  cfg.sesiPesertaId,
                 currentIndex:   this.currentIndex,
                 tandaiList:     this.tandaiList,
                 pendingSubmit:  true,
+                sesiToken:      cfg.sesiToken,
                 lastSyncAt:     Date.now(),
             });
         },
@@ -777,7 +866,6 @@ function ujianApp() {
                         headers: {
                             'Content-Type':  'application/json',
                             'Accept':        'application/json',
-                            'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                         },
                         body: JSON.stringify({
                             token:  cfg.sesiToken,
@@ -804,6 +892,7 @@ function ujianApp() {
         // ===== NETWORK EVENTS =====
         onOnline() {
             this.isOffline = false;
+            this._syncRetries = 0;
             this.syncToServer();
             // Flush any pending cheating logs
             this.flushCheatingQueue();

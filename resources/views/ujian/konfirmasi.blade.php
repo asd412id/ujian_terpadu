@@ -64,7 +64,7 @@
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500">Jenis Ujian</span>
-                        <span class="font-medium text-gray-900">{{ $paket->jenis_ujian }}</span>
+                        <span class="font-medium text-gray-900">{{ $paket->jenis_ujian_label }}</span>
                     </div>
                 </div>
 
