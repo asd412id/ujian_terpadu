@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Utilities\DocxMathPreprocessor;
+use App\Utilities\DocxImageCropExtractor;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Element\Formula;
 use PhpOffice\PhpWord\Element\Image;
@@ -40,6 +41,12 @@ class ImportSoalWordJob implements ShouldQueue
     public int $tries   = 1;
 
     private const CHUNK_SIZE = 50;
+
+    /**
+     * Map of image paths inside DOCX => crop percentages {l, t, r, b}.
+     * Populated before PHPWord loads so saveImageData() can apply crops.
+     */
+    private array $imageCropMap = [];
 
     public function __construct(
         public ImportJob $importJob,
@@ -70,6 +77,12 @@ class ImportSoalWordJob implements ShouldQueue
             if ($loadPath !== $filePath) {
                 $preprocessedPath = $loadPath;
             }
+
+            // Extract image crop metadata before PHPWord loads.
+            // Word stores cropped images as full originals + crop percentages
+            // in XML. PHPWord ignores crops, so we apply them via GD later.
+            $cropExtractor = new DocxImageCropExtractor();
+            $this->imageCropMap = $cropExtractor->extract($filePath);
 
             $previousUseErrors = libxml_use_internal_errors(true);
             set_error_handler(fn () => true, E_WARNING);
@@ -641,12 +654,105 @@ class ImportSoalWordJob implements ShouldQueue
             $uuid = Str::uuid();
             $dest = "soal/gambar/{$uuid}.{$ext}";
 
+            // Check if this image has crop metadata from the DOCX
+            $imageString = $this->applyCropIfNeeded($image, $imageString);
+
             Storage::disk('public')->put($dest, $imageString);
 
             return $dest;
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Apply crop to image binary data if DOCX crop metadata exists.
+     *
+     * Word stores cropped images as full originals + a:srcRect percentages.
+     * PHPWord returns the full uncropped image, so we apply the crop via GD.
+     */
+    private function applyCropIfNeeded(Image $image, string $imageString): string
+    {
+        if (empty($this->imageCropMap)) {
+            return $imageString;
+        }
+
+        // Resolve the image's source path inside the DOCX ZIP
+        $source = $image->getSource();
+        $imagePath = null;
+
+        // Source format: "zip:///path/to/file.docx#word/media/imageN.ext"
+        if (str_contains($source, '#')) {
+            $imagePath = substr($source, strpos($source, '#') + 1);
+        }
+
+        if (!$imagePath || !isset($this->imageCropMap[$imagePath])) {
+            return $imageString;
+        }
+
+        $crop = $this->imageCropMap[$imagePath];
+
+        // Skip if crop is negligible
+        if ($crop['l'] < 0.1 && $crop['t'] < 0.1 && $crop['r'] < 0.1 && $crop['b'] < 0.1) {
+            return $imageString;
+        }
+
+        return $this->cropImageWithGd($imageString, $crop);
+    }
+
+    /**
+     * Crop image binary using GD library.
+     *
+     * @param array{l: float, t: float, r: float, b: float} $crop Percentages to crop
+     */
+    private function cropImageWithGd(string $imageString, array $crop): string
+    {
+        $srcImage = @imagecreatefromstring($imageString);
+        if (!$srcImage) {
+            return $imageString; // GD can't handle this format, return original
+        }
+
+        $origWidth  = imagesx($srcImage);
+        $origHeight = imagesy($srcImage);
+
+        // Calculate pixel offsets from percentages
+        $cropLeft   = (int) round($origWidth * $crop['l'] / 100);
+        $cropTop    = (int) round($origHeight * $crop['t'] / 100);
+        $cropRight  = (int) round($origWidth * $crop['r'] / 100);
+        $cropBottom = (int) round($origHeight * $crop['b'] / 100);
+
+        $newWidth  = $origWidth - $cropLeft - $cropRight;
+        $newHeight = $origHeight - $cropTop - $cropBottom;
+
+        // Sanity check
+        if ($newWidth <= 0 || $newHeight <= 0) {
+            imagedestroy($srcImage);
+            return $imageString;
+        }
+
+        $croppedImage = imagecrop($srcImage, [
+            'x'      => $cropLeft,
+            'y'      => $cropTop,
+            'width'  => $newWidth,
+            'height' => $newHeight,
+        ]);
+
+        imagedestroy($srcImage);
+
+        if (!$croppedImage) {
+            return $imageString;
+        }
+
+        // Preserve alpha for PNG
+        imagesavealpha($croppedImage, true);
+
+        // Output to string
+        ob_start();
+        imagepng($croppedImage);
+        $result = ob_get_clean();
+        imagedestroy($croppedImage);
+
+        return $result ?: $imageString;
     }
 
     /**
