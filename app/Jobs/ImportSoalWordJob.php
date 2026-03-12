@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Utilities\DocxMathPreprocessor;
+use App\Utilities\DocxImagePreprocessor;
 use App\Utilities\DocxImageCropExtractor;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Element\Formula;
@@ -96,6 +97,16 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             $loadPath = $preprocessor->preprocess($filePath);
             if ($loadPath !== $filePath) {
                 $preprocessedPath = $loadPath;
+            }
+
+            // Replace unsupported image formats (EMF, WMF, TIFF) with PNG placeholders
+            // to prevent PHPWord's InvalidImageException during loading.
+            $imagePreprocessor = new DocxImagePreprocessor();
+            $replacedImages = $imagePreprocessor->process($loadPath);
+            if (!empty($replacedImages)) {
+                $this->importJob->update([
+                    'catatan' => 'Gambar format tidak didukung (' . implode(', ', array_map('basename', $replacedImages)) . ') dilewati.',
+                ]);
             }
 
             // Extract image crop metadata before PHPWord loads.
