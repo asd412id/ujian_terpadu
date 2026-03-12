@@ -428,14 +428,34 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $current['bobot'] = (float) str_replace(',', '.', trim($bm[1]));
 
                 // Standalone image following a soal (skip if pertanyaan already has inline images)
-                } elseif ($current && empty($text) && !empty($images) && !$current['gambar_soal'] && !str_contains($current['pertanyaan'], '<img ')) {
-                    $current['gambar_soal'] = $this->saveImageData($images[0]);
+                } elseif ($current && empty($text) && !empty($images)) {
+                    // If options already exist, assign image to the last option
+                    if (!empty($current['opsi'])) {
+                        $lastLabel = array_key_last($current['opsi']);
+                        if (empty($current['opsi_gambar'][$lastLabel])) {
+                            $current['opsi_gambar'][$lastLabel] = $this->saveImageData($images[0]);
+                        }
+                    } elseif (!$current['gambar_soal'] && !str_contains($current['pertanyaan'], '<img ')) {
+                        $current['gambar_soal'] = $this->saveImageData($images[0]);
+                    }
 
-                // Continuation text (no structural prefix) — append to current pertanyaan
+                // Continuation text (no structural prefix)
                 } elseif ($current && !empty($html) && !empty($text)) {
-                    // Only append if it's not a structural element
-                    $current['pertanyaan'] .= '<br>' . $html;
-                    $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . '<br>' . $html;
+                    // If options already exist, append to the last option
+                    // (handles block-level formulas that follow an option label in a separate paragraph)
+                    if (!empty($current['opsi'])) {
+                        $lastLabel = array_key_last($current['opsi']);
+                        $current['opsi'][$lastLabel] .= ($current['opsi'][$lastLabel] ? ' ' : '') . trim($text);
+                        $current['opsi_html'][$lastLabel] .= ($current['opsi_html'][$lastLabel] ? ' ' : '') . $html;
+                    } elseif (!empty($current['pernyataan_bs'])) {
+                        // Append to last benar/salah pernyataan
+                        $lastIdx = count($current['pernyataan_bs']) - 1;
+                        $current['pernyataan_bs'][$lastIdx]['teks'] .= ' ' . $html;
+                    } else {
+                        // No options yet — append to pertanyaan
+                        $current['pertanyaan'] .= '<br>' . $html;
+                        $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . '<br>' . $html;
+                    }
                 }
             }
         }
