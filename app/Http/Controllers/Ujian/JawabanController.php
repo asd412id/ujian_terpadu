@@ -65,6 +65,8 @@ class JawabanController extends Controller
      */
     public function status(string $token): JsonResponse
     {
+        abort_unless(strlen($token) === 64 && ctype_alnum($token), 404);
+
         $result = $this->jawabanService->getStatusByToken($token);
 
         return response()->json($result);
@@ -76,9 +78,15 @@ class JawabanController extends Controller
     public function submitApi(Request $request, string $token): JsonResponse
     {
         try {
-            $finalAnswers = $request->has('answers') && count($request->answers) > 0
-                ? $request->answers
-                : [];
+            abort_unless(strlen($token) === 64 && ctype_alnum($token), 404);
+
+            $data = $request->validate([
+                'answers'            => 'nullable|array|max:200',
+                'answers.*.soal_id'  => 'required|string',
+                'answers.*.jawaban'  => 'required',
+            ]);
+
+            $finalAnswers = $data['answers'] ?? [];
 
             $result = $this->jawabanService->submitByToken($token, $finalAnswers);
 

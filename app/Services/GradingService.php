@@ -41,13 +41,15 @@ class GradingService
      */
     public function gradeJawaban(string $jawabanId, float $nilai, ?string $catatan = null, ?string $dinilaiOleh = null): mixed
     {
-        if ($nilai < 0 || $nilai > 100) {
+        $jawaban = $this->repository->findJawabanOrFail($jawabanId);
+        $jawaban->load('soal');
+
+        $maxScore = $jawaban->soal->bobot ?? 100;
+        if ($nilai < 0 || $nilai > $maxScore) {
             throw ValidationException::withMessages([
-                'skor_manual' => 'Nilai harus antara 0 dan 100.',
+                'skor_manual' => "Nilai harus antara 0 dan {$maxScore}.",
             ]);
         }
-
-        $jawaban = $this->repository->findJawabanOrFail($jawabanId);
 
         $this->repository->updateNilai($jawaban, [
             'skor_manual'     => $nilai,

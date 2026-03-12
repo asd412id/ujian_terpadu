@@ -39,9 +39,9 @@ class UjianService
             ];
         }
 
-        // Set status mengerjakan + catat waktu mulai
+        // Set status mengerjakan + catat waktu mulai (use lock to prevent race condition)
         if (in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login'])) {
-            $sesiPeserta->update([
+            $this->sesiUjianRepository->startSesiPesertaWithLock($sesiPeserta->id, [
                 'status'       => 'mengerjakan',
                 'mulai_at'     => $sesiPeserta->mulai_at ?? now(),
                 'ip_address'   => $requestMeta['ip_address'] ?? null,
@@ -49,6 +49,7 @@ class UjianService
                 'device_type'  => $this->detectDevice($requestMeta['user_agent'] ?? ''),
                 'token_ujian'  => Str::random(64),
             ]);
+            $sesiPeserta->refresh();
 
             $this->sesiUjianRepository->logAktivitas([
                 'sesi_peserta_id' => $sesiPeserta->id,
@@ -60,14 +61,14 @@ class UjianService
 
         $paket = $sesiPeserta->sesi->paket;
 
-        // Cache soal for performance
-        $cacheKey = "paket_soal_{$paket->id}_peserta_{$pesertaId}";
+        // Cache soal for performance (include sesiPeserta id to avoid stale data on retake)
+        $cacheKey = "paket_soal_{$paket->id}_sp_{$sesiPeserta->id}";
         $soalList = Cache::remember($cacheKey, 3600 * 8, function () use ($paket, $sesiPeserta) {
             return $this->getSoalForPeserta($paket, $sesiPeserta);
         });
 
         // Get existing answers
-        $jawabanExisting = $this->jawabanRepository->getJawabanBySesiPeserta($sesiPeserta->id);
+        $jawabanExisting = $this->jawabanRepository->getBySessionKeyedBySoal($sesiPeserta->id);
 
         $sisaWaktu = $sesiPeserta->sisa_waktu_detik;
 
@@ -89,7 +90,7 @@ class UjianService
         $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithPaket($sesiPesertaId);
         $paket = $sesiPeserta->sesi->paket;
 
-        $cacheKey = "paket_soal_{$paket->id}_peserta_{$sesiPeserta->peserta_id}";
+        $cacheKey = "paket_soal_{$paket->id}_sp_{$sesiPeserta->id}";
         $soalList = Cache::remember($cacheKey, 3600 * 8, function () use ($paket, $sesiPeserta) {
             return $this->getSoalForPeserta($paket, $sesiPeserta);
         });
@@ -153,7 +154,7 @@ class UjianService
 
         // Clear cached soal
         $paketId = $sesiPeserta->sesi->paket_id;
-        Cache::forget("paket_soal_{$paketId}_peserta_{$pesertaId}");
+        Cache::forget("paket_soal_{$paketId}_sp_{$sesiPesertaId}");
 
         return $this->getHasilUjian($sesiPesertaId);
     }
@@ -165,7 +166,7 @@ class UjianService
     {
         $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithJawaban($sesiPesertaId);
 
-        $totalSoal = $sesiPeserta->sesi->paket->soal()->count();
+        $totalSoal = $sesiPeserta->sesi->paket->loadCount('soal')->soal_count;
         $terjawab  = $sesiPeserta->jawaban()->where('is_terjawab', true)->count();
         $kosong    = max(0, $totalSoal - $terjawab);
         $ragu      = (int) $sesiPeserta->soal_ditandai;

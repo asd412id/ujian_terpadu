@@ -34,17 +34,23 @@ class ImportSoalWordJob implements ShouldQueue
 
     public int $timeout = 600;
     public int $tries   = 1;
-    public string $queue = 'imports';
 
     private const CHUNK_SIZE = 50;
 
     public function __construct(
         public ImportJob $importJob,
         public ?string $imagesPath = null
-    ) {}
+    ) {
+        $this->onQueue('imports');
+    }
 
     public function handle(): void
     {
+        $this->importJob->refresh();
+        if ($this->importJob->status === 'gagal') {
+            return;
+        }
+
         $this->importJob->update(['status' => 'processing', 'started_at' => now()]);
 
         try {
@@ -63,7 +69,10 @@ class ImportSoalWordJob implements ShouldQueue
             $chunks = array_chunk($soalBlocks, self::CHUNK_SIZE, true);
 
             foreach ($chunks as $chunk) {
-                DB::transaction(function () use ($chunk, &$errors, &$success) {
+                $chunkSuccess = 0;
+                $chunkErrors = [];
+
+                DB::transaction(function () use ($chunk, &$chunkErrors, &$chunkSuccess) {
                     $soalBatch     = [];
                     $opsiBatch     = [];
                     $pasanganBatch = [];
@@ -78,9 +87,9 @@ class ImportSoalWordJob implements ShouldQueue
                             if (!empty($result['pasangan'])) {
                                 array_push($pasanganBatch, ...$result['pasangan']);
                             }
-                            $success++;
+                            $chunkSuccess++;
                         } catch (\Exception $e) {
-                            $errors[] = "Soal " . ($index + 1) . ": " . $e->getMessage();
+                            $chunkErrors[] = "Soal " . ($index + 1) . ": " . $e->getMessage();
                         }
                     }
 
@@ -104,6 +113,8 @@ class ImportSoalWordJob implements ShouldQueue
                     }
                 });
 
+                $success += $chunkSuccess;
+                array_push($errors, ...$chunkErrors);
                 // Update progress per chunk
                 $lastIndex = array_key_last($chunk);
                 $this->importJob->update(['processed_rows' => $lastIndex + 1]);
@@ -125,10 +136,26 @@ class ImportSoalWordJob implements ShouldQueue
 
         } catch (\Exception $e) {
             $this->importJob->update([
-                'status'  => 'gagal',
-                'catatan' => $e->getMessage(),
+                'status'       => 'gagal',
+                'catatan'      => $e->getMessage(),
+                'completed_at' => now(),
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $this->importJob->refresh();
+        if ($this->importJob->status === 'processing') {
+            $this->importJob->update([
+                'status'       => 'gagal',
+                'catatan'      => 'Job gagal/timeout: ' . $exception->getMessage(),
+                'completed_at' => now(),
+            ]);
         }
     }
 

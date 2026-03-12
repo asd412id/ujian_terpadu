@@ -173,7 +173,6 @@ class SekolahController extends Controller
 
         // Style header
         $headerStyle = [
-            'font'      => ['bold' => true],
             'fill'      => [
                 'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
                 'startColor' => ['rgb' => '1D4ED8'],

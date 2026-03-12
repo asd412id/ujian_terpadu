@@ -15,7 +15,9 @@ class LaporanController extends Controller
 
     public function index(Request $request)
     {
-        $data = $this->laporanService->getHasilUjian($request->all());
+        $data = $this->laporanService->getHasilUjian($request->only([
+            'sekolah_id', 'paket_id', 'page', 'per_page', 'search',
+        ]));
 
         return view('dinas.laporan.index', [
             'sekolahList' => $data['sekolahList'],
@@ -48,7 +50,9 @@ class LaporanController extends Controller
 
     public function export(Request $request)
     {
-        $exportData = $this->laporanService->exportHasil($request->all());
+        $exportData = $this->laporanService->exportHasil($request->only([
+            'sekolah_id', 'paket_id', 'search',
+        ]));
 
         if (empty($exportData['hasil'])) {
             return back()->with('warning', 'Tidak ada data untuk di-export.');

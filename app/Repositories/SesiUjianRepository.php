@@ -8,6 +8,7 @@ use App\Models\SesiUjian;
 use App\Models\User;
 use App\Models\LogAktivitasUjian;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SesiUjianRepository
@@ -125,6 +126,21 @@ class SesiUjianRepository
         SesiPeserta::insert($records);
 
         return count($records);
+    }
+
+    /**
+     * Atomically transition sesi peserta to 'mengerjakan' with pessimistic lock.
+     * Prevents race condition on concurrent start requests.
+     */
+    public function startSesiPesertaWithLock(string $id, array $data): void
+    {
+        DB::transaction(function () use ($id, $data) {
+            $locked = SesiPeserta::lockForUpdate()->findOrFail($id);
+            if (!in_array($locked->status, ['terdaftar', 'belum_login', 'login'])) {
+                return;
+            }
+            $locked->update($data);
+        });
     }
 
     /**

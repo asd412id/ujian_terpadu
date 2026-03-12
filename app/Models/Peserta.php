@@ -54,6 +54,11 @@ class Peserta extends Authenticatable
         return $this->hasMany(SesiPeserta::class);
     }
 
+    public function getAuthPassword(): string
+    {
+        return $this->password_ujian;
+    }
+
     // Generate username dari NISN (prioritas) > NIS > auto
     public static function generateUsername(string $nis = null, string $nisn = null, ?string $sekolahId = null): string
     {

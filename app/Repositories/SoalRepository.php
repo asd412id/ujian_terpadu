@@ -97,26 +97,6 @@ class SoalRepository
     }
 
     /**
-     * Create an import job record for soal import.
-     */
-    public function createImportJob(array $data): ImportJob
-    {
-        return ImportJob::create($data);
-    }
-
-    /**
-     * Get import jobs by user (for Dinas).
-     */
-    public function getImportJobsByUser(string $userId, int $limit = 10): Collection
-    {
-        return ImportJob::where('created_by', $userId)
-            ->whereIn('tipe', ['soal_excel', 'soal_word'])
-            ->latest()
-            ->take($limit)
-            ->get();
-    }
-
-    /**
      * Save opsi jawaban for a soal (PG / PG Kompleks).
      */
     public function saveOpsiJawaban(Soal $soal, array $opsiData): void
@@ -218,12 +198,12 @@ class SoalRepository
     }
 
     /**
-     * Get import jobs by user (for soal_word type).
+     * Get import jobs by user (for soal imports).
      */
     public function getImportJobsByUser(string $userId, int $limit = 10): mixed
     {
         return \App\Models\ImportJob::where('created_by', $userId)
-            ->where('tipe', 'soal_word')
+            ->whereIn('tipe', ['soal_excel', 'soal_word'])
             ->latest()
             ->take($limit)
             ->get();

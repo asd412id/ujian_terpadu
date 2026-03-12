@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaketUjian;
+use App\Models\Soal;
 use App\Services\PaketUjianService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -139,16 +140,18 @@ class PaketUjianController extends Controller
         return view('dinas.paket.trash', compact('paket'));
     }
 
-    public function restore(PaketUjian $paket)
+    public function restore(string $paket_trashed)
     {
+        $paket = \App\Models\PaketUjian::withTrashed()->findOrFail($paket_trashed);
         $this->paketUjianService->restorePaket($paket);
 
         return redirect()->route('dinas.paket.trash')
                          ->with('success', 'Paket ujian berhasil dipulihkan.');
     }
 
-    public function forceDelete(PaketUjian $paket)
+    public function forceDelete(string $paket_trashed)
     {
+        $paket = \App\Models\PaketUjian::withTrashed()->findOrFail($paket_trashed);
         $this->paketUjianService->forceDeletePaket($paket);
 
         return redirect()->route('dinas.paket.trash')

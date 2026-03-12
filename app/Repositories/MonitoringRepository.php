@@ -103,9 +103,11 @@ class MonitoringRepository
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
-            $query->whereHas('peserta', fn ($q) => $q->where('nama', 'like', "%{$search}%")
-                ->orWhere('nis', 'like', "%{$search}%")
-                ->orWhere('nisn', 'like', "%{$search}%"));
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
         }
 
         if (!empty($filters['status'])) {
@@ -247,8 +249,10 @@ class MonitoringRepository
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
-            $query->whereHas('peserta', fn ($q) => $q->where('nama', 'like', "%{$search}%")
-                ->orWhere('nis', 'like', "%{$search}%"));
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%");
+            }));
         }
 
         if (!empty($filters['status'])) {

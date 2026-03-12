@@ -7,6 +7,7 @@ use App\Models\PaketUjian;
 use App\Services\PaketUjianService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class PaketUjianController extends Controller
 {
@@ -34,6 +35,7 @@ class PaketUjianController extends Controller
         $user = Auth::user();
 
         $paket = $this->paketUjianService->getDetail($paket->id, $user->sekolah_id);
+        abort_unless($paket, 404, 'Paket ujian tidak ditemukan.');
 
         return view('sekolah.paket.show', compact('paket'));
     }
@@ -41,9 +43,9 @@ class PaketUjianController extends Controller
     public function daftarPeserta(Request $request, PaketUjian $paket)
     {
         $request->validate([
-            'sesi_id'      => 'required|exists:sesi_ujian,id',
+            'sesi_id'      => ['required', Rule::exists('sesi_ujian', 'id')->where('paket_id', $paket->id)],
             'peserta_ids'  => 'required|array',
-            'peserta_ids.*'=> 'exists:peserta,id',
+            'peserta_ids.*'=> ['exists:peserta,id', Rule::exists('peserta', 'id')->where('sekolah_id', Auth::user()->sekolah_id)],
         ]);
 
         $result = $this->paketUjianService->registerPesertaWithSesiName(

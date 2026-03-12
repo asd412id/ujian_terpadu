@@ -81,7 +81,7 @@ class GradingRepository
         $row = $this->model
             ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
             ->selectRaw('
-                COUNT(CASE WHEN jawaban_teks IS NOT NULL THEN 1 END) as total_essay,
+                COUNT(CASE WHEN jawaban_teks IS NOT NULL AND jawaban_teks != \'\' THEN 1 END) as total_essay,
                 COUNT(CASE WHEN skor_manual IS NOT NULL THEN 1 END) as sudah_dinilai,
                 COUNT(CASE WHEN skor_manual IS NULL AND jawaban_teks IS NOT NULL AND jawaban_teks != \'\' THEN 1 END) as belum_dinilai
             ')

@@ -130,7 +130,7 @@ class JawabanRepository
     }
 
     /**
-     * Get all jawaban for a sesi peserta, keyed by soal_id.
+     * Find jawaban by ID or fail.
      */
     public function getJawabanBySesiPeserta(string $sesiPesertaId): Collection
     {

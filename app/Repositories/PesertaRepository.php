@@ -60,9 +60,11 @@ class PesertaRepository
     ): LengthAwarePaginator {
         return $this->model
             ->where('sekolah_id', $sekolahId)
-            ->when($search, fn ($q) => $q->where('nama', 'like', "%{$search}%")
-                ->orWhere('nis', 'like', "%{$search}%")
-                ->orWhere('nisn', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }))
             ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
             ->when($jurusan, fn ($q) => $q->where('jurusan', $jurusan))
             ->orderBy('nama')
@@ -202,18 +204,6 @@ class PesertaRepository
             ->orderBy('nama')
             ->paginate($filters['per_page'] ?? 25)
             ->withQueryString();
-    }
-
-    /**
-     * Get distinct kelas list for a sekolah.
-     */
-    public function getDistinctKelasBySekolah(string $sekolahId): \Illuminate\Support\Collection
-    {
-        return $this->model->where('sekolah_id', $sekolahId)
-            ->whereNotNull('kelas')
-            ->distinct()
-            ->orderBy('kelas')
-            ->pluck('kelas');
     }
 
     /**

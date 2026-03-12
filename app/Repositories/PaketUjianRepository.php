@@ -196,11 +196,13 @@ class PaketUjianRepository
     {
         $created = 0;
         foreach ($pesertaIds as $pesertaId) {
-            SesiPeserta::firstOrCreate(
+            $sp = SesiPeserta::firstOrCreate(
                 ['sesi_id' => $sesiId, 'peserta_id' => $pesertaId],
                 ['status' => 'belum_login']
             );
-            $created++;
+            if ($sp->wasRecentlyCreated) {
+                $created++;
+            }
         }
         return $created;
     }

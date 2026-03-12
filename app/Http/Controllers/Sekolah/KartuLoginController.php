@@ -44,6 +44,8 @@ class KartuLoginController extends Controller
 
     public function show(Peserta $peserta)
     {
+        abort_unless($peserta->sekolah_id === Auth::user()->sekolah_id, 403);
+
         $data = $this->kartuLoginService->getKartuPeserta($peserta->id);
 
         return view('sekolah.kartu.pdf-satu', [
@@ -55,24 +57,31 @@ class KartuLoginController extends Controller
     public function preview(SesiUjian $sesi)
     {
         $sesi->load(['paket', 'sesiPeserta.peserta']);
+        abort_unless($sesi->paket?->sekolah_id === Auth::user()->sekolah_id, 403);
+
         return view('sekolah.kartu.preview', compact('sesi'));
     }
 
     public function cetak(SesiUjian $sesi)
     {
+        $sesi->load('paket');
+        abort_unless($sesi->paket?->sekolah_id === Auth::user()->sekolah_id, 403);
+
         $data = $this->kartuLoginService->getKartuBySesi($sesi->id);
 
         $pdf = Pdf::loadView('sekolah.kartu.pdf', $data)
             ->setPaper('A4')
             ->setOption('defaultFont', 'sans-serif');
 
-        $filename = 'kartu-login-' . $data['paket']->kode . '-' . now()->format('Ymd') . '.pdf';
+        $filename = 'kartu-login-' . ($data['paket']?->kode ?? 'unknown') . '-' . now()->format('Ymd') . '.pdf';
 
         return $pdf->download($filename);
     }
 
     public function cetakSatu(Peserta $peserta)
     {
+        abort_unless($peserta->sekolah_id === Auth::user()->sekolah_id, 403);
+
         $data = $this->kartuLoginService->getKartuPeserta($peserta->id);
 
         $pdf = Pdf::loadView('sekolah.kartu.pdf-satu', $data)

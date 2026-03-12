@@ -22,7 +22,11 @@ class PesertaService
      */
     public function getAll(array $filters = []): mixed
     {
-        return $this->repository->getFiltered($filters);
+        return $this->repository->getAllFiltered(
+            $filters['sekolah_id'] ?? null,
+            $filters['q'] ?? null,
+            $filters['kelas'] ?? null
+        );
     }
 
     /**
@@ -55,7 +59,9 @@ class PesertaService
      */
     public function getById(string $id): mixed
     {
-        return $this->repository->findWithRelations($id, ['sekolah']);
+        $peserta = $this->repository->findById($id);
+        $peserta?->load('sekolah');
+        return $peserta;
     }
 
     /**

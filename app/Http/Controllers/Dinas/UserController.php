@@ -71,6 +71,8 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        abort_if($user->id === auth()->id(), 403, 'Tidak dapat menghapus akun sendiri.');
+
         $this->userService->deleteUser($user);
 
         return redirect()->route('dinas.users.index')

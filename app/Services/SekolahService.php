@@ -43,7 +43,9 @@ class SekolahService
     public function createSekolah(array $data): Sekolah
     {
         $dinas = $this->repository->getDefaultDinas();
-        $data['dinas_id'] = $dinas->id;
+        if ($dinas) {
+            $data['dinas_id'] = $dinas->id;
+        }
 
         return $this->repository->create($data);
     }

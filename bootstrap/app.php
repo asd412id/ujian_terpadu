@@ -32,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 $user = \Illuminate\Support\Facades\Auth::guard('web')->user();
                 return route($user->getDashboardRoute());
             }
+            if (\Illuminate\Support\Facades\Auth::guard('peserta')->check()) {
+                return route('ujian.lobby');
+            }
             return '/dinas/dashboard';
         });
 

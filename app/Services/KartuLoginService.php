@@ -18,7 +18,7 @@ class KartuLoginService
     public function generateKartuLogin(string $sekolahId, array $filters = []): array
     {
         $peserta = $this->repository->getBySekolahFiltered($sekolahId, $filters);
-        $kelasList = $this->repository->getDistinctKelasBySekolah($sekolahId);
+        $kelasList = $this->repository->getKelasBySekolah($sekolahId);
 
         return compact('peserta', 'kelasList');
     }

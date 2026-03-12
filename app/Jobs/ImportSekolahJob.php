@@ -23,13 +23,15 @@ class ImportSekolahJob implements ShouldQueue
 
     public int $timeout = 1200;
     public int $tries   = 1;
-    public string $queue = 'imports';
 
     private const VALID_JENJANG = ['SD', 'SMP', 'SMA', 'SMK', 'MA', 'MTs', 'MI'];
     private const EXPECTED_HEADERS = ['nama', 'npsn', 'jenjang', 'alamat', 'kota', 'telepon', 'email', 'kepala_sekolah'];
     private const CHUNK_SIZE = 200;
 
-    public function __construct(public ImportJob $importJob) {}
+    public function __construct(public ImportJob $importJob)
+    {
+        $this->onQueue('imports');
+    }
 
     public function handle(): void
     {

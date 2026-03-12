@@ -14,7 +14,7 @@ class PenilaianService
 
     public function hitungNilai(SesiPeserta $sesiPeserta): array
     {
-        $sesiPeserta->load(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal']);
+        $sesiPeserta->load(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal.soal']);
         $paket = $sesiPeserta->sesi->paket;
 
         $jumlahBenar  = 0;
@@ -23,16 +23,19 @@ class PenilaianService
         $totalBobot   = 0;
         $nilaiBenar   = 0;
 
+        // totalBobot dihitung dari SEMUA soal di paket, bukan hanya yang dijawab
+        foreach ($paket->paketSoal as $ps) {
+            $totalBobot += $ps->bobot_override ?? $ps->soal->bobot ?? 0;
+        }
+
         $updates = [];
 
         foreach ($sesiPeserta->jawaban as $jawaban) {
             $soal  = $jawaban->soal;
-            $bobot = $jawaban->soal->paketSoal->where('soal_id', $soal->id)->first()?->bobot_override
+            $bobot = $paket->paketSoal->where('soal_id', $soal->id)->first()?->bobot_override
                   ?? $soal->bobot;
-            $totalBobot += $bobot;
 
             if (! $jawaban->is_terjawab) {
-                $jumlahKosong++;
                 continue;
             }
 
@@ -150,16 +153,24 @@ class PenilaianService
 
     private function skorMenjodohkan(JawabanPeserta $jawaban, float $bobot): float
     {
-        $pasanganBenar = $jawaban->soal->pasangan->map(fn ($p) => [$p->id => $p->id])->collapse()->toArray();
+        $pasanganList = $jawaban->soal->pasangan;
         $pasanganPilihan = collect($jawaban->jawaban_pasangan ?? []);
 
-        $benar = 0;
-        $total = count($pasanganBenar);
+        $total = $pasanganList->count();
+        if ($total === 0) return 0;
 
+        // Build correct mapping: kiri (pasangan id) => kanan (pasangan id)
+        // Each pasangan row IS a correct pair, so correct answer is matching each item to itself
+        $correctIds = $pasanganList->pluck('id')->flip();
+
+        $benar = 0;
         foreach ($pasanganPilihan as $pair) {
             if (is_array($pair) && count($pair) === 2) {
                 [$kiri, $kanan] = $pair;
-                $benar++;
+                // A pair is correct if the student matched a kiri to its own kanan (same pasangan record)
+                if ($kiri === $kanan && $correctIds->has($kiri)) {
+                    $benar++;
+                }
             }
         }
 

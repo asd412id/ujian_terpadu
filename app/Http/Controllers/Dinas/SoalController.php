@@ -8,6 +8,7 @@ use App\Jobs\ImportSoalWordJob;
 use App\Services\SoalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\Jc;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -164,6 +165,8 @@ class SoalController extends Controller
             ],
         ]);
 
+        ImportSoalWordJob::dispatch($importJob);
+
         return response()->json([
             'message' => 'File berhasil diupload. Import sedang diproses.',
             'job_id'  => $importJob->id,
@@ -223,7 +226,7 @@ class SoalController extends Controller
         }
 
         // Store docx to local disk for the job
-        $storedPath = 'imports/soal/' . \Illuminate\Support\Str::uuid() . '.docx';
+        $storedPath = 'imports/soal/' . Str::uuid() . '.docx';
         Storage::disk('local')->put($storedPath, file_get_contents($docxPath));
 
         $importJob = $this->soalService->createImportJob([

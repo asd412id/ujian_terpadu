@@ -17,6 +17,16 @@ class AuthPeserta
         }
 
         $peserta = Auth::guard('peserta')->user();
+
+        if (! $peserta->is_active) {
+            Auth::guard('peserta')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('ujian.login')
+                             ->with('error', 'Akun Anda telah dinonaktifkan.');
+        }
+
         $sessionToken = $request->session()->get('device_token');
 
         if ($peserta->device_token && $sessionToken !== $peserta->device_token) {

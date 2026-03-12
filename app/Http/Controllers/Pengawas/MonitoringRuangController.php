@@ -16,6 +16,8 @@ class MonitoringRuangController extends Controller
 
     public function index(Request $request, SesiUjian $sesi)
     {
+        abort_unless($sesi->pengawas_id === Auth::id(), 403, 'Anda bukan pengawas sesi ini.');
+
         $filters = $request->only(['search', 'status', 'per_page']);
         $data = $this->monitoringService->getPesertaByRuang($sesi->id, $filters);
 
@@ -29,7 +31,9 @@ class MonitoringRuangController extends Controller
 
     public function apiSesi(SesiUjian $sesi)
     {
-        $data = $this->monitoringService->getSesiDetail($sesi->id);
+        abort_unless($sesi->pengawas_id === Auth::id(), 403, 'Anda bukan pengawas sesi ini.');
+
+        $data = $this->monitoringService->getPesertaByRuang($sesi->id);
 
         return response()->json($data);
     }

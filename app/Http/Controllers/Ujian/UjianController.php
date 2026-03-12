@@ -106,6 +106,8 @@ class UjianController extends Controller
         /** @var \App\Models\Peserta $peserta */
         $peserta = Auth::guard('peserta')->user();
 
+        abort_unless($sesiPeserta->peserta_id === $peserta->id, 403);
+
         // If form fallback includes answers, sync them first via JawabanService
         if ($request->filled('answers_json')) {
             try {
@@ -115,7 +117,10 @@ class UjianController extends Controller
                         ->syncOfflineAnswers($sesiPeserta->token_ujian, $answers, [], true);
                 }
             } catch (\Exception $e) {
-                // Log but don't block submit
+                \Log::warning('Final sync failed during submit', [
+                    'error' => $e->getMessage(),
+                    'sesi_peserta' => $sesiPeserta->id,
+                ]);
             }
         }
 

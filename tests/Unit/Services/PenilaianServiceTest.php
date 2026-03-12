@@ -24,7 +24,7 @@ class PenilaianServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new PenilaianService();
+        $this->service = app(PenilaianService::class);
     }
 
     private function createSesiPeserta(PaketUjian $paket): SesiPeserta
@@ -270,5 +270,61 @@ class PenilaianServiceTest extends TestCase
 
         $result = $this->service->hitungNilai($sp);
         $this->assertEquals('submit', $result['status']);
+    }
+
+    /**
+     * BUG FIX: Soal tanpa record jawaban tetap harus dihitung dalam totalBobot.
+     * Kasus ABD. SALAM: 30 soal, hanya 1 dijawab benar → nilai seharusnya ~3.33, bukan 100.
+     */
+    public function test_hitung_nilai_soal_tanpa_jawaban_record_tetap_dihitung_bobot(): void
+    {
+        $paket = PaketUjian::factory()->create();
+        $sp = $this->createSesiPeserta($paket);
+
+        // Buat 5 soal di paket, tapi hanya 1 yang ada jawaban
+        $soal1 = $this->createSoalPG($paket, 'A', 1.0);
+        $this->createSoalPG($paket, 'B', 1.0); // tidak dijawab, tidak ada record
+        $this->createSoalPG($paket, 'C', 1.0); // tidak dijawab, tidak ada record
+        $this->createSoalPG($paket, 'A', 1.0); // tidak dijawab, tidak ada record
+        $this->createSoalPG($paket, 'B', 1.0); // tidak dijawab, tidak ada record
+
+        // Hanya soal1 yang dijawab benar
+        JawabanPeserta::factory()->pg('A')->create(['sesi_peserta_id' => $sp->id, 'soal_id' => $soal1->id]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        // 1 benar dari 5 soal, bobot semua 1.0 → nilai = (1/5)*100 = 20.00
+        $this->assertEquals(1, $result['jumlah_benar']);
+        $this->assertEquals(0, $result['jumlah_salah']);
+        $this->assertEquals(4, $result['jumlah_kosong']);
+        $this->assertEquals(20.00, $result['nilai_akhir']);
+    }
+
+    public function test_hitung_nilai_kosong_dengan_record_is_terjawab_false(): void
+    {
+        $paket = PaketUjian::factory()->create();
+        $sp = $this->createSesiPeserta($paket);
+
+        $soal1 = $this->createSoalPG($paket, 'A', 1.0);
+        $soal2 = $this->createSoalPG($paket, 'B', 1.0);
+        $soal3 = $this->createSoalPG($paket, 'C', 1.0);
+
+        // Soal 1: jawab benar
+        JawabanPeserta::factory()->pg('A')->create(['sesi_peserta_id' => $sp->id, 'soal_id' => $soal1->id]);
+        // Soal 2: ada record tapi is_terjawab = false
+        JawabanPeserta::factory()->create([
+            'sesi_peserta_id' => $sp->id,
+            'soal_id'         => $soal2->id,
+            'is_terjawab'     => false,
+        ]);
+        // Soal 3: tidak ada record sama sekali
+
+        $result = $this->service->hitungNilai($sp);
+
+        // totalBobot = 3 (semua soal di paket), nilaiBenar = 1
+        $this->assertEquals(1, $result['jumlah_benar']);
+        $this->assertEquals(0, $result['jumlah_salah']);
+        $this->assertEquals(2, $result['jumlah_kosong']);
+        $this->assertEquals(33.33, $result['nilai_akhir']); // 1/3 * 100 = 33.33
     }
 }

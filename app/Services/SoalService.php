@@ -152,7 +152,7 @@ class SoalService
                 $this->saveKunciJawaban($soal, $request);
             }
 
-            return $soal;
+            return $soal->fresh(['opsiJawaban', 'pasangan', 'kategori']);
         });
     }
 
@@ -369,14 +369,14 @@ class SoalService
             foreach ($rows as $index => $row) {
                 try {
                     $soalData = array_merge([
-                        'teks_soal'    => $row['teks_soal'] ?? $row['pertanyaan'] ?? null,
+                        'pertanyaan'   => $row['teks_soal'] ?? $row['pertanyaan'] ?? null,
                         'tipe_soal'    => $row['tipe_soal'] ?? 'pg',
                         'bobot'        => $row['bobot'] ?? 1,
                         'kategori_id'  => $row['kategori_id'] ?? $meta['kategori_id'] ?? null,
                         'created_by'   => $meta['created_by'] ?? null,
                     ], $meta);
 
-                    if (empty($soalData['teks_soal'])) {
+                    if (empty($soalData['pertanyaan'])) {
                         $skipped++;
                         $errors[] = "Baris " . ($index + 1) . ": Teks soal kosong";
                         continue;

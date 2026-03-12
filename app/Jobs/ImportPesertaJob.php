@@ -22,7 +22,6 @@ class ImportPesertaJob implements ShouldQueue
 
     public int $timeout  = 1200;
     public int $tries    = 1;
-    public string $queue = 'imports';
 
     private const SEKOLAH_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
     private const DINAS_HEADERS = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
@@ -31,7 +30,10 @@ class ImportPesertaJob implements ShouldQueue
     /** In-memory set of existing username_ujian for uniqueness check */
     private array $usedUsernames = [];
 
-    public function __construct(public ImportJob $importJob) {}
+    public function __construct(public ImportJob $importJob)
+    {
+        $this->onQueue('imports');
+    }
 
     public function handle(): void
     {
@@ -272,28 +274,6 @@ class ImportPesertaJob implements ShouldQueue
         $this->usedUsernames[$username] = true;
 
         return $username;
-    }
-
-    private function validateHeaders(?array $headerRow, bool $isDinas): void
-    {
-        if (empty($headerRow)) {
-            throw new \Exception("File Excel kosong atau tidak memiliki header.");
-        }
-
-        $expected = $isDinas ? self::DINAS_HEADERS : self::SEKOLAH_HEADERS;
-        $actualHeaders = array_map(fn ($h) => strtolower(trim((string) $h)), $headerRow);
-        $actualHeaders = array_slice($actualHeaders, 0, count($expected));
-
-        foreach ($expected as $i => $exp) {
-            $actual = $actualHeaders[$i] ?? '';
-            if ($actual !== $exp) {
-                $templateName = $isDinas ? 'import peserta DINAS' : 'import peserta SEKOLAH';
-                throw new \Exception(
-                    "Template tidak sesuai. Kolom " . chr(65 + $i) . " seharusnya \"$exp\", bukan \"$actual\". " .
-                    "Pastikan Anda menggunakan template $templateName."
-                );
-            }
-        }
     }
 
     /**

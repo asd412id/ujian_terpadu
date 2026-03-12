@@ -13,7 +13,8 @@ class JawabanService
 {
     public function __construct(
         protected JawabanRepository $repository,
-        protected SoalRepository $soalRepository
+        protected SoalRepository $soalRepository,
+        protected PenilaianService $penilaianService
     ) {}
 
     /**
@@ -216,8 +217,7 @@ class JawabanService
             'durasi_aktual_detik' => $durasi,
         ]);
 
-        $penilaian = app(PenilaianService::class);
-        $hasil = $penilaian->hitungNilai($sesiPeserta);
+        $hasil = $this->penilaianService->hitungNilai($sesiPeserta);
         $sesiPeserta->update($hasil);
 
         return [

@@ -116,7 +116,7 @@ class SesiUjianService
             throw new \RuntimeException('Tidak dapat menghapus sesi yang sedang berlangsung.');
         }
 
-        if ($sesi->sesiPeserta()->whereIn('status', ['hadir', 'mengerjakan'])->exists()) {
+        if ($sesi->sesiPeserta()->whereIn('status', ['login', 'mengerjakan'])->exists()) {
             throw new \RuntimeException('Tidak dapat menghapus sesi yang sedang diikuti peserta.');
         }
 
