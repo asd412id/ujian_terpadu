@@ -40,6 +40,21 @@
             @else
             <span class="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Auto-Sync Aktif</span>
             @endif
+
+            @if($totalAvailable > 0)
+            <form action="{{ route('dinas.paket.sesi.peserta.sync', [$paket->id, $sesi->id]) }}" method="POST"
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Sinkron Peserta Baru',message:'Daftarkan {{ $totalAvailable }} peserta baru yang belum terdaftar ke sesi ini?',confirmText:'Ya, Sinkronkan'})) $el.submit()">
+                @csrf
+                <button type="submit"
+                        class="text-sm text-green-700 hover:text-green-900 font-medium border border-green-300 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Sinkron Peserta Baru
+                </button>
+            </form>
+            @endif
+
             <a href="{{ route('dinas.paket.show', $paket->id) }}"
                class="btn-secondary">
                 Kembali

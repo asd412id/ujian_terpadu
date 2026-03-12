@@ -144,4 +144,17 @@ class SesiUjianController extends Controller
 
         return back()->with('success', "Peserta direset ke auto-sync. {$count} peserta terdaftar.");
     }
+
+    public function syncPesertaBaru(PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        $count = $this->service->syncNewPeserta($sesi);
+
+        if ($count > 0) {
+            return back()->with('success', "{$count} peserta baru berhasil disinkronkan ke sesi.");
+        }
+
+        return back()->with('info', 'Tidak ada peserta baru yang perlu disinkronkan.');
+    }
 }

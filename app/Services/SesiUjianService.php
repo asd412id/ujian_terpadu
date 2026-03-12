@@ -133,6 +133,15 @@ class SesiUjianService
             return 0;
         }
 
+        return $this->syncNewPeserta($sesi);
+    }
+
+    /**
+     * Sync new peserta that match paket filter but aren't enrolled yet.
+     * Works regardless of override mode — used by both auto-sync and manual sync button.
+     */
+    public function syncNewPeserta(SesiUjian $sesi): int
+    {
         $paket = $sesi->paket;
 
         $pesertaIds = Peserta::where('is_active', true)
