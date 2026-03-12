@@ -476,8 +476,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 } elseif ($current && $current['jenis'] === 'benar_salah' && preg_match('/^(\d+)\)\s*(.+?)\s*\((BENAR|SALAH)\)\s*$/i', $text, $m)) {
                     // Extract html version of pernyataan text
                     $bsHtml = $html;
+                    // Remove leading "N) " prefix (may be wrapped in tags)
                     $bsHtml = preg_replace('/^(?:<[^>]+>)*\d+\)\s*/', '', $bsHtml, 1);
-                    $bsHtml = preg_replace('/\s*\((?:BENAR|SALAH)\)(?:<[^>]*>)*\s*$/i', '', $bsHtml);
+                    // Remove trailing (BENAR) or (SALAH) — may be wrapped in bold/italic tags
+                    $bsHtml = preg_replace('/\s*(?:<[^>]*>)*\s*\((?:BENAR|SALAH)\)\s*(?:<[^>]*>)*\s*$/i', '', $bsHtml);
                     $bsHtml = trim($bsHtml);
                     if (empty($bsHtml)) $bsHtml = e(trim($m[2]));
 
