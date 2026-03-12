@@ -244,6 +244,8 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
     {
         $blocks  = [];
         $current = null;
+        $listCounters = [];   // [key] => current count for numbered list reconstruction
+        $pendingBullets = []; // accumulated bullet items for <ul> wrapping
 
         foreach ($sections as $section) {
             foreach ($section->getElements() as $element) {
@@ -254,6 +256,63 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 $html   = $result['html'];
                 $images = $result['images'];
                 $isTable = $result['is_table'] ?? false;
+                $listInfo = $result['list_info'] ?? null;
+
+                // --- List numbering reconstruction ---
+                // PHPWord strips numbering prefixes (1., A., bullets) from ListItem elements.
+                // We reconstruct them here so the existing regex matching works.
+
+                // Flush pending bullet items when hitting a non-bullet element
+                if (!empty($pendingBullets) && (!$listInfo || $listInfo['format'] !== 'bullet')) {
+                    if ($current) {
+                        $bulletHtml = '<ul style="list-style-type:disc;margin:0.3em 0;padding-left:1.5em;">';
+                        foreach ($pendingBullets as $bi) {
+                            $bulletHtml .= '<li>' . ($bi['html'] ?: e($bi['text'])) . '</li>';
+                        }
+                        $bulletHtml .= '</ul>';
+                        if (!empty($current['opsi'])) {
+                            // Append bullet list to last option
+                            $lastLabel = array_key_last($current['opsi']);
+                            $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $bulletHtml;
+                        } else {
+                            $current['pertanyaan'] .= $bulletHtml;
+                            $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $bulletHtml;
+                        }
+                    }
+                    $pendingBullets = [];
+                }
+
+                if ($listInfo && $listInfo['format'] !== 'unknown') {
+                    if ($listInfo['format'] === 'bullet') {
+                        // Accumulate bullet items — will be flushed as <ul> when non-bullet appears
+                        if (!empty($text) || !empty($html)) {
+                            $pendingBullets[] = [
+                                'text' => $text,
+                                'html' => !empty($html) ? $html : e($text),
+                                'images' => $images,
+                            ];
+                        }
+                        continue;
+                    }
+
+                    // Numbered/lettered list — reconstruct prefix for regex matching
+                    $numKey = ($listInfo['num_id'] ?: 'x') . '_' . $listInfo['format'] . '_' . $listInfo['depth'];
+                    if (!isset($listCounters[$numKey])) {
+                        $listCounters[$numKey] = 0;
+                    }
+                    $listCounters[$numKey]++;
+                    $counter = $listCounters[$numKey];
+
+                    $prefix = match ($listInfo['format']) {
+                        'decimal' => $counter . '. ',
+                        'lowerLetter' => chr(96 + min($counter, 26)) . '. ',
+                        'upperLetter' => chr(64 + min($counter, 26)) . '. ',
+                        default => $counter . '. ',
+                    };
+
+                    $text = $prefix . $text;
+                    $html = e($prefix) . $html;
+                }
 
                 if (empty($text) && empty($html) && empty($images)) continue;
 
@@ -344,6 +403,13 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         'tingkat'         => $tingkat,
                         'bobot'           => $bobot,
                     ];
+
+                    // Reset non-soal list counters so options restart (A,B,C,D) per soal
+                    foreach (array_keys($listCounters) as $key) {
+                        if (!str_contains($key, '_decimal_')) {
+                            unset($listCounters[$key]);
+                        }
+                    }
 
                 // Benar/Salah pernyataan lines
                 } elseif ($current && $current['jenis'] === 'benar_salah' && preg_match('/^(\d+)\)\s*(.+?)\s*\((BENAR|SALAH)\)\s*$/i', $text, $m)) {
@@ -493,6 +559,22 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
+        // Flush any remaining pending bullets
+        if (!empty($pendingBullets) && $current) {
+            $bulletHtml = '<ul style="list-style-type:disc;margin:0.3em 0;padding-left:1.5em;">';
+            foreach ($pendingBullets as $bi) {
+                $bulletHtml .= '<li>' . ($bi['html'] ?: e($bi['text'])) . '</li>';
+            }
+            $bulletHtml .= '</ul>';
+            if (!empty($current['opsi'])) {
+                $lastLabel = array_key_last($current['opsi']);
+                $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $bulletHtml;
+            } else {
+                $current['pertanyaan'] .= $bulletHtml;
+                $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $bulletHtml;
+            }
+        }
+
         if ($current) $blocks[] = $current;
 
         // Auto-detect jenis for blocks without tags
@@ -518,6 +600,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $text   = '';
         $html   = '';
         $images = [];
+        $listInfo = null;
 
         if ($element instanceof Table) {
             $tableHtml = $this->tableToHtml($element);
@@ -551,6 +634,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             $text = $latex;
             $html = e($latex);
         } elseif ($element instanceof ListItem || $element instanceof ListItemRun) {
+            $listInfo = $this->getListInfo($element);
             if ($element instanceof ListItemRun) {
                 foreach ($element->getElements() as $child) {
                     if ($child instanceof Text) {
@@ -564,6 +648,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                             $url = Storage::disk('public')->url($savedPath);
                             $html .= '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
                         }
+                    } elseif ($child instanceof Formula) {
+                        $latex = $this->formulaToLatex($child);
+                        $text .= $latex;
+                        $html .= e($latex);
                     }
                 }
             } elseif (method_exists($element, 'getText')) {
@@ -585,7 +673,60 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $text = html_entity_decode(trim((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $html = trim($html);
 
-        return ['text' => $text, 'html' => $html, 'images' => $images, 'is_table' => false];
+        return ['text' => $text, 'html' => $html, 'images' => $images, 'is_table' => false, 'list_info' => $listInfo];
+    }
+
+    /**
+     * Extract list metadata (depth, format, numId) from a ListItem/ListItemRun element.
+     *
+     * Used to reconstruct numbering prefixes that PHPWord strips from list items.
+     * Word stores numbering as style metadata, not inline text.
+     */
+    private function getListInfo($element): ?array
+    {
+        if (!($element instanceof ListItem) && !($element instanceof ListItemRun)) {
+            return null;
+        }
+
+        $depth = $element->getDepth();
+        $style = $element->getStyle();
+
+        if (!$style) {
+            return ['depth' => $depth, 'format' => 'unknown', 'num_id' => 0];
+        }
+
+        $numId = $style->getNumId() ?? 0;
+        $listType = $style->getListType();
+
+        // Bullet types: 1 (square filled), 3 (bullet filled), 5 (bullet empty)
+        if (in_array($listType, [1, 3, 5])) {
+            return ['depth' => $depth, 'format' => 'bullet', 'num_id' => $numId];
+        }
+
+        // Numbered types: 7, 8, 9 — try to resolve specific format
+        $format = 'decimal';
+        try {
+            $numStyleName = $style->getNumStyle();
+            if ($numStyleName) {
+                $numbering = \PhpOffice\PhpWord\Style::getStyle($numStyleName);
+                if ($numbering && method_exists($numbering, 'getLevels')) {
+                    $levels = $numbering->getLevels();
+                    if (isset($levels[$depth])) {
+                        $fmt = $levels[$depth]->getFormat();
+                        if ($fmt) $format = $fmt;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Keep default 'decimal'
+        }
+
+        // NumberingLevel format 'bullet' means it's actually a bullet
+        if ($format === 'bullet') {
+            return ['depth' => $depth, 'format' => 'bullet', 'num_id' => $numId];
+        }
+
+        return ['depth' => $depth, 'format' => $format, 'num_id' => $numId];
     }
 
     /**
