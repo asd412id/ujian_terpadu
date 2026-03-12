@@ -177,6 +177,14 @@ class SoalService
             $disk->delete($soal->gambar_soal);
         }
 
+        // Delete inline images embedded in HTML content (pertanyaan, pembahasan)
+        foreach ($this->extractStoragePaths($soal->pertanyaan) as $path) {
+            $disk->delete($path);
+        }
+        foreach ($this->extractStoragePaths($soal->pembahasan) as $path) {
+            $disk->delete($path);
+        }
+
         $this->deleteOpsiAndPasanganImages($soal);
     }
 
@@ -188,6 +196,10 @@ class SoalService
             if ($opsi->gambar) {
                 $disk->delete($opsi->gambar);
             }
+            // Delete inline images in opsi teks HTML
+            foreach ($this->extractStoragePaths($opsi->teks) as $path) {
+                $disk->delete($path);
+            }
         }
 
         foreach ($soal->pasangan as $pas) {
@@ -198,6 +210,39 @@ class SoalService
                 $disk->delete($pas->kanan_gambar);
             }
         }
+    }
+
+    /**
+     * Extract storage file paths from inline <img> tags in HTML content.
+     *
+     * Matches src attributes pointing to /storage/... and converts them
+     * to relative paths suitable for Storage::disk('public')->delete().
+     *
+     * @return string[]
+     */
+    private function extractStoragePaths(?string $html): array
+    {
+        if (empty($html) || !str_contains($html, '<img')) {
+            return [];
+        }
+
+        $paths = [];
+
+        // Match src="...storage/..." patterns
+        if (preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $matches)) {
+            foreach ($matches[1] as $src) {
+                // Extract relative path from /storage/xxx or full URL with /storage/xxx
+                if (preg_match('#/storage/(.+)$#', $src, $m)) {
+                    $path = urldecode($m[1]);
+                    // Sanitize: only allow paths within expected directories
+                    if (str_starts_with($path, 'soal/') || str_starts_with($path, 'import/')) {
+                        $paths[] = $path;
+                    }
+                }
+            }
+        }
+
+        return $paths;
     }
 
     /**
