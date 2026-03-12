@@ -52,7 +52,9 @@ class JawabanService
             $sesiToken, ['mengerjakan', 'login', 'submit']
         );
 
-        if (!$isFinalSubmit && $sesiPeserta->sisa_waktu_detik <= 0) {
+        $isAlreadySubmitted = $sesiPeserta->status === 'submit';
+
+        if (!$isFinalSubmit && !$isAlreadySubmitted && $sesiPeserta->sisa_waktu_detik <= 0) {
             throw ValidationException::withMessages([
                 'waktu' => 'Waktu ujian telah habis.',
             ]);
@@ -119,9 +121,22 @@ class JawabanService
             LogAktivitasUjianJob::dispatch(
                 $sesiPeserta->id,
                 'sync_offline',
-                ['synced' => $synced, 'skipped' => $skipped],
+                ['synced' => $synced, 'skipped' => $skipped, 'late_sync' => $isAlreadySubmitted],
                 $requestMeta['ip_address'] ?? null,
             );
+
+            // Re-score if answers arrived after auto-submit (offline late sync)
+            if ($isAlreadySubmitted && $synced > 0) {
+                $hasil = $this->penilaianService->hitungNilai($sesiPeserta->fresh());
+                $sesiPeserta->update($hasil);
+
+                LogAktivitasUjianJob::dispatch(
+                    $sesiPeserta->id,
+                    'rescore_late_sync',
+                    ['synced' => $synced, 'new_nilai' => $hasil['nilai_akhir']],
+                    $requestMeta['ip_address'] ?? null,
+                );
+            }
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
             if ($e->errorInfo[1] == 1020 && $attempt < $maxRetries) {
@@ -189,9 +204,24 @@ class JawabanService
         );
 
         if ($sesiPeserta->status === 'submit') {
+            // Already auto-submitted by server — sync any late answers and re-score
+            if (!empty($finalAnswers)) {
+                try {
+                    $this->syncOfflineAnswers($token, $finalAnswers, [], true);
+                    $hasil = $this->penilaianService->hitungNilai($sesiPeserta->fresh());
+                    $sesiPeserta->update($hasil);
+                } catch (\Exception $e) {
+                    $this->repository->createLog([
+                        'sesi_peserta_id' => $sesiPeserta->id,
+                        'tipe_event'      => 'late_submit_sync_error',
+                        'detail'          => ['error' => $e->getMessage()],
+                        'created_at'      => now(),
+                    ]);
+                }
+            }
             return [
                 'message'     => 'Sudah disubmit',
-                'nilai_akhir' => $sesiPeserta->nilai_akhir,
+                'nilai_akhir' => $sesiPeserta->fresh()->nilai_akhir,
             ];
         }
 

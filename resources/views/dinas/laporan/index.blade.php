@@ -123,17 +123,18 @@
             <button type="button"
                     x-data
                     @click="
-                        if(await $store.confirmModal.open({
+                        $store.confirmModal.open({
                             title: 'Hitung Ulang Nilai',
                             message: 'Hitung ulang semua nilai{{ request('paket_id') || request('sekolah_id') ? ' (sesuai filter aktif)' : '' }}?\nProses ini mungkin membutuhkan waktu beberapa detik.',
                             confirmText: 'Ya, Hitung Ulang'
-                        })) {
+                        }).then(ok => {
+                            if (!ok) return;
                             $el.disabled = true;
                             $el.querySelector('.icon-default').classList.add('hidden');
                             $el.querySelector('.icon-spinner').classList.remove('hidden');
                             $el.querySelector('.btn-text').textContent = 'Menghitung ulang...';
                             document.getElementById('recalculate-form').submit();
-                        }
+                        })
                     "
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-50">
                 <svg class="w-3.5 h-3.5 icon-default" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -10,6 +10,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
 {
@@ -99,6 +100,8 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER);
                     $sheet->getStyle("E2:J{$totalRows}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("E2:H{$totalRows}")->getNumberFormat()
+                        ->setFormatCode(NumberFormat::FORMAT_NUMBER);
 
                     $sheet->getColumnDimension('D')->setWidth(60);
 
