@@ -94,11 +94,12 @@ class SoalController extends Controller
         $soal->load(['opsiJawaban', 'pasangan', 'kategori']);
 
         if (request()->ajax() || request()->wantsJson()) {
+            $hasInlineImage = str_contains($soal->pertanyaan ?? '', '<img ');
             return response()->json([
                 'id'                => $soal->id,
                 'tipe_soal'         => $soal->tipe_soal,
                 'pertanyaan'        => $soal->pertanyaan,
-                'gambar_soal'       => $soal->gambar_soal ? asset('storage/' . $soal->gambar_soal) : null,
+                'gambar_soal'       => ($soal->gambar_soal && !$hasInlineImage) ? asset('storage/' . $soal->gambar_soal) : null,
                 'kategori'          => $soal->kategori->nama ?? '—',
                 'tingkat_kesulitan' => ucfirst($soal->tingkat_kesulitan ?? '—'),
                 'bobot'             => $soal->bobot,

@@ -200,8 +200,9 @@
                         </div>
 
                         {{-- Question body --}}
+                        @php $hasInlineImg = str_contains($soal['pertanyaan'] ?? '', '<img '); @endphp
                         <div class="card p-5 sm:p-6 mb-4">
-                            @if($soal['posisi_gambar'] === 'atas' && $soal['gambar_soal'])
+                            @if(!$hasInlineImg && $soal['posisi_gambar'] === 'atas' && $soal['gambar_soal'])
                             <div class="mb-4 rounded-xl overflow-hidden border border-gray-200">
                                 <img src="{{ asset('storage/'.$soal['gambar_soal']) }}"
                                      alt="Gambar soal {{ $index+1 }}"
@@ -214,7 +215,7 @@
                                 {!! $soal['pertanyaan'] !!}
                             </div>
 
-                            @if($soal['gambar_soal'] && $soal['posisi_gambar'] !== 'atas')
+                            @if(!$hasInlineImg && $soal['gambar_soal'] && $soal['posisi_gambar'] !== 'atas')
                             <div class="mt-4 rounded-xl overflow-hidden border border-gray-200">
                                 <img src="{{ asset('storage/'.$soal['gambar_soal']) }}"
                                      alt="Gambar soal {{ $index+1 }}"

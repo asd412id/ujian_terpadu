@@ -76,7 +76,7 @@
                 {!! $soal->pertanyaan !!}
             @endif
         </div>
-        @if($soal->gambar_soal)
+        @if($soal->gambar_soal && !str_contains($soal->pertanyaan ?? '', '<img '))
         <div class="mt-4">
             <img src="{{ asset('storage/' . $soal->gambar_soal) }}" alt="Gambar soal" class="max-h-64 rounded-lg border">
         </div>

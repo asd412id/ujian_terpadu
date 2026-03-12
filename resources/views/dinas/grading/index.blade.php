@@ -57,7 +57,7 @@
             <div class="text-sm text-gray-800 prose prose-sm max-w-none">
                 {!! $jawaban->soal->pertanyaan !!}
             </div>
-            @if($jawaban->soal->gambar_soal)
+            @if($jawaban->soal->gambar_soal && !str_contains($jawaban->soal->pertanyaan ?? '', '<img '))
             <img src="{{ Storage::url($jawaban->soal->gambar_soal) }}" alt="Gambar soal"
                  class="mt-3 max-h-40 rounded-lg border border-blue-200 object-contain">
             @endif

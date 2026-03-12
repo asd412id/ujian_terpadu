@@ -7,6 +7,7 @@ use App\Models\Soal;
 use App\Models\OpsiJawaban;
 use App\Models\PasanganSoal;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -33,12 +34,18 @@ use PhpOffice\PhpWord\Style\Font;
  * opsi_jawaban and pasangan_soal instead of individual creates.
  */
 
-class ImportSoalWordJob implements ShouldQueue
+class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 600;
     public int $tries   = 1;
+
+    /**
+     * Unique lock timeout — must exceed $timeout to prevent
+     * the queue from re-dispatching while still processing.
+     */
+    public int $uniqueFor = 900;
 
     private const CHUNK_SIZE = 50;
 
@@ -55,10 +62,23 @@ class ImportSoalWordJob implements ShouldQueue
         $this->onQueue('imports');
     }
 
+    /**
+     * Unique ID to prevent duplicate job processing.
+     */
+    public function uniqueId(): string
+    {
+        return 'import-soal-' . $this->importJob->id;
+    }
+
     public function handle(): void
     {
         $this->importJob->refresh();
         if ($this->importJob->status === 'gagal') {
+            return;
+        }
+
+        // Guard against duplicate processing (e.g. queue retry_after race condition)
+        if ($this->importJob->status === 'processing' || $this->importJob->status === 'selesai') {
             return;
         }
 
@@ -294,6 +314,11 @@ class ImportSoalWordJob implements ShouldQueue
                         $soalHtml = preg_replace('/\[bobot:\s*[\d.,]+\]/i', '', $soalHtml);
                     }
 
+                    // If images are already inlined in the HTML (as <img> tags),
+                    // don't also set gambar_soal — this prevents double rendering.
+                    $hasInlineImage = !empty($images) && str_contains($soalHtml, '<img ');
+                    $gambarSoal = $hasInlineImage ? null : (!empty($images) ? $this->saveImageData($images[0]) : $gambarFromText);
+
                     $current = [
                         'pertanyaan'      => trim($soalHtml),
                         'pertanyaan_html' => trim($soalHtml),
@@ -302,7 +327,7 @@ class ImportSoalWordJob implements ShouldQueue
                         'opsi_html'       => [],
                         'opsi_gambar'     => [],
                         'kunci'           => null,
-                        'gambar_soal'     => !empty($images) ? $this->saveImageData($images[0]) : $gambarFromText,
+                        'gambar_soal'     => $gambarSoal,
                         'pasangan'        => [],
                         'pernyataan_bs'   => [],
                         'tingkat'         => $tingkat,
@@ -402,8 +427,8 @@ class ImportSoalWordJob implements ShouldQueue
                 } elseif ($current && preg_match('/^\[bobot:\s*([\d.,]+)\]/i', $text, $bm)) {
                     $current['bobot'] = (float) str_replace(',', '.', trim($bm[1]));
 
-                // Standalone image following a soal
-                } elseif ($current && empty($text) && !empty($images) && !$current['gambar_soal']) {
+                // Standalone image following a soal (skip if pertanyaan already has inline images)
+                } elseif ($current && empty($text) && !empty($images) && !$current['gambar_soal'] && !str_contains($current['pertanyaan'], '<img ')) {
                     $current['gambar_soal'] = $this->saveImageData($images[0]);
 
                 // Continuation text (no structural prefix) — append to current pertanyaan
