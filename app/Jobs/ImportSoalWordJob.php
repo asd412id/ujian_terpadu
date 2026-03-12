@@ -56,7 +56,20 @@ class ImportSoalWordJob implements ShouldQueue
         try {
             $filePath = Storage::disk('local')->path($this->importJob->filepath);
 
-            $phpWord    = IOFactory::load($filePath);
+            // Suppress libxml/DOMDocument errors for Word docs containing MathML
+            // (<m:oMath>) that phpoffice/math cannot parse due to missing namespace.
+            // Both libxml internal errors AND PHP warnings must be suppressed because
+            // Laravel's HandleExceptions converts E_WARNING into ErrorException.
+            $previousUseErrors = libxml_use_internal_errors(true);
+            set_error_handler(fn () => true, E_WARNING);
+            try {
+                $phpWord = IOFactory::load($filePath);
+            } finally {
+                restore_error_handler();
+                libxml_clear_errors();
+                libxml_use_internal_errors($previousUseErrors);
+            }
+
             $sections   = $phpWord->getSections();
             $soalBlocks = $this->parseWordSections($sections);
 

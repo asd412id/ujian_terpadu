@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
+use App\Models\ImportJob;
 use App\Models\Soal;
 use App\Jobs\ImportSoalWordJob;
 use App\Services\SoalService;
