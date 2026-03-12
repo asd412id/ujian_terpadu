@@ -176,11 +176,29 @@ class SoalRepository
     }
 
     /**
+     * Chunk soal by kategori with relations.
+     */
+    public function chunkByKategoriWithRelations(string $kategoriId, int $size, callable $callback): void
+    {
+        $this->model->where('kategori_id', $kategoriId)
+            ->with(['opsiJawaban', 'pasangan'])
+            ->chunk($size, $callback);
+    }
+
+    /**
      * Delete all soal records (soft-delete).
      */
     public function deleteAll(): void
     {
         $this->model->newQuery()->delete();
+    }
+
+    /**
+     * Delete soal by kategori (soft-delete).
+     */
+    public function deleteByKategori(string $kategoriId): void
+    {
+        $this->model->where('kategori_id', $kategoriId)->delete();
     }
 
     /**

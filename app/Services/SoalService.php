@@ -264,6 +264,22 @@ class SoalService
     }
 
     /**
+     * Delete soal by kategori (soft-delete) and remove associated images.
+     */
+    public function deleteSoalByKategori(string $kategoriId): void
+    {
+        DB::transaction(function () use ($kategoriId) {
+            $this->repository->chunkByKategoriWithRelations($kategoriId, 100, function ($soals) {
+                foreach ($soals as $soal) {
+                    $this->deleteAllSoalImages($soal);
+                }
+            });
+
+            $this->repository->deleteByKategori($kategoriId);
+        });
+    }
+
+    /**
      * Save opsi jawaban for PG / PG Kompleks types.
      */
     private function saveOpsi(Soal $soal, Request $request): void

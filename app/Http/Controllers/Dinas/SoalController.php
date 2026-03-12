@@ -131,12 +131,21 @@ class SoalController extends Controller
                          ->with('success', 'Soal berhasil dihapus.');
     }
 
-    public function destroyAll()
+    public function destroyAll(Request $request)
     {
-        $this->soalService->deleteAllSoal();
+        $kategoriId = $request->input('kategori');
+
+        if ($kategoriId) {
+            $kategori = \App\Models\KategoriSoal::findOrFail($kategoriId);
+            $this->soalService->deleteSoalByKategori($kategoriId);
+            $msg = "Semua soal kategori \"{$kategori->nama}\" berhasil dihapus.";
+        } else {
+            $this->soalService->deleteAllSoal();
+            $msg = 'Semua soal berhasil dihapus.';
+        }
 
         return redirect()->route('dinas.soal.index')
-                         ->with('success', 'Semua soal berhasil dihapus.');
+                         ->with('success', $msg);
     }
 
     public function previewAll(Request $request)

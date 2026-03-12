@@ -14,17 +14,41 @@
         <h1 class="text-xl font-bold text-gray-900">Bank Soal</h1>
         <div class="flex items-center gap-2">
             @if($soal->total() > 0)
-            <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
-                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Soal',message:'Yakin ingin menghapus SEMUA soal? Tindakan ini tidak dapat dibatalkan.',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
-                @csrf @method('DELETE')
-                <button type="submit"
+            <div x-data="{ openDel: false }" class="relative">
+                <button @click="openDel = !openDel" type="button"
                         class="btn-danger-outline inline-flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
-                    Hapus Semua
+                    Hapus Soal
+                    <svg class="w-3 h-3 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
                 </button>
-            </form>
+                <div x-show="openDel" x-cloak @click.outside="openDel = false" x-transition
+                     class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 py-2">
+                    {{-- Hapus semua --}}
+                    <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Soal',message:'Yakin ingin menghapus SEMUA soal? Tindakan ini tidak dapat dibatalkan.',confirmText:'Ya, Hapus Semua',danger:true})) { openDel=false; $el.submit() }">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold">
+                            Hapus Semua Soal
+                        </button>
+                    </form>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <p class="px-4 py-1 text-xs text-gray-400 uppercase tracking-wider">Per Kategori</p>
+                    @foreach($kategori as $kat)
+                    <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal Kategori',message:'Yakin ingin menghapus semua soal kategori &quot;{{ e($kat->nama) }}&quot;?',confirmText:'Ya, Hapus',danger:true})) { openDel=false; $el.submit() }">
+                        @csrf @method('DELETE')
+                        <input type="hidden" name="kategori" value="{{ $kat->id }}">
+                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors">
+                            {{ $kat->nama }}
+                        </button>
+                    </form>
+                    @endforeach
+                </div>
+            </div>
             @endif
             @if($soal->total() > 0)
             <a href="{{ route('dinas.soal.preview-all', request()->only('kategori')) }}"
