@@ -140,19 +140,17 @@ class PaketUjianController extends Controller
         return view('dinas.paket.trash', compact('paket'));
     }
 
-    public function restore(string $paket_trashed)
+    public function restore(PaketUjian $paket_trashed)
     {
-        $paket = \App\Models\PaketUjian::withTrashed()->findOrFail($paket_trashed);
-        $this->paketUjianService->restorePaket($paket);
+        $this->paketUjianService->restorePaket($paket_trashed);
 
         return redirect()->route('dinas.paket.trash')
                          ->with('success', 'Paket ujian berhasil dipulihkan.');
     }
 
-    public function forceDelete(string $paket_trashed)
+    public function forceDelete(PaketUjian $paket_trashed)
     {
-        $paket = \App\Models\PaketUjian::withTrashed()->findOrFail($paket_trashed);
-        $this->paketUjianService->forceDeletePaket($paket);
+        $this->paketUjianService->forceDeletePaket($paket_trashed);
 
         return redirect()->route('dinas.paket.trash')
                          ->with('success', 'Paket ujian dihapus permanen beserta semua data terkait.');
