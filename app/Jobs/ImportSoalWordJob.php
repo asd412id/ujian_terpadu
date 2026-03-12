@@ -427,13 +427,21 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 } elseif ($current && preg_match('/^\[bobot:\s*([\d.,]+)\]/i', $text, $bm)) {
                     $current['bobot'] = (float) str_replace(',', '.', trim($bm[1]));
 
-                // Standalone image following a soal (skip if pertanyaan already has inline images)
+                // Standalone image following a soal
                 } elseif ($current && empty($text) && !empty($images)) {
-                    // If options already exist, assign image to the last option
                     if (!empty($current['opsi'])) {
                         $lastLabel = array_key_last($current['opsi']);
-                        if (empty($current['opsi_gambar'][$lastLabel])) {
+                        if (empty($current['opsi_gambar'][$lastLabel] ?? null)) {
+                            // Assign image to last option if it doesn't have one yet
                             $current['opsi_gambar'][$lastLabel] = $this->saveImageData($images[0]);
+                        } else {
+                            // Last option already has image — create new option with image
+                            $nextLabel = chr(ord($lastLabel) + 1);
+                            if ($nextLabel >= 'A' && $nextLabel <= 'Z') {
+                                $current['opsi'][$nextLabel] = '';
+                                $current['opsi_html'][$nextLabel] = '';
+                                $current['opsi_gambar'][$nextLabel] = $this->saveImageData($images[0]);
+                            }
                         }
                     } elseif (!$current['gambar_soal'] && !str_contains($current['pertanyaan'], '<img ')) {
                         $current['gambar_soal'] = $this->saveImageData($images[0]);
@@ -441,16 +449,30 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
 
                 // Continuation text (no structural prefix)
                 } elseif ($current && !empty($html) && !empty($text)) {
-                    // If options already exist, append to the last option
-                    // (handles block-level formulas that follow an option label in a separate paragraph)
                     if (!empty($current['opsi'])) {
                         $lastLabel = array_key_last($current['opsi']);
-                        $current['opsi'][$lastLabel] .= ($current['opsi'][$lastLabel] ? ' ' : '') . trim($text);
-                        $current['opsi_html'][$lastLabel] .= ($current['opsi_html'][$lastLabel] ? ' ' : '') . $html;
+                        if (empty($current['opsi'][$lastLabel]) && empty($current['opsi_gambar'][$lastLabel] ?? null)) {
+                            // Last option label was parsed but has no content yet
+                            // (block-level formula in separate paragraph) — fill it
+                            $current['opsi'][$lastLabel] = trim($text);
+                            $current['opsi_html'][$lastLabel] = $html;
+                        } else {
+                            // Last option already has content — create a new option
+                            // with the next sequential label (handles formula-only
+                            // paragraphs that lost their option label in Word)
+                            $nextLabel = chr(ord($lastLabel) + 1);
+                            if ($nextLabel >= 'A' && $nextLabel <= 'Z') {
+                                $current['opsi'][$nextLabel] = trim($text);
+                                $current['opsi_html'][$nextLabel] = $html;
+                            }
+                        }
                     } elseif (!empty($current['pernyataan_bs'])) {
-                        // Append to last benar/salah pernyataan
                         $lastIdx = count($current['pernyataan_bs']) - 1;
-                        $current['pernyataan_bs'][$lastIdx]['teks'] .= ' ' . $html;
+                        if (empty($current['pernyataan_bs'][$lastIdx]['teks'])) {
+                            $current['pernyataan_bs'][$lastIdx]['teks'] = $html;
+                        } else {
+                            $current['pernyataan_bs'][$lastIdx]['teks'] .= ' ' . $html;
+                        }
                     } else {
                         // No options yet — append to pertanyaan
                         $current['pertanyaan'] .= '<br>' . $html;
