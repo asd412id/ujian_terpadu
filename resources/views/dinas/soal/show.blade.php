@@ -70,7 +70,11 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Pertanyaan</h2>
         <div class="prose prose-sm max-w-none text-gray-800">
-            {!! nl2br(e($soal->pertanyaan)) !!}
+            @if($soal->pertanyaan === strip_tags($soal->pertanyaan))
+                {!! nl2br(e($soal->pertanyaan)) !!}
+            @else
+                {!! $soal->pertanyaan !!}
+            @endif
         </div>
         @if($soal->gambar_soal)
         <div class="mt-4">
@@ -91,7 +95,7 @@
                 </span>
                 <div class="flex-1">
                     @if($opsi->teks)
-                    <p class="text-sm text-gray-800">{{ $opsi->teks }}</p>
+                    <p class="text-sm text-gray-800">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</p>
                     @endif
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar opsi {{ $opsi->label }}" class="{{ $opsi->teks ? 'mt-2' : '' }} max-h-32 rounded border">
@@ -149,7 +153,7 @@
             <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ $opsi->label }}</span>
                 <div class="flex-1">
-                    <span class="text-sm text-gray-800">{{ $opsi->teks }}</span>
+                    <span class="text-sm text-gray-800">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar pernyataan" class="mt-1 max-h-24 rounded border">
                     @endif

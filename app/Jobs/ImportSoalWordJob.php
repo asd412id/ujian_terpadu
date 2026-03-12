@@ -14,12 +14,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Utilities\DocxMathPreprocessor;
 use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\Element\Formula;
 use PhpOffice\PhpWord\Element\Image;
+use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\Element\Text;
 use PhpOffice\PhpWord\Element\ListItem;
 use PhpOffice\PhpWord\Element\ListItemRun;
+use PhpOffice\PhpWord\Style\Font;
 
 /**
  * Import soal from Word document.
@@ -53,17 +57,24 @@ class ImportSoalWordJob implements ShouldQueue
 
         $this->importJob->update(['status' => 'processing', 'started_at' => now()]);
 
+        $preprocessedPath = null;
+
         try {
             $filePath = Storage::disk('local')->path($this->importJob->filepath);
 
-            // Suppress libxml/DOMDocument errors for Word docs containing MathML
-            // (<m:oMath>) that phpoffice/math cannot parse due to missing namespace.
-            // Both libxml internal errors AND PHP warnings must be suppressed because
-            // Laravel's HandleExceptions converts E_WARNING into ErrorException.
+            // Pre-process DOCX to convert OMML math formulas to LaTeX text
+            // before PHPWord loads it. This prevents phpoffice/math from
+            // crashing on complex math (m:f, m:sSup, m:rad, etc.).
+            $preprocessor = new DocxMathPreprocessor();
+            $loadPath = $preprocessor->preprocess($filePath);
+            if ($loadPath !== $filePath) {
+                $preprocessedPath = $loadPath;
+            }
+
             $previousUseErrors = libxml_use_internal_errors(true);
             set_error_handler(fn () => true, E_WARNING);
             try {
-                $phpWord = IOFactory::load($filePath);
+                $phpWord = IOFactory::load($loadPath);
             } finally {
                 restore_error_handler();
                 libxml_clear_errors();
@@ -138,6 +149,11 @@ class ImportSoalWordJob implements ShouldQueue
                 $this->cleanupDirectory($this->imagesPath);
             }
 
+            // Clean up preprocessed temp file
+            if ($preprocessedPath && file_exists($preprocessedPath)) {
+                @unlink($preprocessedPath);
+            }
+
             $this->importJob->update([
                 'status'         => 'selesai',
                 'processed_rows' => count($soalBlocks),
@@ -148,6 +164,11 @@ class ImportSoalWordJob implements ShouldQueue
             ]);
 
         } catch (\Exception $e) {
+            // Clean up preprocessed temp file on error
+            if ($preprocessedPath && file_exists($preprocessedPath)) {
+                @unlink($preprocessedPath);
+            }
+
             $this->importJob->update([
                 'status'       => 'gagal',
                 'catatan'      => $e->getMessage(),
@@ -186,24 +207,49 @@ class ImportSoalWordJob implements ShouldQueue
                 if (!$result) continue;
 
                 $text   = $result['text'];
+                $html   = $result['html'];
                 $images = $result['images'];
+                $isTable = $result['is_table'] ?? false;
 
-                if (empty($text) && empty($images)) continue;
+                if (empty($text) && empty($html) && empty($images)) continue;
+
+                // Tables are appended to current soal's pertanyaan as HTML
+                if ($isTable && $current && !empty($html)) {
+                    $current['pertanyaan'] .= "\n" . $html;
+                    $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $html;
+                    continue;
+                }
 
                 // Skip known heading-only lines
                 if (preg_match('/^(PILIHAN GANDA|PG KOMPLEKS|MENJODOHKAN|ISIAN SINGKAT|ESSAY|BENAR|CATATAN|GAMBAR|Template Import)/i', $text)) continue;
+
+                // Choose the richer representation for storage
+                // Use plain text for regex matching, html for storage
+                $storeText = !empty($html) ? $html : e($text);
 
                 // New soal: starts with number.
                 if (preg_match('/^(\d+)\.\s+(.+)/s', $text, $m)) {
                     if ($current) $blocks[] = $current;
 
                     $soalText = trim($m[2]);
-                    $jenis    = 'pg';
+                    // Extract corresponding html portion (remove the "N. " prefix)
+                    $soalHtml = $html;
+                    if (!empty($soalHtml)) {
+                        // Remove leading "N. " from html (may be wrapped in tags)
+                        $soalHtml = preg_replace('/^(?:<[^>]+>)*\d+\.\s*/', '', $soalHtml, 1);
+                        $soalHtml = trim($soalHtml);
+                    }
+                    if (empty($soalHtml)) $soalHtml = e($soalText);
 
-                    // Detect tag
+                    $jenis = 'pg';
+
+                    // Detect tag from plain text
                     if (preg_match('/^\[(PG_KOMPLEKS|MENJODOHKAN|ISIAN|ESSAY|BENAR_SALAH)\]\s*(.+)/si', $soalText, $tagMatch)) {
                         $tag = strtoupper($tagMatch[1]);
                         $soalText = trim($tagMatch[2]);
+                        // Also strip tag from html
+                        $soalHtml = preg_replace('/\[(?:PG_KOMPLEKS|MENJODOHKAN|ISIAN|ESSAY|BENAR_SALAH)\]\s*/i', '', $soalHtml, 1);
+                        $soalHtml = trim($soalHtml);
                         $jenis = match ($tag) {
                             'PG_KOMPLEKS'  => 'pg_kompleks',
                             'MENJODOHKAN'  => 'menjodohkan',
@@ -217,49 +263,67 @@ class ImportSoalWordJob implements ShouldQueue
                     $gambarFromText = null;
                     if (preg_match('/\[gambar:\s*(.+?)\]/i', $soalText, $gm)) {
                         $soalText = trim(preg_replace('/\[gambar:\s*.+?\]/i', '', $soalText));
+                        $soalHtml = preg_replace('/\[gambar:\s*.+?\]/i', '', $soalHtml);
                         $gambarFromText = $this->saveImageFromFolder(trim($gm[1]));
                     }
 
-                    // Parse optional meta tags: [tingkat: mudah/sedang/sulit] [bobot: angka]
+                    // Parse optional meta tags
                     $tingkat = 'sedang';
                     $bobot   = 1.0;
                     if (preg_match('/\[tingkat:\s*(mudah|sedang|sulit)\]/i', $soalText, $tm)) {
                         $tingkat = strtolower(trim($tm[1]));
                         $soalText = trim(preg_replace('/\[tingkat:\s*(mudah|sedang|sulit)\]/i', '', $soalText));
+                        $soalHtml = preg_replace('/\[tingkat:\s*(?:mudah|sedang|sulit)\]/i', '', $soalHtml);
                     }
                     if (preg_match('/\[bobot:\s*([\d.,]+)\]/i', $soalText, $bm)) {
                         $bobot = (float) str_replace(',', '.', trim($bm[1]));
                         $soalText = trim(preg_replace('/\[bobot:\s*[\d.,]+\]/i', '', $soalText));
+                        $soalHtml = preg_replace('/\[bobot:\s*[\d.,]+\]/i', '', $soalHtml);
                     }
 
                     $current = [
-                        'pertanyaan'    => $soalText,
-                        'jenis'         => $jenis,
-                        'opsi'          => [],
-                        'opsi_gambar'   => [],
-                        'kunci'         => null,
-                        'gambar_soal'   => !empty($images) ? $this->saveImageData($images[0]) : $gambarFromText,
-                        'pasangan'      => [],
-                        'pernyataan_bs' => [],
-                        'tingkat'       => $tingkat,
-                        'bobot'         => $bobot,
+                        'pertanyaan'      => trim($soalHtml),
+                        'pertanyaan_html' => trim($soalHtml),
+                        'jenis'           => $jenis,
+                        'opsi'            => [],
+                        'opsi_html'       => [],
+                        'opsi_gambar'     => [],
+                        'kunci'           => null,
+                        'gambar_soal'     => !empty($images) ? $this->saveImageData($images[0]) : $gambarFromText,
+                        'pasangan'        => [],
+                        'pernyataan_bs'   => [],
+                        'tingkat'         => $tingkat,
+                        'bobot'           => $bobot,
                     ];
 
-                // Benar/Salah pernyataan lines: 1) Pernyataan text (BENAR) or 1) Pernyataan text (SALAH)
+                // Benar/Salah pernyataan lines
                 } elseif ($current && $current['jenis'] === 'benar_salah' && preg_match('/^(\d+)\)\s*(.+?)\s*\((BENAR|SALAH)\)\s*$/i', $text, $m)) {
+                    // Extract html version of pernyataan text
+                    $bsHtml = $html;
+                    $bsHtml = preg_replace('/^(?:<[^>]+>)*\d+\)\s*/', '', $bsHtml, 1);
+                    $bsHtml = preg_replace('/\s*\((?:BENAR|SALAH)\)(?:<[^>]*>)*\s*$/i', '', $bsHtml);
+                    $bsHtml = trim($bsHtml);
+                    if (empty($bsHtml)) $bsHtml = e(trim($m[2]));
+
                     $current['pernyataan_bs'][] = [
-                        'teks'  => trim($m[2]),
+                        'teks'  => $bsHtml,
                         'benar' => strtoupper($m[3]) === 'BENAR',
                     ];
 
-                // Option lines: a. / b. / c. / d. / e. (with or without text — may have only embedded image)
+                // Option lines: a. / b. / c. / d. / e.
                 } elseif ($current && preg_match('/^([a-eA-E])\.\s*(.*)/s', $text, $m)) {
                     $label    = strtoupper($m[1]);
                     $opsiText = trim($m[2]);
+                    // Extract html version (strip "A. " prefix)
+                    $opsiHtml = $html;
+                    $opsiHtml = preg_replace('/^(?:<[^>]+>)*[a-eA-E]\.\s*/', '', $opsiHtml, 1);
+                    $opsiHtml = trim($opsiHtml);
+                    if (empty($opsiHtml)) $opsiHtml = e($opsiText);
 
-                    // Parse text-based image reference: "teks | gambar: filename.png" or "| gambar: filename.png" or "gambar: filename.png"
+                    // Parse text-based image reference
                     if (preg_match('/^(.*?)\s*\|\s*gambar:\s*(.+)$/i', $opsiText, $gm)) {
                         $opsiText = trim($gm[1]);
+                        $opsiHtml = preg_replace('/\s*\|\s*gambar:\s*.+$/i', '', $opsiHtml);
                         $imgFile  = trim($gm[2]);
                         $savedPath = $this->saveImageFromFolder($imgFile);
                         if ($savedPath) {
@@ -267,6 +331,7 @@ class ImportSoalWordJob implements ShouldQueue
                         }
                     } elseif (preg_match('/^gambar:\s*(.+)$/i', $opsiText, $gm)) {
                         $opsiText = '';
+                        $opsiHtml = '';
                         $imgFile  = trim($gm[1]);
                         $savedPath = $this->saveImageFromFolder($imgFile);
                         if ($savedPath) {
@@ -275,18 +340,20 @@ class ImportSoalWordJob implements ShouldQueue
                     }
 
                     $current['opsi'][$label] = $opsiText;
+                    $current['opsi_html'][$label] = $opsiHtml;
 
-                    // Embedded image in this option paragraph (image-only or image+text)
+                    // Embedded image in this option paragraph
                     if (!empty($images) && empty($current['opsi_gambar'][$label])) {
                         $current['opsi_gambar'][$label] = $this->saveImageData($images[0]);
                     }
 
-                    // Ensure opsi entry exists even if text is empty (image-only option)
+                    // Ensure opsi entry exists even if text is empty
                     if (empty($opsiText) && !empty($current['opsi_gambar'][$label])) {
                         $current['opsi'][$label] = '';
+                        $current['opsi_html'][$label] = '';
                     }
 
-                // Menjodohkan: "kiri = kanan" with optional image refs: "kiri | gambar: f.png = kanan | gambar: g.png"
+                // Menjodohkan: "kiri = kanan"
                 } elseif ($current && $current['jenis'] === 'menjodohkan' && preg_match('/^(.+?)\s*=\s*(.+)$/', $text, $m)) {
                     $kiriRaw  = trim($m[1]);
                     $kananRaw = trim($m[2]);
@@ -316,15 +383,21 @@ class ImportSoalWordJob implements ShouldQueue
                         $current['kunci'] = $jawaban;
                     }
 
-                // Meta tag lines: [tingkat: ...] or [bobot: ...] as standalone line
+                // Meta tag lines
                 } elseif ($current && preg_match('/^\[tingkat:\s*(mudah|sedang|sulit)\]/i', $text, $tm)) {
                     $current['tingkat'] = strtolower(trim($tm[1]));
                 } elseif ($current && preg_match('/^\[bobot:\s*([\d.,]+)\]/i', $text, $bm)) {
                     $current['bobot'] = (float) str_replace(',', '.', trim($bm[1]));
 
-                // Standalone image following a soal (no text, just image)
+                // Standalone image following a soal
                 } elseif ($current && empty($text) && !empty($images) && !$current['gambar_soal']) {
                     $current['gambar_soal'] = $this->saveImageData($images[0]);
+
+                // Continuation text (no structural prefix) — append to current pertanyaan
+                } elseif ($current && !empty($html) && !empty($text)) {
+                    // Only append if it's not a structural element
+                    $current['pertanyaan'] .= '<br>' . $html;
+                    $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . '<br>' . $html;
                 }
             }
         }
@@ -342,36 +415,217 @@ class ImportSoalWordJob implements ShouldQueue
     }
 
     /**
-     * Extract text and images from a Word element (TextRun, Text, ListItem, etc.)
+     * Extract text, rich HTML, and images from a Word element.
+     *
+     * Returns ['text' => plain, 'html' => rich HTML, 'images' => Image[]]
+     * - 'text': plain text for structural regex matching (soal number, option label, etc.)
+     * - 'html': rich HTML with bold/italic/color/underline/inline-images for storage
+     * - 'images': standalone Image objects (for gambar_soal fallback)
      */
     private function extractElementContent($element): ?array
     {
         $text   = '';
+        $html   = '';
         $images = [];
+
+        if ($element instanceof Table) {
+            $tableHtml = $this->tableToHtml($element);
+            return ['text' => '', 'html' => $tableHtml, 'images' => [], 'is_table' => true];
+        }
 
         if ($element instanceof TextRun) {
             foreach ($element->getElements() as $child) {
                 if ($child instanceof Text) {
-                    $text .= $child->getText();
+                    $childText = $child->getText() ?? '';
+                    $text .= $childText;
+                    $html .= $this->textToHtml($childText, $child->getFontStyle());
                 } elseif ($child instanceof Image) {
                     $images[] = $child;
+                    $savedPath = $this->saveImageData($child);
+                    if ($savedPath) {
+                        $url = Storage::disk('public')->url($savedPath);
+                        $html .= '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
+                    }
+                } elseif ($child instanceof Formula) {
+                    $latex = $this->formulaToLatex($child);
+                    $text .= $latex;
+                    $html .= e($latex);
                 }
             }
         } elseif ($element instanceof Text) {
-            $text = $element->getText();
+            $text = $element->getText() ?? '';
+            $html = $this->textToHtml($text, $element->getFontStyle());
+        } elseif ($element instanceof Formula) {
+            $latex = $this->formulaToLatex($element);
+            $text = $latex;
+            $html = e($latex);
         } elseif ($element instanceof ListItem || $element instanceof ListItemRun) {
-            if (method_exists($element, 'getText')) {
-                $text = $element->getText();
+            if ($element instanceof ListItemRun) {
+                foreach ($element->getElements() as $child) {
+                    if ($child instanceof Text) {
+                        $childText = $child->getText() ?? '';
+                        $text .= $childText;
+                        $html .= $this->textToHtml($childText, $child->getFontStyle());
+                    } elseif ($child instanceof Image) {
+                        $images[] = $child;
+                        $savedPath = $this->saveImageData($child);
+                        if ($savedPath) {
+                            $url = Storage::disk('public')->url($savedPath);
+                            $html .= '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
+                        }
+                    }
+                }
+            } elseif (method_exists($element, 'getText')) {
+                $text = $element->getText() ?? '';
+                $html = e($text);
             }
         } elseif ($element instanceof Image) {
             $images[] = $element;
+            $savedPath = $this->saveImageData($element);
+            if ($savedPath) {
+                $url = Storage::disk('public')->url($savedPath);
+                $html = '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;">';
+            }
         } elseif (method_exists($element, 'getText')) {
-            $text = $element->getText();
+            $text = $element->getText() ?? '';
+            $html = e($text);
         }
 
         $text = html_entity_decode(trim((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $html = trim($html);
 
-        return ['text' => $text, 'images' => $images];
+        return ['text' => $text, 'html' => $html, 'images' => $images, 'is_table' => false];
+    }
+
+    /**
+     * Convert plain text to HTML, applying font styles (bold, italic, color, etc.)
+     */
+    private function textToHtml(string $text, $fontStyle): string
+    {
+        if (empty($text)) return '';
+
+        $escaped = e($text);
+
+        if (!($fontStyle instanceof Font)) {
+            return $escaped;
+        }
+
+        $styles = [];
+        $wrappers = [];
+
+        // Color
+        $color = $fontStyle->getColor();
+        if ($color && $color !== '000000' && strtolower($color) !== 'auto') {
+            $styles[] = 'color:#' . $color;
+        }
+
+        // Background/highlight color
+        $bgColor = $fontStyle->getBgColor();
+        if ($bgColor) {
+            $styles[] = 'background-color:#' . $bgColor;
+        }
+
+        // Font size (convert half-points to pt)
+        $size = $fontStyle->getSize();
+        if ($size && $size != 11) { // Only add if not default size
+            $styles[] = 'font-size:' . $size . 'pt';
+        }
+
+        // Font name
+        $name = $fontStyle->getName();
+        if ($name && !in_array(strtolower($name), ['calibri', 'times new roman', 'arial'])) {
+            $styles[] = 'font-family:' . e($name);
+        }
+
+        // Wrap with style span if we have styles
+        if (!empty($styles)) {
+            $escaped = '<span style="' . implode(';', $styles) . '">' . $escaped . '</span>';
+        }
+
+        // Bold
+        if ($fontStyle->isBold()) {
+            $escaped = '<strong>' . $escaped . '</strong>';
+        }
+
+        // Italic
+        if ($fontStyle->isItalic()) {
+            $escaped = '<em>' . $escaped . '</em>';
+        }
+
+        // Underline
+        $underline = $fontStyle->getUnderline();
+        if ($underline && $underline !== 'none' && $underline !== Font::UNDERLINE_NONE) {
+            $escaped = '<u>' . $escaped . '</u>';
+        }
+
+        // Strikethrough
+        if ($fontStyle->isStrikethrough()) {
+            $escaped = '<s>' . $escaped . '</s>';
+        }
+
+        // Superscript
+        if ($fontStyle->isSuperScript()) {
+            $escaped = '<sup>' . $escaped . '</sup>';
+        }
+
+        // Subscript
+        if ($fontStyle->isSubScript()) {
+            $escaped = '<sub>' . $escaped . '</sub>';
+        }
+
+        return $escaped;
+    }
+
+    /**
+     * Convert a PHPWord Table element to an HTML <table>.
+     */
+    private function tableToHtml(Table $table): string
+    {
+        $html = '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;width:100%;">';
+
+        foreach ($table->getRows() as $row) {
+            $html .= '<tr>';
+            foreach ($row->getCells() as $cell) {
+                $width = $cell->getWidth();
+                $style = $width ? ' style="width:' . round($width / 15.1) . 'px"' : '';
+                $html .= '<td' . $style . '>';
+
+                $cellParts = [];
+                foreach ($cell->getElements() as $cellElement) {
+                    $result = $this->extractElementContent($cellElement);
+                    if ($result) {
+                        $content = !empty($result['html']) ? $result['html'] : e($result['text']);
+                        if (!empty($content)) {
+                            $cellParts[] = $content;
+                        }
+                    }
+                }
+                $html .= implode('<br>', $cellParts);
+
+                $html .= '</td>';
+            }
+            $html .= '</tr>';
+        }
+
+        $html .= '</table>';
+        return $html;
+    }
+
+    /**
+     * Convert a PHPWord Formula element to inline LaTeX string.
+     * Fallback for any Formula that survives the preprocessor.
+     */
+    private function formulaToLatex(Formula $formula): string
+    {
+        try {
+            $math = $formula->getMath();
+            $writer = new \PhpOffice\Math\Writer\MathML();
+            $mathml = $writer->write($math);
+            // Simple fallback: extract text content from the Math object
+            return '$ ' . strip_tags($mathml) . ' $';
+        } catch (\Throwable $e) {
+            return '';
+        }
     }
 
     /**
@@ -461,12 +715,14 @@ class ImportSoalWordJob implements ShouldQueue
         $i = 0;
         foreach ($block['opsi'] as $label => $teks) {
             $gambar = $block['opsi_gambar'][$label] ?? null;
+            // Use rich HTML if available, fallback to plain text
+            $richTeks = $block['opsi_html'][$label] ?? $teks;
 
             $batch[] = [
                 'id'         => Str::orderedUuid()->toString(),
                 'soal_id'    => $soalId,
                 'label'      => $label,
-                'teks'       => $teks ?: null,
+                'teks'       => $richTeks ?: null,
                 'gambar'     => $gambar,
                 'is_benar'   => in_array($label, $kunciArr),
                 'urutan'     => $i++,

@@ -252,7 +252,7 @@
                         {{-- Pertanyaan --}}
                         <div>
                             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pertanyaan</h3>
-                            <div class="text-sm text-gray-800 whitespace-pre-line" x-text="previewData.pertanyaan"></div>
+                            <div class="text-sm text-gray-800 prose prose-sm max-w-none" x-html="previewData.pertanyaan"></div>
                             <template x-if="previewData.gambar_soal">
                                 <img :src="previewData.gambar_soal" class="mt-3 max-h-64 rounded-lg border">
                             </template>
@@ -270,7 +270,7 @@
                                                   :class="opsi.is_benar ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'"
                                                   x-text="opsi.label"></span>
                                             <div class="flex-1">
-                                                <p class="text-sm text-gray-800" x-show="opsi.teks" x-text="opsi.teks"></p>
+                                                <p class="text-sm text-gray-800" x-show="opsi.teks" x-html="opsi.teks"></p>
                                                 <template x-if="opsi.gambar">
                                                     <img :src="opsi.gambar" class="max-h-32 rounded border" :class="opsi.teks ? 'mt-2' : ''">
                                                 </template>
@@ -319,7 +319,7 @@
                                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                             <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold" x-text="opsi.label"></span>
                                             <div class="flex-1">
-                                                <span class="text-sm text-gray-800" x-text="opsi.teks"></span>
+                                                <span class="text-sm text-gray-800" x-html="opsi.teks"></span>
                                                 <template x-if="opsi.gambar"><img :src="opsi.gambar" class="mt-1 max-h-16 rounded border"></template>
                                             </div>
                                             <span x-show="opsi.is_benar" class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">BENAR</span>
@@ -375,6 +375,12 @@ function soalIndex() {
             .then(data => {
                 this.previewData = data;
                 this.previewLoading = false;
+                // Re-typeset MathJax after Alpine renders the preview content
+                this.$nextTick(() => {
+                    if (window.MathJax && window.MathJax.typesetPromise) {
+                        window.MathJax.typesetPromise();
+                    }
+                });
             })
             .catch(() => {
                 this.previewLoading = false;

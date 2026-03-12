@@ -242,7 +242,7 @@
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     @if($opsi['teks'])
-                                    <span class="text-sm text-gray-800">{{ $opsi['teks'] }}</span>
+                                    <span class="text-sm text-gray-800">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</span>
                                     @endif
                                     @if($opsi['gambar'])
                                     <img src="{{ asset('storage/'.$opsi['gambar']) }}"
@@ -342,7 +342,7 @@
                                         <span class="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700
                                                      flex items-center justify-center text-xs font-bold">{{ $opsi['label'] }}</span>
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-sm text-gray-800 leading-relaxed">{{ $opsi['teks'] }}</p>
+                                            <p class="text-sm text-gray-800 leading-relaxed">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</p>
                                             @if(!empty($opsi['gambar']))
                                             <img src="{{ asset('storage/'.$opsi['gambar']) }}" class="mt-1 max-h-20 object-contain rounded border" alt="">
                                             @endif
