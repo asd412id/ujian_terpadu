@@ -2,17 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\Peserta;
 use App\Models\PaketUjian;
-use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
-use App\Models\LogAktivitasUjian;
-use Illuminate\Support\Facades\DB;
+use App\Repositories\SesiUjianRepository;
+use App\Repositories\SekolahRepository;
 
 class SesiUjianService
 {
     public function __construct(
-        protected PenilaianService $penilaianService
+        protected PenilaianService $penilaianService,
+        protected SesiUjianRepository $repository,
+        protected SekolahRepository $sekolahRepository
     ) {}
 
     public function createSesi(PaketUjian $paket, array $data): SesiUjian
@@ -20,7 +20,7 @@ class SesiUjianService
         $data['paket_id'] = $paket->id;
         $data['status']   = $data['status'] ?? 'persiapan';
 
-        $sesi = SesiUjian::create($data);
+        $sesi = $this->repository->createSesi($data);
 
         $this->autoSyncPeserta($sesi);
 
@@ -83,7 +83,7 @@ class SesiUjianService
             $hasil = $this->penilaianService->hitungNilai($sp);
             $sp->update($hasil);
 
-            LogAktivitasUjian::create([
+            $this->repository->logAktivitas([
                 'sesi_peserta_id' => $sp->id,
                 'tipe_event'      => 'submit_ujian',
                 'detail'          => [
@@ -152,28 +152,9 @@ class SesiUjianService
     public function getAvailablePeserta(SesiUjian $sesi, ?string $search = null, ?string $sekolahId = null, int $perPage = 50)
     {
         $paket = $sesi->paket;
-        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
-
-        return Peserta::where('is_active', true)
-            ->whereNotIn('id', $existingIds)
-            ->whereHas('sekolah', function ($q) use ($paket, $sekolahId) {
-                if ($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA') {
-                    $q->where('jenjang', $paket->jenjang);
-                }
-                if ($paket->sekolah_id) {
-                    $q->where('id', $paket->sekolah_id);
-                }
-                if ($sekolahId) {
-                    $q->where('id', $sekolahId);
-                }
-            })
-            ->when($search, fn($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nisn', 'like', "%{$search}%");
-            }))
-            ->with('sekolah')
-            ->orderBy('nama')
-            ->paginate($perPage, ['*'], 'available_page');
+        return $this->repository->getAvailablePeserta(
+            $sesi, $paket->jenjang, $paket->sekolah_id, $sekolahId, $search, $perPage
+        );
     }
 
     /**
@@ -190,19 +171,7 @@ class SesiUjianService
     public function countAvailable(SesiUjian $sesi): int
     {
         $paket = $sesi->paket;
-        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
-
-        return Peserta::where('is_active', true)
-            ->whereNotIn('id', $existingIds)
-            ->whereHas('sekolah', function ($q) use ($paket) {
-                if ($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA') {
-                    $q->where('jenjang', $paket->jenjang);
-                }
-                if ($paket->sekolah_id) {
-                    $q->where('id', $paket->sekolah_id);
-                }
-            })
-            ->count();
+        return $this->repository->countAvailablePeserta($sesi, $paket->jenjang, $paket->sekolah_id);
     }
 
     /**
@@ -226,36 +195,11 @@ class SesiUjianService
     {
         $paket = $sesi->paket;
 
-        $pesertaIds = Peserta::where('is_active', true)
-            ->whereHas('sekolah', function ($q) use ($paket) {
-                if ($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA') {
-                    $q->where('jenjang', $paket->jenjang);
-                }
-                if ($paket->sekolah_id) {
-                    $q->where('id', $paket->sekolah_id);
-                }
-            })
-            ->pluck('id');
-
+        $pesertaIds = $this->repository->getEligiblePesertaIds($paket->jenjang, $paket->sekolah_id);
         $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
         $newIds = $pesertaIds->diff($existingIds);
 
-        if ($newIds->isEmpty()) {
-            return 0;
-        }
-
-        $records = $newIds->map(fn($id) => [
-            'id'         => (string) \Illuminate\Support\Str::uuid(),
-            'sesi_id'    => $sesi->id,
-            'peserta_id' => $id,
-            'status'     => 'terdaftar',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ])->toArray();
-
-        SesiPeserta::insert($records);
-
-        return count($records);
+        return $this->repository->insertSesiPeserta($sesi->id, $newIds);
     }
 
     /**
@@ -282,22 +226,7 @@ class SesiUjianService
         $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
         $newIds = collect($pesertaIds)->diff($existingIds);
 
-        if ($newIds->isEmpty()) {
-            return 0;
-        }
-
-        $records = $newIds->map(fn($id) => [
-            'id'         => (string) \Illuminate\Support\Str::uuid(),
-            'sesi_id'    => $sesi->id,
-            'peserta_id' => $id,
-            'status'     => 'terdaftar',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ])->toArray();
-
-        SesiPeserta::insert($records);
-
-        return count($records);
+        return $this->repository->insertSesiPeserta($sesi->id, $newIds);
     }
 
     /**
@@ -322,5 +251,21 @@ class SesiUjianService
         $sesi->update(['is_peserta_override' => false]);
 
         return $this->autoSyncPeserta($sesi);
+    }
+
+    /**
+     * Get list of pengawas users for dropdown.
+     */
+    public function getPengawasList(): mixed
+    {
+        return $this->repository->getPengawasList();
+    }
+
+    /**
+     * Get sekolah list filtered by paket's jenjang and sekolah_id.
+     */
+    public function getSekolahListForPaket(PaketUjian $paket): mixed
+    {
+        return $this->sekolahRepository->getForPaket($paket->jenjang, $paket->sekolah_id);
     }
 }

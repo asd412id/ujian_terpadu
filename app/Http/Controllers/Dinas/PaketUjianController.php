@@ -3,10 +3,7 @@
 namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
-use App\Models\KategoriSoal;
 use App\Models\PaketUjian;
-use App\Models\Soal;
-use App\Models\User;
 use App\Services\PaketUjianService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -73,8 +70,8 @@ class PaketUjianController extends Controller
             'kategoriId' => $ps->soal->kategori_id ?? '_none',
         ])->values();
 
-        $kategoriList = KategoriSoal::where('is_active', true)->orderBy('nama')->get();
-        $pengawas = User::where('role', 'pengawas')->orderBy('name')->get();
+        $kategoriList = $this->paketUjianService->getActiveKategoris();
+        $pengawas = $this->paketUjianService->getPengawasList();
 
         return view('dinas.paket.show', compact('paket', 'terpilihSoalJson', 'kategoriList', 'pengawas'));
     }
@@ -85,53 +82,16 @@ class PaketUjianController extends Controller
      */
     public function bankSoal(Request $request, PaketUjian $paket)
     {
-        $query = Soal::with('kategori')
-            ->where('is_active', true);
-
-        if ($search = trim($request->get('search', ''))) {
-            $query->where('pertanyaan', 'like', '%' . $search . '%');
-        }
-        if ($jenis = $request->get('jenis')) {
-            $query->where('tipe_soal', $jenis);
-        }
-        if ($kategori = $request->get('kategori')) {
-            $query->where('kategori_id', $kategori);
-        }
-
-        $query->orderBy('kategori_id')->orderBy('created_at');
-
-        // Special flag: return all matching soal (for "Pilih Semua Terfilter")
-        if ($request->boolean('all')) {
-            $soal = $query->get();
-            return response()->json([
-                'data' => $soal->map(fn ($s) => $this->mapSoal($s)),
-                'meta' => ['total' => $soal->count(), 'all' => true],
-            ]);
-        }
-
-        $paginated = $query->paginate(50);
-
-        return response()->json([
-            'data' => collect($paginated->items())->map(fn ($s) => $this->mapSoal($s))->values(),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page'    => $paginated->lastPage(),
-                'total'        => $paginated->total(),
-                'per_page'     => $paginated->perPage(),
-            ],
-        ]);
-    }
-
-    private function mapSoal(Soal $s): array
-    {
-        return [
-            'id'         => $s->id,
-            'pertanyaan' => strip_tags($s->pertanyaan),
-            'tipe_soal'  => $s->tipe_soal,
-            'bobot'      => $s->bobot,
-            'kategori'   => $s->kategori->nama ?? 'Tanpa Kategori',
-            'kategoriId' => $s->kategori_id ?? '_none',
+        $filters = [
+            'search'   => trim($request->get('search', '')),
+            'jenis'    => $request->get('jenis'),
+            'kategori' => $request->get('kategori'),
+            'all'      => $request->boolean('all'),
         ];
+
+        return response()->json(
+            $this->paketUjianService->getBankSoalFiltered($paket, $filters)
+        );
     }
 
     public function edit(PaketUjian $paket)

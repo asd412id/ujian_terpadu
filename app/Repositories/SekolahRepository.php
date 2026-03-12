@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Models\DinasPendidikan;
+use App\Models\ImportJob;
 use App\Models\Sekolah;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -113,5 +115,70 @@ class SekolahRepository
             ->where('is_active', true)
             ->orderBy('nama')
             ->get();
+    }
+
+    /**
+     * Count all sekolah records.
+     */
+    public function countAll(): int
+    {
+        return $this->model->count();
+    }
+
+    /**
+     * Delete all sekolah via cursor (triggers model events).
+     */
+    public function deleteAllWithCursor(): int
+    {
+        $count = $this->model->count();
+        foreach ($this->model->cursor() as $sekolah) {
+            $sekolah->delete();
+        }
+        return $count;
+    }
+
+    /**
+     * Get all sekolah ordered by name (for dropdowns).
+     */
+    public function getAllOrdered(array $columns = ['id', 'nama', 'jenjang']): Collection
+    {
+        return $this->model->orderBy('nama')->get($columns);
+    }
+
+    /**
+     * Get active sekolah ordered by name (for dropdowns).
+     */
+    public function getActiveOrdered(array $columns = ['id', 'nama', 'jenjang']): Collection
+    {
+        return $this->model->where('is_active', true)->orderBy('nama')->get($columns);
+    }
+
+    /**
+     * Get sekolah filtered by paket's jenjang and sekolah_id.
+     */
+    public function getForPaket(?string $jenjang, ?string $sekolahId): Collection
+    {
+        return $this->model
+            ->when($jenjang && strtoupper($jenjang) !== 'SEMUA',
+                fn($q) => $q->where('jenjang', $jenjang))
+            ->when($sekolahId, fn($q) => $q->where('id', $sekolahId))
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
+    }
+
+    /**
+     * Get the default DinasPendidikan record.
+     */
+    public function getDefaultDinas(): ?DinasPendidikan
+    {
+        return DinasPendidikan::first();
+    }
+
+    /**
+     * Create an import job record.
+     */
+    public function createImportJob(array $data): ImportJob
+    {
+        return ImportJob::create($data);
     }
 }

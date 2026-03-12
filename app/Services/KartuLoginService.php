@@ -2,15 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\Peserta;
-use App\Models\SesiPeserta;
-use App\Models\SesiUjian;
 use App\Repositories\PesertaRepository;
+use App\Repositories\SesiUjianRepository;
 
 class KartuLoginService
 {
     public function __construct(
-        protected PesertaRepository $repository
+        protected PesertaRepository $repository,
+        protected SesiUjianRepository $sesiUjianRepository
     ) {}
 
     /**
@@ -18,30 +17,8 @@ class KartuLoginService
      */
     public function generateKartuLogin(string $sekolahId, array $filters = []): array
     {
-        $query = Peserta::where('sekolah_id', $sekolahId);
-
-        if (!empty($filters['kelas'])) {
-            $query->where('kelas', $filters['kelas']);
-        }
-
-        if (!empty($filters['q'])) {
-            $search = $filters['q'];
-            $query->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%");
-            });
-        }
-
-        $peserta = $query->orderBy('kelas')
-            ->orderBy('nama')
-            ->paginate($filters['per_page'] ?? 25)
-            ->withQueryString();
-
-        $kelasList = Peserta::where('sekolah_id', $sekolahId)
-            ->whereNotNull('kelas')
-            ->distinct()
-            ->orderBy('kelas')
-            ->pluck('kelas');
+        $peserta = $this->repository->getBySekolahFiltered($sekolahId, $filters);
+        $kelasList = $this->repository->getDistinctKelasBySekolah($sekolahId);
 
         return compact('peserta', 'kelasList');
     }
@@ -51,11 +28,7 @@ class KartuLoginService
      */
     public function getKartuBySekolah(string $sekolahId): mixed
     {
-        return Peserta::where('sekolah_id', $sekolahId)
-            ->where('is_active', true)
-            ->orderBy('kelas')
-            ->orderBy('nama')
-            ->get()
+        return $this->repository->getActiveBySekolah($sekolahId)
             ->map(function ($peserta) {
                 $peserta->password_kartu = $peserta->password_plain
                     ? decrypt($peserta->password_plain)
@@ -69,8 +42,7 @@ class KartuLoginService
      */
     public function printKartu(array $pesertaIds): mixed
     {
-        return Peserta::whereIn('id', $pesertaIds)
-            ->get()
+        return $this->repository->getByIds($pesertaIds)
             ->map(function ($peserta) {
                 $peserta->password_kartu = $peserta->password_plain
                     ? decrypt($peserta->password_plain)
@@ -84,7 +56,7 @@ class KartuLoginService
      */
     public function getKartuPeserta(string $pesertaId): array
     {
-        $peserta = Peserta::findOrFail($pesertaId);
+        $peserta = $this->repository->findOrFail($pesertaId);
         $passwordKartu = $peserta->password_plain
             ? decrypt($peserta->password_plain)
             : '(hubungi admin)';
@@ -97,7 +69,7 @@ class KartuLoginService
      */
     public function getKartuBySesi(string $sesiId): array
     {
-        $sesi = SesiUjian::with(['paket.sekolah', 'sesiPeserta.peserta'])->findOrFail($sesiId);
+        $sesi = $this->sesiUjianRepository->findSesiWithPeserta($sesiId);
 
         $pesertaList = $sesi->sesiPeserta->map(function ($sp) {
             $peserta = $sp->peserta;

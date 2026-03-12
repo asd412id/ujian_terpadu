@@ -2,11 +2,13 @@
 
 namespace App\Repositories;
 
+use App\Models\Peserta;
 use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
-use App\Models\JawabanPeserta;
+use App\Models\User;
 use App\Models\LogAktivitasUjian;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 class SesiUjianRepository
 {
@@ -15,39 +17,146 @@ class SesiUjianRepository
     ) {}
 
     /**
-     * Find a sesi peserta by ID.
+     * Create a sesi ujian record.
      */
-    public function findById(string $id): ?SesiPeserta
+    public function createSesi(array $data): SesiUjian
     {
-        return $this->model->find($id);
+        return SesiUjian::create($data);
     }
 
     /**
-     * Find sesi peserta with relations.
+     * Get list of pengawas users for dropdown.
      */
-    public function findWithRelations(string $id, array $relations = ['sesi.paket']): ?SesiPeserta
+    public function getPengawasList(): Collection
     {
-        return $this->model->with($relations)->find($id);
+        return User::where('role', 'pengawas')->orderBy('name')->get();
     }
 
     /**
-     * Get all sesi peserta by peserta ID.
+     * Get eligible peserta IDs for a paket filter.
      */
-    public function getByPeserta(string $pesertaId): Collection
+    public function getEligiblePesertaIds(string $jenjang = null, ?string $sekolahId = null): \Illuminate\Support\Collection
     {
-        return $this->model
-            ->with(['sesi.paket'])
-            ->where('peserta_id', $pesertaId)
-            ->get();
+        return Peserta::where('is_active', true)
+            ->whereHas('sekolah', function ($q) use ($jenjang, $sekolahId) {
+                if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
+                    $q->where('jenjang', $jenjang);
+                }
+                if ($sekolahId) {
+                    $q->where('id', $sekolahId);
+                }
+            })
+            ->pluck('id');
     }
 
     /**
-     * Get active (mengerjakan/login) sesi peserta for a peserta.
+     * Get available peserta (not enrolled in sesi), paginated.
      */
-    public function getAktifByPeserta(string $pesertaId): Collection
+    public function getAvailablePeserta(
+        SesiUjian $sesi,
+        ?string $jenjang,
+        ?string $paketSekolahId,
+        ?string $filterSekolahId,
+        ?string $search,
+        int $perPage = 50
+    ) {
+        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
+
+        return Peserta::where('is_active', true)
+            ->whereNotIn('id', $existingIds)
+            ->whereHas('sekolah', function ($q) use ($jenjang, $paketSekolahId, $filterSekolahId) {
+                if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
+                    $q->where('jenjang', $jenjang);
+                }
+                if ($paketSekolahId) {
+                    $q->where('id', $paketSekolahId);
+                }
+                if ($filterSekolahId) {
+                    $q->where('id', $filterSekolahId);
+                }
+            })
+            ->when($search, fn($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('nisn', 'like', "%{$search}%");
+            }))
+            ->with('sekolah')
+            ->orderBy('nama')
+            ->paginate($perPage, ['*'], 'available_page');
+    }
+
+    /**
+     * Count available peserta (not enrolled in sesi).
+     */
+    public function countAvailablePeserta(SesiUjian $sesi, ?string $jenjang, ?string $paketSekolahId): int
     {
-        return $this->model
-            ->with(['sesi.paket'])
+        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
+
+        return Peserta::where('is_active', true)
+            ->whereNotIn('id', $existingIds)
+            ->whereHas('sekolah', function ($q) use ($jenjang, $paketSekolahId) {
+                if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
+                    $q->where('jenjang', $jenjang);
+                }
+                if ($paketSekolahId) {
+                    $q->where('id', $paketSekolahId);
+                }
+            })
+            ->count();
+    }
+
+    /**
+     * Insert sesi peserta records in bulk.
+     */
+    public function insertSesiPeserta(string $sesiId, \Illuminate\Support\Collection $pesertaIds): int
+    {
+        if ($pesertaIds->isEmpty()) {
+            return 0;
+        }
+
+        $records = $pesertaIds->map(fn($id) => [
+            'id'         => (string) Str::uuid(),
+            'sesi_id'    => $sesiId,
+            'peserta_id' => $id,
+            'status'     => 'terdaftar',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->toArray();
+
+        SesiPeserta::insert($records);
+
+        return count($records);
+    }
+
+    /**
+     * Find sesi peserta with paket relation (for ujian).
+     */
+    public function findSesiPesertaWithPaket(string $id): SesiPeserta
+    {
+        return SesiPeserta::with(['sesi.paket'])->findOrFail($id);
+    }
+
+    /**
+     * Find sesi peserta with jawaban and soal (for hasil).
+     */
+    public function findSesiPesertaWithJawaban(string $id): SesiPeserta
+    {
+        return SesiPeserta::with(['sesi.paket', 'jawaban.soal'])->findOrFail($id);
+    }
+
+    /**
+     * Log aktivitas ujian.
+     */
+    public function logAktivitas(array $data): LogAktivitasUjian
+    {
+        return LogAktivitasUjian::create($data);
+    }
+
+    /**
+     * Get available (active) sesi for a peserta.
+     */
+    public function getAvailableSesiForPeserta(string $pesertaId): \Illuminate\Database\Eloquent\Collection
+    {
+        return SesiPeserta::with(['sesi.paket'])
             ->where('peserta_id', $pesertaId)
             ->whereIn('status', ['terdaftar', 'belum_login', 'login', 'mengerjakan'])
             ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
@@ -55,91 +164,22 @@ class SesiUjianRepository
     }
 
     /**
-     * Create a new sesi peserta record.
+     * Get completed sesi for a peserta (history).
      */
-    public function create(array $data): SesiPeserta
+    public function getCompletedSesiForPeserta(string $pesertaId): \Illuminate\Database\Eloquent\Collection
     {
-        return $this->model->create($data);
-    }
-
-    /**
-     * Update a sesi peserta.
-     */
-    public function update(SesiPeserta $sesiPeserta, array $data): bool
-    {
-        return $sesiPeserta->update($data);
-    }
-
-    /**
-     * Mark sesi peserta as submitted (selesaikan).
-     */
-    public function selesaikan(SesiPeserta $sesiPeserta, array $data): bool
-    {
-        return $sesiPeserta->update(array_merge([
-            'status'    => 'submit',
-            'submit_at' => now(),
-        ], $data));
-    }
-
-    /**
-     * Get soal for a paket with relations for ujian display.
-     */
-    public function getSoalForSesi(string $paketId): Collection
-    {
-        $paket = SesiUjian::find($paketId)?->paket
-            ?? \App\Models\PaketUjian::find($paketId);
-
-        if (!$paket) {
-            return new Collection();
-        }
-
-        return $paket->soal()
-            ->with(['opsiJawaban', 'pasangan', 'kategori'])
+        return SesiPeserta::with(['sesi.paket'])
+            ->where('peserta_id', $pesertaId)
+            ->where('status', 'submit')
+            ->latest('submit_at')
             ->get();
     }
 
     /**
-     * Get existing jawaban for a sesi peserta (keyed by soal_id).
+     * Find sesi with paket, sekolah, and sesiPeserta.peserta (for kartu login).
      */
-    public function getJawabanBySesiPeserta(string $sesiPesertaId): Collection
+    public function findSesiWithPeserta(string $sesiId): SesiUjian
     {
-        return JawabanPeserta::where('sesi_peserta_id', $sesiPesertaId)->get();
-    }
-
-    /**
-     * Create a log aktivitas ujian.
-     */
-    public function createLog(array $data): LogAktivitasUjian
-    {
-        return LogAktivitasUjian::create($data);
-    }
-
-    /**
-     * Count total soal in a paket (via sesi peserta's paket).
-     */
-    public function countSoalByPaket(string $paketId): int
-    {
-        $paket = \App\Models\PaketUjian::find($paketId);
-        return $paket ? $paket->soal()->count() : 0;
-    }
-
-    /**
-     * Count answered soal for a sesi peserta.
-     */
-    public function countTerjawab(string $sesiPesertaId): int
-    {
-        return JawabanPeserta::where('sesi_peserta_id', $sesiPesertaId)
-            ->where('is_terjawab', true)
-            ->count();
-    }
-
-    /**
-     * Find sesi peserta with selesai details.
-     */
-    public function findWithSelesaiDetail(string $id): ?SesiPeserta
-    {
-        return $this->model
-            ->with(['sesi.paket', 'jawaban.soal'])
-            ->find($id);
+        return SesiUjian::with(['paket.sekolah', 'sesiPeserta.peserta'])->findOrFail($sesiId);
     }
 }

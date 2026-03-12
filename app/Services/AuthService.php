@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Peserta;
 use App\Models\User;
 use App\Repositories\AuthRepository;
 use Illuminate\Support\Facades\Auth;
@@ -65,13 +64,7 @@ class AuthService
         $password = $credentials['password'] ?? '';
 
         // Find peserta by NIS, NISN, or username_ujian
-        $peserta = Peserta::where(function ($q) use ($username) {
-                $q->where('username_ujian', $username)
-                  ->orWhere('nis', $username)
-                  ->orWhere('nisn', $username);
-            })
-            ->where('is_active', true)
-            ->first();
+        $peserta = $this->repository->findPesertaByCredentials($username);
 
         if (!$peserta || !Hash::check($password, $peserta->password_ujian)) {
             throw ValidationException::withMessages([
@@ -105,9 +98,7 @@ class AuthService
      */
     public function validatePesertaToken(string $token): mixed
     {
-        $peserta = Peserta::where('api_token', $token)
-            ->where('is_active', true)
-            ->first();
+        $peserta = $this->repository->findPesertaByApiToken($token);
 
         if (!$peserta) {
             throw ValidationException::withMessages([

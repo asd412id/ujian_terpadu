@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\PaketSoal;
 use App\Models\PaketUjian;
 use App\Repositories\PaketUjianRepository;
 use App\Repositories\KategoriSoalRepository;
@@ -144,11 +143,7 @@ class PaketUjianService
      */
     public function getTrashedPaginated(int $perPage = 20): mixed
     {
-        return PaketUjian::onlyTrashed()
-            ->with(['sekolah', 'pembuat'])
-            ->withCount(['paketSoal', 'sesi'])
-            ->latest('deleted_at')
-            ->paginate($perPage);
+        return $this->repository->getTrashedPaginated($perPage);
     }
 
     /**
@@ -217,37 +212,7 @@ class PaketUjianService
      */
     public function syncSoalPaket(PaketUjian $paket, array $soalIds): void
     {
-        DB::transaction(function () use ($paket, $soalIds) {
-            $currentIds = $paket->paketSoal()->pluck('soal_id')->toArray();
-
-            $toAdd    = array_diff($soalIds, $currentIds);
-            $toRemove = array_diff($currentIds, $soalIds);
-
-            if (!empty($toRemove)) {
-                PaketSoal::where('paket_id', $paket->id)
-                    ->whereIn('soal_id', $toRemove)
-                    ->delete();
-            }
-
-            $maxNomor = PaketSoal::where('paket_id', $paket->id)->max('nomor_urut') ?? 0;
-            if (!empty($toAdd)) {
-                $insertRows = [];
-                foreach ($toAdd as $soalId) {
-                    $maxNomor++;
-                    $insertRows[] = [
-                        'id'         => (string) \Illuminate\Support\Str::uuid(),
-                        'paket_id'   => $paket->id,
-                        'soal_id'    => $soalId,
-                        'nomor_urut' => $maxNomor,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-                PaketSoal::insert($insertRows);
-            }
-
-            $paket->update(['jumlah_soal' => PaketSoal::where('paket_id', $paket->id)->count()]);
-        });
+        DB::transaction(fn () => $this->repository->syncSoalPaket($paket, $soalIds));
     }
 
     /**
@@ -310,5 +275,66 @@ class PaketUjianService
     public function registerPeserta(string $sesiId, array $pesertaIds): int
     {
         return $this->repository->daftarPesertaToSesi($sesiId, $pesertaIds);
+    }
+
+    /**
+     * Register peserta to a sesi ujian and return count + sesi name.
+     */
+    public function registerPesertaWithSesiName(string $sesiId, array $pesertaIds): array
+    {
+        $count = $this->repository->daftarPesertaToSesi($sesiId, $pesertaIds);
+        $sesi = $this->repository->findSesiById($sesiId);
+
+        return [
+            'count'     => $count,
+            'sesi_nama' => $sesi->nama_sesi,
+        ];
+    }
+
+    /**
+     * Get list of pengawas users for dropdown.
+     */
+    public function getPengawasList(): mixed
+    {
+        return $this->repository->getPengawasList();
+    }
+
+    /**
+     * Get filtered bank soal for the paket soal picker (AJAX endpoint).
+     */
+    public function getBankSoalFiltered(PaketUjian $paket, array $filters): array
+    {
+        $result = $this->soalRepository->getBankSoalFiltered($filters);
+
+        if ($result['type'] === 'all') {
+            $soal = $result['data'];
+            return [
+                'data' => $soal->map(fn ($s) => $this->mapSoalToArray($s)),
+                'meta' => ['total' => $soal->count(), 'all' => true],
+            ];
+        }
+
+        $paginated = $result['data'];
+        return [
+            'data' => collect($paginated->items())->map(fn ($s) => $this->mapSoalToArray($s))->values(),
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+            ],
+        ];
+    }
+
+    private function mapSoalToArray($s): array
+    {
+        return [
+            'id'         => $s->id,
+            'pertanyaan' => strip_tags($s->pertanyaan),
+            'tipe_soal'  => $s->tipe_soal,
+            'bobot'      => $s->bobot,
+            'kategori'   => $s->kategori->nama ?? 'Tanpa Kategori',
+            'kategoriId' => $s->kategori_id ?? '_none',
+        ];
     }
 }

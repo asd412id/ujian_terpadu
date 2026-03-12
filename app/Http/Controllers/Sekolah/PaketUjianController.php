@@ -46,13 +46,11 @@ class PaketUjianController extends Controller
             'peserta_ids.*'=> 'exists:peserta,id',
         ]);
 
-        $created = $this->paketUjianService->registerPeserta(
+        $result = $this->paketUjianService->registerPesertaWithSesiName(
             $request->sesi_id,
             $request->peserta_ids
         );
 
-        $sesi = \App\Models\SesiUjian::findOrFail($request->sesi_id);
-
-        return back()->with('success', "$created peserta berhasil didaftarkan ke sesi {$sesi->nama_sesi}.");
+        return back()->with('success', "{$result['count']} peserta berhasil didaftarkan ke sesi {$result['sesi_nama']}.");
     }
 }

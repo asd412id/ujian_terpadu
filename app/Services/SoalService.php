@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\OpsiJawaban;
 use App\Models\Soal;
 use App\Repositories\SoalRepository;
 use App\Repositories\KategoriSoalRepository;
@@ -209,13 +208,13 @@ class SoalService
         DB::transaction(function () {
             $disk = Storage::disk('public');
 
-            Soal::with(['opsiJawaban', 'pasangan'])->chunk(100, function ($soals) use ($disk) {
+            $this->repository->chunkWithRelations(100, function ($soals) use ($disk) {
                 foreach ($soals as $soal) {
                     $this->deleteAllSoalImages($soal);
                 }
             });
 
-            Soal::query()->delete();
+            $this->repository->deleteAll();
         });
     }
 
@@ -343,13 +342,12 @@ class SoalService
     {
         $kunci = $request->input('kunci_jawaban');
         if ($kunci) {
-            OpsiJawaban::create([
-                'soal_id'  => $soal->id,
+            $this->repository->saveOpsiJawaban($soal, [[
                 'label'    => 'KUNCI',
                 'teks'     => $kunci,
                 'is_benar' => true,
                 'urutan'   => 0,
-            ]);
+            ]]);
         }
     }
 
@@ -443,13 +441,7 @@ class SoalService
      */
     public function createImportJob(array $data): \App\Models\ImportJob
     {
-        $job = \App\Models\ImportJob::create($data);
-
-        if ($data['tipe'] === 'soal_word') {
-            dispatch(new \App\Jobs\ImportSoalWordJob($job));
-        }
-
-        return $job;
+        return $this->repository->createImportJob($data);
     }
 
     /**
@@ -457,10 +449,6 @@ class SoalService
      */
     public function getImportJobsByUser(string $userId, int $limit = 10): mixed
     {
-        return \App\Models\ImportJob::where('created_by', $userId)
-            ->where('tipe', 'soal_word')
-            ->latest()
-            ->take($limit)
-            ->get();
+        return $this->repository->getImportJobsByUser($userId, $limit);
     }
 }

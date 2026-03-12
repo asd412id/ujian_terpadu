@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaketUjian;
-use App\Models\Sekolah;
 use App\Models\SesiUjian;
-use App\Models\User;
 use App\Services\SesiUjianService;
 use Illuminate\Http\Request;
 
@@ -38,7 +36,7 @@ class SesiUjianController extends Controller
     {
         abort_unless($sesi->paket_id === $paket->id, 404);
 
-        $pengawas = User::where('role', 'pengawas')->orderBy('name')->get();
+        $pengawas = $this->service->getPengawasList();
         $activePesertaCount = $this->service->countActivePeserta($sesi);
 
         return view('dinas.sesi.edit', compact('paket', 'sesi', 'pengawas', 'activePesertaCount'));
@@ -101,11 +99,7 @@ class SesiUjianController extends Controller
         $totalEnrolled = $this->service->countEnrolled($sesi);
         $totalAvailable = $this->service->countAvailable($sesi);
 
-        $sekolahList = Sekolah::when($paket->jenjang && strtoupper($paket->jenjang) !== 'SEMUA',
-                fn($q) => $q->where('jenjang', $paket->jenjang))
-            ->when($paket->sekolah_id, fn($q) => $q->where('id', $paket->sekolah_id))
-            ->orderBy('nama')
-            ->get(['id', 'nama']);
+        $sekolahList = $this->service->getSekolahListForPaket($paket);
 
         return view('dinas.sesi.peserta', compact(
             'paket', 'sesi', 'enrolled', 'available', 'sekolahList',

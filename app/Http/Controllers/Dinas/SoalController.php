@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\Soal;
-use App\Models\ImportJob;
-use App\Services\SoalService;
 use App\Jobs\ImportSoalWordJob;
+use App\Services\SoalService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\Jc;
@@ -155,8 +153,7 @@ class SoalController extends Controller
 
         $path = $request->file('file')->store('imports/soal', 'local');
 
-        $importJob = ImportJob::create([
-            'id'         => Str::uuid(),
+        $importJob = $this->soalService->createImportJob([
             'tipe'       => 'soal_word',
             'filename'   => $request->file('file')->getClientOriginalName(),
             'filepath'   => $path,
@@ -166,8 +163,6 @@ class SoalController extends Controller
                 'kategori_soal_id' => $request->kategori_soal_id,
             ],
         ]);
-
-        ImportSoalWordJob::dispatch($importJob);
 
         return response()->json([
             'message' => 'File berhasil diupload. Import sedang diproses.',
@@ -228,11 +223,10 @@ class SoalController extends Controller
         }
 
         // Store docx to local disk for the job
-        $storedPath = 'imports/soal/' . Str::uuid() . '.docx';
+        $storedPath = 'imports/soal/' . \Illuminate\Support\Str::uuid() . '.docx';
         Storage::disk('local')->put($storedPath, file_get_contents($docxPath));
 
-        $importJob = ImportJob::create([
-            'id'         => Str::uuid(),
+        $importJob = $this->soalService->createImportJob([
             'tipe'       => 'soal_word',
             'filename'   => $zipFile->getClientOriginalName(),
             'filepath'   => $storedPath,

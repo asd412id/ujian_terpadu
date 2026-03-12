@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Peserta;
 use App\Repositories\PesertaRepository;
+use App\Repositories\SekolahRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -11,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 class PesertaService
 {
     public function __construct(
-        protected PesertaRepository $repository
+        protected PesertaRepository $repository,
+        protected SekolahRepository $sekolahRepository
     ) {}
 
     /**
@@ -228,7 +231,7 @@ class PesertaService
         $data['sekolah_id'] = $sekolahId;
 
         $password = $plainPassword ?: Str::random(6);
-        $data['username_ujian'] = \App\Models\Peserta::generateUsername(
+        $data['username_ujian'] = Peserta::generateUsername(
             $data['nis'] ?? null,
             $data['nisn'] ?? null,
             $sekolahId
@@ -249,7 +252,7 @@ class PesertaService
 
         // Update username_ujian if NIS changed
         if (isset($data['nis']) && $data['nis'] !== $peserta->nis) {
-            $data['username_ujian'] = \App\Models\Peserta::generateUsername(
+            $data['username_ujian'] = Peserta::generateUsername(
                 $data['nis'],
                 $data['nisn'] ?? null,
                 $peserta->sekolah_id
@@ -282,5 +285,30 @@ class PesertaService
         $job = $this->repository->createImportJob($data);
         dispatch(new \App\Jobs\ImportPesertaJob($job));
         return $job;
+    }
+
+    /**
+     * Get sekolah list for dropdowns (all sekolah).
+     */
+    public function getSekolahList(): mixed
+    {
+        return $this->sekolahRepository->getAllOrdered();
+    }
+
+    /**
+     * Get active sekolah list for dropdowns.
+     */
+    public function getActiveSekolahList(): mixed
+    {
+        return $this->sekolahRepository->getActiveOrdered();
+    }
+
+    /**
+     * Delete all peserta by sekolah (or all peserta if sekolahId is null).
+     * Cleans up orphaned sesi_peserta before deleting.
+     */
+    public function deleteAllBySekolah(?string $sekolahId = null): int
+    {
+        return $this->repository->deleteAllBySekolah($sekolahId);
     }
 }

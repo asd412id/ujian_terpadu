@@ -4,9 +4,14 @@ namespace App\Services;
 
 use App\Models\SesiPeserta;
 use App\Models\JawabanPeserta;
+use App\Repositories\JawabanRepository;
 
 class PenilaianService
 {
+    public function __construct(
+        protected JawabanRepository $jawabanRepository
+    ) {}
+
     public function hitungNilai(SesiPeserta $sesiPeserta): array
     {
         $sesiPeserta->load(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal']);
@@ -56,9 +61,7 @@ class PenilaianService
         }
 
         // Batch update skor_auto in chunks instead of N individual updates
-        foreach ($updates as $upd) {
-            JawabanPeserta::where('id', $upd['id'])->update(['skor_auto' => $upd['skor_auto']]);
-        }
+        $this->jawabanRepository->batchUpdateSkorAuto($updates);
 
         $totalSoal    = $paket->paketSoal->count();
         $jumlahKosong = $totalSoal - $jumlahBenar - $jumlahSalah;

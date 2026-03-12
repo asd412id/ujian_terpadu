@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Ujian;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\LogAktivitasUjianJob;
-use App\Models\SesiPeserta;
-use App\Models\Soal;
 use App\Services\JawabanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,8 +34,7 @@ class JawabanController extends Controller
 
         // Bulk soal_id validation (1 query instead of N)
         $soalIds = array_unique(array_column($data['answers'], 'soal_id'));
-        $validIds = Soal::whereIn('id', $soalIds)->pluck('id')->flip()->all();
-        $invalidIds = array_diff($soalIds, array_keys($validIds));
+        $invalidIds = $this->jawabanService->validateSoalIds($soalIds);
         if (!empty($invalidIds)) {
             throw ValidationException::withMessages([
                 'answers.soal_id' => 'Soal tidak ditemukan: ' . implode(', ', array_slice($invalidIds, 0, 5)),
@@ -87,7 +84,7 @@ class JawabanController extends Controller
 
             // Add redirect URL for already-submitted or newly-submitted
             if (!isset($result['redirect'])) {
-                $sesiPeserta = \App\Models\SesiPeserta::where('token_ujian', $token)->first();
+                $sesiPeserta = $this->jawabanService->findSesiPesertaByToken($token);
                 if ($sesiPeserta) {
                     $result['redirect'] = route('ujian.selesai', $sesiPeserta);
                 }
@@ -110,9 +107,7 @@ class JawabanController extends Controller
             'detail' => 'nullable|array',
         ]);
 
-        $sesiPeserta = SesiPeserta::where('token_ujian', $data['token'])
-            ->whereIn('status', ['mengerjakan', 'login'])
-            ->first();
+        $sesiPeserta = $this->jawabanService->findActiveSesiPesertaByToken($data['token']);
 
         if (!$sesiPeserta) {
             return response()->json(['ok' => false, 'error' => 'Sesi tidak ditemukan'], 404);

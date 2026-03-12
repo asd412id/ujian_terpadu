@@ -151,4 +151,81 @@ class SoalRepository
     {
         $soal->pasangan()->delete();
     }
+
+    /**
+     * Get valid soal IDs from a list (for validation).
+     */
+    public function getValidIds(array $ids): array
+    {
+        return $this->model->whereIn('id', $ids)->pluck('id')->flip()->all();
+    }
+
+    /**
+     * Get filtered active bank soal for the paket soal picker.
+     */
+    public function getBankSoalFiltered(array $filters): mixed
+    {
+        $query = $this->model->with('kategori')
+            ->where('is_active', true);
+
+        if (!empty($filters['search'])) {
+            $query->where('pertanyaan', 'like', '%' . $filters['search'] . '%');
+        }
+        if (!empty($filters['jenis'])) {
+            $query->where('tipe_soal', $filters['jenis']);
+        }
+        if (!empty($filters['kategori'])) {
+            $query->where('kategori_id', $filters['kategori']);
+        }
+
+        $query->orderBy('kategori_id')->orderBy('created_at');
+
+        if (!empty($filters['all'])) {
+            return ['type' => 'all', 'data' => $query->get()];
+        }
+
+        return ['type' => 'paginated', 'data' => $query->paginate(50)];
+    }
+
+    /**
+     * Chunk soal with opsiJawaban and pasangan relations.
+     */
+    public function chunkWithRelations(int $size, callable $callback): void
+    {
+        $this->model->with(['opsiJawaban', 'pasangan'])->chunk($size, $callback);
+    }
+
+    /**
+     * Delete all soal records (soft-delete).
+     */
+    public function deleteAll(): void
+    {
+        $this->model->newQuery()->delete();
+    }
+
+    /**
+     * Create an import job for soal and dispatch appropriate job.
+     */
+    public function createImportJob(array $data): \App\Models\ImportJob
+    {
+        $job = \App\Models\ImportJob::create($data);
+
+        if ($data['tipe'] === 'soal_word') {
+            dispatch(new \App\Jobs\ImportSoalWordJob($job));
+        }
+
+        return $job;
+    }
+
+    /**
+     * Get import jobs by user (for soal_word type).
+     */
+    public function getImportJobsByUser(string $userId, int $limit = 10): mixed
+    {
+        return \App\Models\ImportJob::where('created_by', $userId)
+            ->where('tipe', 'soal_word')
+            ->latest()
+            ->take($limit)
+            ->get();
+    }
 }

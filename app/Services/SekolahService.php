@@ -2,13 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\DinasPendidikan;
+use App\Jobs\ImportSekolahJob;
 use App\Models\ImportJob;
 use App\Models\Sekolah;
-use App\Jobs\ImportSekolahJob;
 use App\Repositories\SekolahRepository;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class SekolahService
 {
@@ -45,7 +42,7 @@ class SekolahService
      */
     public function createSekolah(array $data): Sekolah
     {
-        $dinas = DinasPendidikan::first();
+        $dinas = $this->repository->getDefaultDinas();
         $data['dinas_id'] = $dinas->id;
 
         return $this->repository->create($data);
@@ -89,8 +86,16 @@ class SekolahService
      */
     public function createImportJob(array $data): ImportJob
     {
-        $importJob = ImportJob::create($data);
+        $importJob = $this->repository->createImportJob($data);
         ImportSekolahJob::dispatch($importJob);
         return $importJob;
+    }
+
+    /**
+     * Delete all sekolah via Eloquent cursor (triggers model events).
+     */
+    public function deleteAllSekolah(): int
+    {
+        return $this->repository->deleteAllWithCursor();
     }
 }

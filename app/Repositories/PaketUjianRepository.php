@@ -6,8 +6,10 @@ use App\Models\PaketUjian;
 use App\Models\PaketSoal;
 use App\Models\SesiUjian;
 use App\Models\SesiPeserta;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 class PaketUjianRepository
 {
@@ -120,14 +122,6 @@ class PaketUjianRepository
     }
 
     /**
-     * Get paket by sekolah.
-     */
-    public function getBySekolah(string $sekolahId): Collection
-    {
-        return $this->model->where('sekolah_id', $sekolahId)->get();
-    }
-
-    /**
      * Attach a soal to paket (if not already attached).
      * Returns true if the soal was newly attached, false if already existed.
      */
@@ -209,5 +203,69 @@ class PaketUjianRepository
             $created++;
         }
         return $created;
+    }
+
+    /**
+     * Find a sesi ujian by ID.
+     */
+    public function findSesiById(string $sesiId): ?SesiUjian
+    {
+        return SesiUjian::findOrFail($sesiId);
+    }
+
+    /**
+     * Get soft-deleted paket ujian, paginated.
+     */
+    public function getTrashedPaginated(int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->model::onlyTrashed()
+            ->with(['sekolah', 'pembuat'])
+            ->withCount(['paketSoal', 'sesi'])
+            ->latest('deleted_at')
+            ->paginate($perPage);
+    }
+
+    /**
+     * Sync soal selection for a paket (bulk add/remove).
+     */
+    public function syncSoalPaket(PaketUjian $paket, array $soalIds): void
+    {
+        $currentIds = $paket->paketSoal()->pluck('soal_id')->toArray();
+
+        $toAdd    = array_diff($soalIds, $currentIds);
+        $toRemove = array_diff($currentIds, $soalIds);
+
+        if (!empty($toRemove)) {
+            PaketSoal::where('paket_id', $paket->id)
+                ->whereIn('soal_id', $toRemove)
+                ->delete();
+        }
+
+        $maxNomor = PaketSoal::where('paket_id', $paket->id)->max('nomor_urut') ?? 0;
+        if (!empty($toAdd)) {
+            $insertRows = [];
+            foreach ($toAdd as $soalId) {
+                $maxNomor++;
+                $insertRows[] = [
+                    'id'         => (string) Str::uuid(),
+                    'paket_id'   => $paket->id,
+                    'soal_id'    => $soalId,
+                    'nomor_urut' => $maxNomor,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            PaketSoal::insert($insertRows);
+        }
+
+        $paket->update(['jumlah_soal' => PaketSoal::where('paket_id', $paket->id)->count()]);
+    }
+
+    /**
+     * Get list of pengawas users for dropdown.
+     */
+    public function getPengawasList(): Collection
+    {
+        return User::where('role', 'pengawas')->orderBy('name')->get();
     }
 }

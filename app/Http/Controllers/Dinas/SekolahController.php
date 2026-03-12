@@ -8,7 +8,6 @@ use App\Models\Sekolah;
 use App\Services\SekolahService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -97,12 +96,7 @@ class SekolahController extends Controller
 
     public function destroyAll()
     {
-        $jumlah = Sekolah::count();
-        // Hapus satu-persatu via Eloquent agar model event `deleting` terpicu (menghapus user operator)
-        // cursor() efisien memori dan tidak terpengaruh pagination offset
-        foreach (Sekolah::cursor() as $sekolah) {
-            $sekolah->delete();
-        }
+        $jumlah = $this->sekolahService->deleteAllSekolah();
 
         return redirect()->route('dinas.sekolah.index')
                          ->with('success', "Semua data sekolah ($jumlah sekolah) berhasil dihapus.");

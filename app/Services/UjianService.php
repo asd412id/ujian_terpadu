@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\JawabanPeserta;
-use App\Models\LogAktivitasUjian;
 use App\Models\SesiPeserta;
 use App\Repositories\SesiUjianRepository;
 use App\Repositories\JawabanRepository;
@@ -26,7 +24,7 @@ class UjianService
      */
     public function startUjian(string $sesiPesertaId, string $pesertaId, array $requestMeta = []): array
     {
-        $sesiPeserta = SesiPeserta::with(['sesi.paket'])->findOrFail($sesiPesertaId);
+        $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithPaket($sesiPesertaId);
 
         // Verify ownership
         if ($sesiPeserta->peserta_id !== $pesertaId) {
@@ -52,7 +50,7 @@ class UjianService
                 'token_ujian'  => Str::random(64),
             ]);
 
-            LogAktivitasUjian::create([
+            $this->sesiUjianRepository->logAktivitas([
                 'sesi_peserta_id' => $sesiPeserta->id,
                 'tipe_event'      => 'mulai_ujian',
                 'ip_address'      => $requestMeta['ip_address'] ?? null,
@@ -69,9 +67,7 @@ class UjianService
         });
 
         // Get existing answers
-        $jawabanExisting = JawabanPeserta::where('sesi_peserta_id', $sesiPeserta->id)
-            ->get()
-            ->keyBy('soal_id');
+        $jawabanExisting = $this->jawabanRepository->getJawabanBySesiPeserta($sesiPeserta->id);
 
         $sisaWaktu = $sesiPeserta->sisa_waktu_detik;
 
@@ -90,7 +86,7 @@ class UjianService
      */
     public function getSoalUjian(string $sesiPesertaId): array
     {
-        $sesiPeserta = SesiPeserta::with(['sesi.paket'])->findOrFail($sesiPesertaId);
+        $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithPaket($sesiPesertaId);
         $paket = $sesiPeserta->sesi->paket;
 
         $cacheKey = "paket_soal_{$paket->id}_peserta_{$sesiPeserta->peserta_id}";
@@ -106,7 +102,7 @@ class UjianService
      */
     public function getStatusUjian(string $sesiPesertaId): array
     {
-        $sesiPeserta = SesiPeserta::with(['sesi.paket'])->findOrFail($sesiPesertaId);
+        $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithPaket($sesiPesertaId);
 
         return [
             'status'            => $sesiPeserta->status,
@@ -122,7 +118,7 @@ class UjianService
      */
     public function selesaikanUjian(string $sesiPesertaId, string $pesertaId): array
     {
-        $sesiPeserta = SesiPeserta::with(['sesi.paket'])->findOrFail($sesiPesertaId);
+        $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithPaket($sesiPesertaId);
 
         // Verify ownership
         if ($sesiPeserta->peserta_id !== $pesertaId) {
@@ -148,7 +144,7 @@ class UjianService
         $hasil = $this->penilaianService->hitungNilai($sesiPeserta);
         $sesiPeserta->update($hasil);
 
-        LogAktivitasUjian::create([
+        $this->sesiUjianRepository->logAktivitas([
             'sesi_peserta_id' => $sesiPeserta->id,
             'tipe_event'      => 'submit_ujian',
             'detail'          => ['durasi' => $durasi],
@@ -167,7 +163,7 @@ class UjianService
      */
     public function getHasilUjian(string $sesiPesertaId): array
     {
-        $sesiPeserta = SesiPeserta::with(['sesi.paket', 'jawaban.soal'])->findOrFail($sesiPesertaId);
+        $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithJawaban($sesiPesertaId);
 
         $totalSoal = $sesiPeserta->sesi->paket->soal()->count();
         $terjawab  = $sesiPeserta->jawaban()->where('is_terjawab', true)->count();
