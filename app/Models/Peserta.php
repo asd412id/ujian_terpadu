@@ -28,6 +28,22 @@ class Peserta extends Authenticatable
         'tanggal_lahir' => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        // When peserta is soft-deleted, clean up orphaned sesi_peserta records
+        // (DB cascadeOnDelete won't fire on soft-delete since row stays in table)
+        static::deleting(function (Peserta $peserta) {
+            // Only clean up sesi_peserta that are NOT in active exam status
+            $peserta->sesiPeserta()
+                ->whereNotIn('status', ['login', 'mengerjakan'])
+                ->each(function ($sp) {
+                    $sp->jawaban()->delete();
+                    $sp->logAktivitas()->delete();
+                    $sp->delete();
+                });
+        });
+    }
+
     public function sekolah()
     {
         return $this->belongsTo(Sekolah::class);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
+use App\Models\SesiPeserta;
 use App\Services\PesertaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,7 +37,12 @@ class PesertaController extends Controller
     {
         /** @var \App\Models\User $user */
         $user   = Auth::user();
-        $jumlah = \App\Models\Peserta::where('sekolah_id', $user->sekolah_id)->count();
+        $pesertaIds = \App\Models\Peserta::where('sekolah_id', $user->sekolah_id)->pluck('id');
+        $jumlah = $pesertaIds->count();
+        // Clean up orphaned sesi_peserta (non-active) before soft-deleting
+        SesiPeserta::whereIn('peserta_id', $pesertaIds)
+            ->whereNotIn('status', ['login', 'mengerjakan'])
+            ->delete();
         \App\Models\Peserta::where('sekolah_id', $user->sekolah_id)->delete();
 
         return redirect()->route('sekolah.peserta.index')

@@ -201,12 +201,15 @@ function sesiMonitoringApp() {
             submit: {{ $stats['submit'] }},
             belum_mulai: {{ $stats['belum_mulai'] }},
         },
+        _loading: false,
 
         init() {
             setInterval(() => this.loadStats(), 5000);
         },
 
         async loadStats() {
+            if (this._loading) return;
+            this._loading = true;
             try {
                 const res = await fetch('{{ route('dinas.monitoring.sesi.api', $sesi->id) }}', {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -217,6 +220,7 @@ function sesiMonitoringApp() {
                     this.lastUpdate = new Date().toLocaleTimeString('id-ID');
                 }
             } catch (e) { /* offline */ }
+            this._loading = false;
         }
     };
 }

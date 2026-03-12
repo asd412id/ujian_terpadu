@@ -7,6 +7,7 @@ use App\Models\Sekolah;
 use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
 use App\Repositories\MonitoringRepository;
+use Illuminate\Support\Facades\DB;
 
 class MonitoringService
 {
@@ -25,24 +26,31 @@ class MonitoringService
             ->orderBy('nama')
             ->get();
 
-        $sesiList = SesiUjian::with(['paket.sekolah', 'pengawas', 'sesiPeserta'])
+        // Use withCount + subqueries instead of loading all sesiPeserta into memory
+        $sesiList = SesiUjian::with(['paket.sekolah', 'pengawas'])
+            ->withCount([
+                'sesiPeserta as total_peserta',
+                'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
+                'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
+            ])
             ->where('status', 'berlangsung')
             ->latest()
-            ->get()
-            ->each(function ($sesi) {
-                $sp = $sesi->sesiPeserta;
-                $sesi->total_peserta  = $sp->count();
-                $sesi->peserta_online = $sp->whereIn('status', ['login', 'mengerjakan'])->count();
-                $sesi->sudah_submit   = $sp->whereIn('status', ['submit', 'dinilai'])->count();
-            });
+            ->get();
+
+        // Single aggregated query for summary
+        $summaryRaw = SesiPeserta::query()
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
+            ->selectRaw("
+                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
+                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
+            ")
+            ->first();
 
         $summary = [
             'total_sesi'     => $sesiList->count(),
-            'peserta_online' => SesiPeserta::whereIn('status', ['login', 'mengerjakan'])
-                ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))->count(),
+            'peserta_online' => $summaryRaw->peserta_online ?? 0,
             'peserta_ragu'   => 0,
-            'sudah_submit'   => SesiPeserta::where('status', 'submit')
-                ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))->count(),
+            'sudah_submit'   => $summaryRaw->sudah_submit ?? 0,
         ];
 
         return compact('sekolahList', 'sesiList', 'summary');
@@ -78,18 +86,25 @@ class MonitoringService
             ->take(20)
             ->get();
 
-        // Stats from aggregate (not paginated)
-        $allPeserta = SesiPeserta::where('sesi_id', $sesi->id);
+        // Stats from single aggregate query (1 query instead of 5)
+        $statsRaw = SesiPeserta::where('sesi_id', $sesi->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
+                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as submit,
+                COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_mulai
+            ")
+            ->first();
         $stats = [
-            'total'       => (clone $allPeserta)->count(),
-            'online'      => (clone $allPeserta)->whereIn('status', ['login', 'mengerjakan'])->count(),
-            'submit'      => (clone $allPeserta)->whereIn('status', ['submit', 'dinilai'])->count(),
-            'kosong'      => (clone $allPeserta)->whereIn('status', ['terdaftar', 'belum_login'])->count(),
-            'belum_mulai' => (clone $allPeserta)->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'total'       => $statsRaw->total ?? 0,
+            'online'      => $statsRaw->online ?? 0,
+            'submit'      => $statsRaw->submit ?? 0,
+            'kosong'      => $statsRaw->belum_mulai ?? 0,
+            'belum_mulai' => $statsRaw->belum_mulai ?? 0,
         ];
 
-        // Paginated peserta list with optional search/filter
-        $query = SesiPeserta::with(['peserta.sekolah', 'jawaban'])
+        // Paginated peserta list — jawaban count already stored as soal_terjawab column
+        $query = SesiPeserta::with(['peserta.sekolah'])
             ->where('sesi_id', $sesi->id);
 
         if (!empty($filters['search'])) {
@@ -213,55 +228,83 @@ class MonitoringService
 
     /**
      * Get all sekolah monitoring data with real-time stats (for API).
+     * Optimized: batch queries instead of N+1 per sekolah.
      */
     public function getSekolahMonitoringData(): array
     {
         $sekolahList = Sekolah::withCount(['peserta'])
             ->where('is_active', true)
-            ->get()
-            ->map(function ($s) {
-                $sesiAktif = SesiUjian::where('status', 'berlangsung')
-                    ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $s->id))
-                    ->count();
+            ->get();
 
-                $pesertaOnline = SesiPeserta::whereIn('status', ['login', 'mengerjakan'])
-                    ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
-                        ->whereHas('paket', fn ($p) => $p->where('sekolah_id', $s->id)))
-                    ->count();
+        $sekolahIds = $sekolahList->pluck('id');
 
-                $pesertaSelesai = SesiPeserta::where('status', 'submit')
-                    ->whereHas('sesi', fn ($q) => $q->whereDate('created_at', today())
-                        ->whereHas('paket', fn ($p) => $p->where('sekolah_id', $s->id)))
-                    ->count();
+        // Batch: sesi aktif per sekolah (1 query)
+        $sesiAktifMap = SesiUjian::where('status', 'berlangsung')
+            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+            ->groupBy('paket_ujian.sekolah_id')
+            ->pluck('cnt', 'sekolah_id');
 
-                $cheatingCount = LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
-                    ->whereDate('created_at', today())
-                    ->whereHas('sesiPeserta.sesi.paket', fn ($q) => $q->where('sekolah_id', $s->id))
-                    ->count();
+        // Batch: peserta online per sekolah (1 query)
+        $pesertaOnlineMap = SesiPeserta::whereIn('sesi_peserta.status', ['login', 'mengerjakan'])
+            ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
+            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+            ->where('sesi_ujian.status', 'berlangsung')
+            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+            ->groupBy('paket_ujian.sekolah_id')
+            ->pluck('cnt', 'sekolah_id');
 
-                $status = $sesiAktif > 0 ? 'aktif' : ($pesertaSelesai > 0 ? 'selesai' : 'belum');
+        // Batch: peserta selesai per sekolah (1 query)
+        $pesertaSelesaiMap = SesiPeserta::where('sesi_peserta.status', 'submit')
+            ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
+            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+            ->whereDate('sesi_ujian.created_at', today())
+            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+            ->groupBy('paket_ujian.sekolah_id')
+            ->pluck('cnt', 'sekolah_id');
 
-                return [
-                    'id'              => $s->id,
-                    'nama_sekolah'    => $s->nama,
-                    'kode_sekolah'    => $s->npsn ?? '–',
-                    'sesi_aktif'      => $sesiAktif,
-                    'peserta_online'  => $pesertaOnline,
-                    'peserta_selesai' => $pesertaSelesai,
-                    'cheating_count'  => $cheatingCount,
-                    'status'          => $status,
-                ];
-            });
+        // Batch: cheating count per sekolah (1 query)
+        $cheatingMap = LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
+            ->whereDate('log_aktivitas_ujian.created_at', today())
+            ->join('sesi_peserta', 'log_aktivitas_ujian.sesi_peserta_id', '=', 'sesi_peserta.id')
+            ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
+            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+            ->groupBy('paket_ujian.sekolah_id')
+            ->pluck('cnt', 'sekolah_id');
+
+        $sekolahData = $sekolahList->map(function ($s) use ($sesiAktifMap, $pesertaOnlineMap, $pesertaSelesaiMap, $cheatingMap) {
+            $sesiAktif = $sesiAktifMap[$s->id] ?? 0;
+            $pesertaOnline = $pesertaOnlineMap[$s->id] ?? 0;
+            $pesertaSelesai = $pesertaSelesaiMap[$s->id] ?? 0;
+            $cheatingCount = $cheatingMap[$s->id] ?? 0;
+            $status = $sesiAktif > 0 ? 'aktif' : ($pesertaSelesai > 0 ? 'selesai' : 'belum');
+
+            return [
+                'id'              => $s->id,
+                'nama_sekolah'    => $s->nama,
+                'kode_sekolah'    => $s->npsn ?? '–',
+                'sesi_aktif'      => $sesiAktif,
+                'peserta_online'  => $pesertaOnline,
+                'peserta_selesai' => $pesertaSelesai,
+                'cheating_count'  => $cheatingCount,
+                'status'          => $status,
+            ];
+        });
 
         $summary = [
-            'total_sekolah'       => $sekolahList->count(),
-            'sekolah_aktif'       => $sekolahList->where('status', 'aktif')->count(),
-            'total_peserta_aktif' => $sekolahList->sum('peserta_online'),
-            'total_selesai'       => $sekolahList->sum('peserta_selesai'),
+            'total_sekolah'       => $sekolahData->count(),
+            'sekolah_aktif'       => $sekolahData->where('status', 'aktif')->count(),
+            'total_peserta_aktif' => $sekolahData->sum('peserta_online'),
+            'total_selesai'       => $sekolahData->sum('peserta_selesai'),
         ];
 
         return [
-            'sekolah' => $sekolahList->values()->all(),
+            'sekolah' => $sekolahData->values()->all(),
             'summary' => $summary,
         ];
     }
@@ -271,19 +314,35 @@ class MonitoringService
      */
     public function getSesiDetail(string $sesiId): array
     {
-        $sesi = SesiUjian::with(['paket', 'sesiPeserta' => fn ($q) => $q->with('peserta.sekolah')->orderBy('updated_at', 'desc')])
+        $sesi = SesiUjian::with(['paket'])
             ->findOrFail($sesiId);
 
-        $data = $sesi->sesiPeserta->map(fn ($sp) => [
+        // soal_terjawab is already a denormalized column on sesi_peserta
+        $sesiPeserta = SesiPeserta::with(['peserta.sekolah'])
+            ->where('sesi_id', $sesi->id)
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        $data = $sesiPeserta->map(fn ($sp) => [
             'nama'          => $sp->peserta->nama ?? '–',
             'no_peserta'    => $sp->peserta->no_peserta ?? '–',
             'sekolah'       => $sp->peserta->sekolah?->nama ?? '–',
             'kelas'         => $sp->peserta->kelas ?? '–',
             'status'        => $sp->status,
-            'soal_dijawab'  => $sp->jawaban()->count(),
+            'soal_dijawab'  => $sp->soal_terjawab ?? 0,
             'nilai_akhir'   => $sp->nilai_akhir,
             'last_aktif'    => $sp->updated_at?->diffForHumans(),
         ]);
+
+        // Stats from single aggregate
+        $statsRaw = SesiPeserta::where('sesi_id', $sesi->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
+                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as submit,
+                COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_mulai
+            ")
+            ->first();
 
         return [
             'sesi' => [
@@ -295,10 +354,10 @@ class MonitoringService
             ],
             'peserta' => $data,
             'stats' => [
-                'total'       => $sesi->sesiPeserta->count(),
-                'online'      => $sesi->sesiPeserta->whereIn('status', ['login', 'mengerjakan'])->count(),
-                'submit'      => $sesi->sesiPeserta->whereIn('status', ['submit', 'dinilai'])->count(),
-                'belum_mulai' => $sesi->sesiPeserta->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+                'total'       => $statsRaw->total ?? 0,
+                'online'      => $statsRaw->online ?? 0,
+                'submit'      => $statsRaw->submit ?? 0,
+                'belum_mulai' => $statsRaw->belum_mulai ?? 0,
             ],
         ];
     }

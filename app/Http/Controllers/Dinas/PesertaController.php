@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
 use App\Models\Peserta;
 use App\Models\Sekolah;
+use App\Models\SesiPeserta;
 use App\Services\PesertaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -116,14 +117,23 @@ class PesertaController extends Controller
         $sekolahId = $request->input('sekolah_id');
 
         if ($sekolahId) {
-            $jumlah = Peserta::where('sekolah_id', $sekolahId)->count();
+            $pesertaIds = Peserta::where('sekolah_id', $sekolahId)->pluck('id');
+            $jumlah = $pesertaIds->count();
+            // Clean up orphaned sesi_peserta (non-active) before soft-deleting
+            SesiPeserta::whereIn('peserta_id', $pesertaIds)
+                ->whereNotIn('status', ['login', 'mengerjakan'])
+                ->delete();
             Peserta::where('sekolah_id', $sekolahId)->delete();
             return redirect()->route('dinas.peserta.index', ['sekolah_id' => $sekolahId])
                              ->with('success', "Semua peserta ($jumlah) dari sekolah ini berhasil dihapus.");
         }
 
-        $jumlah = Peserta::count();
-        // Gunakan delete() bukan truncate() agar cascade FK (sesi_peserta, dll) berjalan
+        $pesertaIds = Peserta::pluck('id');
+        $jumlah = $pesertaIds->count();
+        // Clean up orphaned sesi_peserta (non-active) before soft-deleting
+        SesiPeserta::whereIn('peserta_id', $pesertaIds)
+            ->whereNotIn('status', ['login', 'mengerjakan'])
+            ->delete();
         Peserta::query()->delete();
         return redirect()->route('dinas.peserta.index')
                          ->with('success', "Semua data peserta ($jumlah peserta) berhasil dihapus.");

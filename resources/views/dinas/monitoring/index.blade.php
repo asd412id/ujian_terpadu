@@ -186,6 +186,7 @@ function monitoringApp() {
         lastUpdate: '',
         summary: {},
         pollInterval: null,
+        _loading: false,
 
         init() {
             this.updateTime();
@@ -197,6 +198,8 @@ function monitoringApp() {
         },
 
         async loadData() {
+            if (this._loading) return;
+            this._loading = true;
             try {
                 const params = this.filterSekolah ? `?sekolah_id=${this.filterSekolah}` : '';
                 const res = await fetch(`{{ route('dinas.monitoring.api') }}${params}`, {
@@ -208,6 +211,7 @@ function monitoringApp() {
                     this.updateTime();
                 }
             } catch (e) { /* offline / error */ }
+            this._loading = false;
         }
     };
 }
