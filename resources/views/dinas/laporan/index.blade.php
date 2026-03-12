@@ -131,7 +131,9 @@
                         </td>
                         <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">{{ $hasil->peserta->sekolah->nama ?? '—' }}</td>
                         <td class="px-5 py-3 text-center hidden sm:table-cell text-gray-600">{{ $hasil->peserta->kelas ?? '—' }}</td>
-                        <td class="px-5 py-3 text-center font-bold text-gray-900">{{ $hasil->nilai_akhir ?? '-' }}</td>
+                        <td class="px-5 py-3 text-center">
+                            <span class="font-bold text-gray-900">{{ $hasil->jumlah_benar ?? 0 }}</span><span class="text-gray-400">/{{ $hasil->jumlah_salah ?? 0 }}/{{ $hasil->jumlah_kosong ?? 0 }}</span>
+                        </td>
                         <td class="px-5 py-3 text-center">
                             @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
                             <span class="font-bold {{ $nilai >= 80 ? 'text-green-600' : ($nilai >= 60 ? 'text-amber-600' : 'text-red-600') }}">

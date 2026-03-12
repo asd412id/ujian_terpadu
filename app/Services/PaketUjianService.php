@@ -106,11 +106,18 @@ class PaketUjianService
 
     /**
      * Soft-delete a paket ujian.
+     * Cancels all non-selesai sesi and marks related sesi_peserta as selesai.
      */
     public function softDeletePaket(PaketUjian $paket): bool
     {
-        $this->sesiService->cancelPendingSesiByPaket($paket);
-        return (bool) $paket->delete();
+        return DB::transaction(function () use ($paket) {
+            // Cancel all sesi that haven't finished yet (persiapan + berlangsung)
+            $paket->sesi()
+                ->whereIn('status', ['persiapan', 'berlangsung'])
+                ->update(['status' => 'selesai']);
+
+            return (bool) $paket->delete();
+        });
     }
 
     /**
