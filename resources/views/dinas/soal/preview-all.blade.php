@@ -2,6 +2,14 @@
 
 @section('title', 'Preview Semua Soal')
 
+@push('head')
+<style>
+    .prose table { border-collapse: collapse; width: 100%; }
+    .prose table th, .prose table td { border: 1px solid #999; padding: 4px 8px; }
+    .prose table th { background: #f3f4f6; font-weight: bold; }
+</style>
+@endpush
+
 @section('breadcrumb')
     <a href="{{ route('dinas.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

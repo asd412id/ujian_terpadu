@@ -889,14 +889,20 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
      */
     private function tableToHtml(Table $table): string
     {
-        $html = '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;width:100%;">';
+        $html = '<table style="border-collapse:collapse;width:100%;margin:0.5em 0;border:1px solid #999;">';
 
+        $isFirstRow = true;
         foreach ($table->getRows() as $row) {
             $html .= '<tr>';
             foreach ($row->getCells() as $cell) {
+                $tag = $isFirstRow ? 'th' : 'td';
                 $width = $cell->getWidth();
-                $style = $width ? ' style="width:' . round($width / 15.1) . 'px"' : '';
-                $html .= '<td' . $style . '>';
+                $widthStyle = $width ? 'width:' . round($width / 15.1) . 'px;' : '';
+                $cellStyle = $widthStyle . 'border:1px solid #999;padding:4px 8px;text-align:left;';
+                if ($isFirstRow) {
+                    $cellStyle .= 'font-weight:bold;background:#f3f4f6;';
+                }
+                $html .= '<' . $tag . ' style="' . $cellStyle . '">';
 
                 $cellParts = [];
                 foreach ($cell->getElements() as $cellElement) {
@@ -910,9 +916,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 }
                 $html .= implode('<br>', $cellParts);
 
-                $html .= '</td>';
+                $html .= '</' . $tag . '>';
             }
             $html .= '</tr>';
+            $isFirstRow = false;
         }
 
         $html .= '</table>';
