@@ -22,6 +22,7 @@ class ImportPesertaJob implements ShouldQueue
 
     public int $timeout  = 1200;
     public int $tries    = 1;
+    public string $queue = 'imports';
 
     private const SEKOLAH_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
     private const DINAS_HEADERS = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
@@ -94,15 +95,17 @@ class ImportPesertaJob implements ShouldQueue
                 }
             }
 
-            // Pre-load existing usernames into memory for O(1) uniqueness checks
-            $this->usedUsernames = Peserta::pluck('username_ujian')
+            // Pre-load existing usernames scoped to relevant sekolah for O(1) uniqueness checks
+            $relevantSekolahIds = $isDinas
+                ? array_values($npsnCache)
+                : [$this->importJob->sekolah_id];
+
+            $this->usedUsernames = Peserta::whereIn('sekolah_id', $relevantSekolahIds)
+                ->pluck('username_ujian')
                 ->flip()
                 ->toArray();
 
             // Pre-load existing NIS per sekolah for duplicate checking
-            $relevantSekolahIds = $isDinas
-                ? array_values($npsnCache)
-                : [$this->importJob->sekolah_id];
 
             $existingNis = Peserta::whereIn('sekolah_id', $relevantSekolahIds)
                 ->whereNotNull('nis')

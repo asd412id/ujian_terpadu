@@ -141,7 +141,7 @@ class MonitoringService
             ->join('peserta', 'sesi_peserta.peserta_id', '=', 'peserta.id')
             ->distinct()
             ->pluck('peserta.sekolah_id');
-        $sekolahList = Sekolah::whereIn('id', $sekolahIds)->orderBy('nama')->get();
+        $sekolahList = Sekolah::whereIn('id', $sekolahIds)->orderBy('nama')->get(['id', 'nama']);
 
         return compact('sesi', 'alerts', 'pesertaList', 'stats', 'sekolahList');
     }
@@ -156,10 +156,17 @@ class MonitoringService
 
     /**
      * Get ruang monitoring for a specific pengawas.
+     * Optimized: withCount instead of loading all sesiPeserta + logAktivitas.
      */
     public function getRuangMonitoring(string $pengawasId): array
     {
-        $sesi = SesiUjian::with(['paket', 'sesiPeserta.peserta', 'sesiPeserta.logAktivitas'])
+        $sesi = SesiUjian::with(['paket'])
+            ->withCount([
+                'sesiPeserta as total_peserta',
+                'sesiPeserta as peserta_aktif' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
+                'sesiPeserta as peserta_submit' => fn ($q) => $q->where('status', 'submit'),
+                'sesiPeserta as peserta_belum' => fn ($q) => $q->whereIn('status', ['terdaftar', 'belum_login']),
+            ])
             ->where('pengawas_id', $pengawasId)
             ->whereIn('status', ['persiapan', 'berlangsung'])
             ->first();
@@ -169,10 +176,10 @@ class MonitoringService
         }
 
         $statsPeserta = [
-            'total'        => $sesi->sesiPeserta->count(),
-            'aktif'        => $sesi->sesiPeserta->whereIn('status', ['login', 'mengerjakan'])->count(),
-            'submit'       => $sesi->sesiPeserta->where('status', 'submit')->count(),
-            'belum_masuk'  => $sesi->sesiPeserta->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'total'        => $sesi->total_peserta,
+            'aktif'        => $sesi->peserta_aktif,
+            'submit'       => $sesi->peserta_submit,
+            'belum_masuk'  => $sesi->peserta_belum,
         ];
 
         return compact('sesi', 'statsPeserta');
@@ -180,21 +187,30 @@ class MonitoringService
 
     /**
      * Get peserta list by ruang/sesi for pengawas (paginated).
+     * Optimized: single aggregate for stats, no logAktivitas eager-load.
      */
     public function getPesertaByRuang(string $sesiId, array $filters = []): array
     {
         $sesi = SesiUjian::with(['paket'])
             ->findOrFail($sesiId);
 
-        $allPeserta = SesiPeserta::where('sesi_id', $sesi->id);
+        $statsRaw = SesiPeserta::where('sesi_id', $sesi->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as aktif,
+                COUNT(CASE WHEN status = 'submit' THEN 1 END) as submit,
+                COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_masuk
+            ")
+            ->first();
+
         $statsPeserta = [
-            'total'        => (clone $allPeserta)->count(),
-            'aktif'        => (clone $allPeserta)->whereIn('status', ['login', 'mengerjakan'])->count(),
-            'submit'       => (clone $allPeserta)->where('status', 'submit')->count(),
-            'belum_masuk'  => (clone $allPeserta)->whereIn('status', ['terdaftar', 'belum_login'])->count(),
+            'total'        => (int) ($statsRaw->total ?? 0),
+            'aktif'        => (int) ($statsRaw->aktif ?? 0),
+            'submit'       => (int) ($statsRaw->submit ?? 0),
+            'belum_masuk'  => (int) ($statsRaw->belum_masuk ?? 0),
         ];
 
-        $query = SesiPeserta::with(['peserta', 'logAktivitas'])
+        $query = SesiPeserta::with(['peserta'])
             ->where('sesi_id', $sesi->id);
 
         if (!empty($filters['search'])) {
@@ -226,7 +242,7 @@ class MonitoringService
      */
     public function getSekolahList(): mixed
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get();
+        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
     }
 
     /**

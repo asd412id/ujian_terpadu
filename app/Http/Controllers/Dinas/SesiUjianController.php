@@ -100,7 +100,7 @@ class SesiUjianController extends Controller
                 fn($q) => $q->where('jenjang', $paket->jenjang))
             ->when($paket->sekolah_id, fn($q) => $q->where('id', $paket->sekolah_id))
             ->orderBy('nama')
-            ->get();
+            ->get(['id', 'nama']);
 
         return view('dinas.sesi.peserta', compact(
             'paket', 'sesi', 'enrolled', 'available', 'sekolahList',

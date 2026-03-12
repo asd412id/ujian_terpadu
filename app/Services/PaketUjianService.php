@@ -230,13 +230,20 @@ class PaketUjianService
             }
 
             $maxNomor = PaketSoal::where('paket_id', $paket->id)->max('nomor_urut') ?? 0;
-            foreach ($toAdd as $soalId) {
-                $maxNomor++;
-                PaketSoal::create([
-                    'paket_id'   => $paket->id,
-                    'soal_id'    => $soalId,
-                    'nomor_urut' => $maxNomor,
-                ]);
+            if (!empty($toAdd)) {
+                $insertRows = [];
+                foreach ($toAdd as $soalId) {
+                    $maxNomor++;
+                    $insertRows[] = [
+                        'id'         => (string) \Illuminate\Support\Str::uuid(),
+                        'paket_id'   => $paket->id,
+                        'soal_id'    => $soalId,
+                        'nomor_urut' => $maxNomor,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                PaketSoal::insert($insertRows);
             }
 
             $paket->update(['jumlah_soal' => PaketSoal::where('paket_id', $paket->id)->count()]);

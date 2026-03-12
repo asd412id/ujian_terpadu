@@ -14,50 +14,49 @@ class AutoSubmitExpiredExams extends Command
 
     public function handle(PenilaianService $penilaianService): int
     {
-        // Find all sesi_peserta still in 'mengerjakan' status where time has expired
-        $expired = SesiPeserta::where('status', 'mengerjakan')
+        $count = 0;
+
+        // Use DB-level filtering + chunkById to avoid loading all into memory
+        SesiPeserta::where('status', 'mengerjakan')
             ->whereNotNull('mulai_at')
-            ->whereHas('sesi.paket')
+            ->whereHas('sesi.paket', fn ($q) => $q->where('durasi_menit', '>', 0))
             ->with(['sesi.paket'])
-            ->get()
-            ->filter(function (SesiPeserta $sp) {
-                $durasiDetik = ($sp->sesi->paket->durasi_menit ?? 0) * 60;
-                if ($durasiDetik <= 0) return false;
-                $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
-                return $elapsed > $durasiDetik;
+            ->chunkById(50, function ($chunk) use ($penilaianService, &$count) {
+                foreach ($chunk as $sp) {
+                    $durasiDetik = ($sp->sesi->paket->durasi_menit ?? 0) * 60;
+                    if ($durasiDetik <= 0) continue;
+
+                    $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
+                    if ($elapsed <= $durasiDetik) continue;
+
+                    $submitAt = $sp->mulai_at->copy()->addSeconds($durasiDetik);
+
+                    $sp->update([
+                        'status'              => 'submit',
+                        'submit_at'           => $submitAt,
+                        'durasi_aktual_detik' => $durasiDetik,
+                    ]);
+
+                    $hasil = $penilaianService->hitungNilai($sp);
+                    $sp->update($hasil);
+
+                    LogAktivitasUjian::create([
+                        'sesi_peserta_id' => $sp->id,
+                        'tipe_event'      => 'submit_ujian',
+                        'detail'          => ['reason' => 'auto_submit_server_timeout', 'durasi' => $durasiDetik],
+                        'created_at'      => $submitAt,
+                    ]);
+
+                    $count++;
+                }
             });
 
-        if ($expired->isEmpty()) {
+        if ($count === 0) {
             $this->info('Tidak ada ujian expired yang perlu di-submit.');
-            return self::SUCCESS;
+        } else {
+            $this->info("Berhasil auto-submit {$count} ujian yang expired.");
         }
 
-        $count = 0;
-        foreach ($expired as $sp) {
-            $durasiDetik = ($sp->sesi->paket->durasi_menit ?? 0) * 60;
-            $submitAt = $sp->mulai_at->copy()->addSeconds($durasiDetik);
-
-            $sp->update([
-                'status'              => 'submit',
-                'submit_at'           => $submitAt,
-                'durasi_aktual_detik' => $durasiDetik,
-            ]);
-
-            // Calculate score
-            $hasil = $penilaianService->hitungNilai($sp);
-            $sp->update($hasil);
-
-            LogAktivitasUjian::create([
-                'sesi_peserta_id' => $sp->id,
-                'tipe_event'      => 'submit_ujian',
-                'detail'          => ['reason' => 'auto_submit_server_timeout', 'durasi' => $durasiDetik],
-                'created_at'      => $submitAt,
-            ]);
-
-            $count++;
-        }
-
-        $this->info("Berhasil auto-submit {$count} ujian yang expired.");
         return self::SUCCESS;
     }
 }

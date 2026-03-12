@@ -34,6 +34,7 @@ class ImportSoalWordJob implements ShouldQueue
 
     public int $timeout = 600;
     public int $tries   = 1;
+    public string $queue = 'imports';
 
     private const CHUNK_SIZE = 50;
 

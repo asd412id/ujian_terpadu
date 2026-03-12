@@ -18,6 +18,8 @@ class PenilaianService
         $totalBobot   = 0;
         $nilaiBenar   = 0;
 
+        $updates = [];
+
         foreach ($sesiPeserta->jawaban as $jawaban) {
             $soal  = $jawaban->soal;
             $bobot = $jawaban->soal->paketSoal->where('soal_id', $soal->id)->first()?->bobot_override
@@ -32,7 +34,7 @@ class PenilaianService
             $skor = $this->hitungSkorSatu($jawaban, $bobot);
 
             if ($jawaban->soal->tipe_soal === 'essay') {
-                $jawaban->update(['skor_auto' => 0]);
+                $updates[] = ['id' => $jawaban->id, 'skor_auto' => 0];
                 if ($jawaban->skor_manual !== null) {
                     $nilaiBenar += $jawaban->skor_manual;
                     $jumlahBenar++;
@@ -40,7 +42,7 @@ class PenilaianService
                 continue;
             }
 
-            $jawaban->update(['skor_auto' => $skor]);
+            $updates[] = ['id' => $jawaban->id, 'skor_auto' => $skor];
 
             if ($skor >= $bobot) {
                 $jumlahBenar++;
@@ -53,7 +55,12 @@ class PenilaianService
             }
         }
 
-        $totalSoal    = $paket->paketSoal()->count();
+        // Batch update skor_auto in chunks instead of N individual updates
+        foreach ($updates as $upd) {
+            JawabanPeserta::where('id', $upd['id'])->update(['skor_auto' => $upd['skor_auto']]);
+        }
+
+        $totalSoal    = $paket->paketSoal->count();
         $jumlahKosong = $totalSoal - $jumlahBenar - $jumlahSalah;
         if ($jumlahKosong < 0) $jumlahKosong = 0;
         $nilaiAkhir   = $totalBobot > 0 ? round(($nilaiBenar / $totalBobot) * 100, 2) : 0;

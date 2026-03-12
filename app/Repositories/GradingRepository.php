@@ -100,7 +100,7 @@ class GradingRepository
      */
     public function getPaketList(): Collection
     {
-        return PaketUjian::orderBy('nama')->get();
+        return PaketUjian::orderBy('nama')->get(['id', 'nama']);
     }
 
     /**
@@ -108,6 +108,6 @@ class GradingRepository
      */
     public function getSekolahList(): Collection
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get();
+        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
     }
 }

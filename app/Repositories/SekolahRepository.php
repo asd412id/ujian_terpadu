@@ -58,7 +58,7 @@ class SekolahRepository
             $query->where('is_active', true);
         }
 
-        return $query->orderBy('nama')->get();
+        return $query->orderBy('nama')->get(['id', 'nama', 'npsn', 'jenjang', 'is_active']);
     }
 
     /**

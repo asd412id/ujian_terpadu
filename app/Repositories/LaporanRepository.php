@@ -18,7 +18,7 @@ class LaporanRepository
         ?string $paketId = null,
         int $perPage = 30
     ): LengthAwarePaginator {
-        $query = SesiPeserta::with(['peserta', 'sesi.paket', 'jawaban'])
+        $query = SesiPeserta::with(['peserta', 'sesi.paket'])
             ->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->whereIn('status', ['submit', 'dinilai']);
 
@@ -52,21 +52,28 @@ class LaporanRepository
     }
 
     /**
-     * Get statistik (rekap) for a specific paket ujian.
+     * Get statistik (rekap) for a specific paket ujian (single aggregate query).
      */
     public function getStatistik(string $paketId): array
     {
-        $sesiPeserta = SesiPeserta::whereHas('sesi', fn ($q) => $q->where('paket_id', $paketId))
+        $row = SesiPeserta::whereHas('sesi', fn ($q) => $q->where('paket_id', $paketId))
             ->whereIn('status', ['submit', 'dinilai'])
-            ->get();
+            ->selectRaw('
+                COUNT(*) as total_peserta,
+                ROUND(AVG(nilai_akhir), 1) as rata_rata,
+                MAX(nilai_akhir) as nilai_max,
+                MIN(nilai_akhir) as nilai_min,
+                SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
+                SUM(CASE WHEN nilai_akhir < 70 THEN 1 ELSE 0 END) as tidak_lulus
+            ')->first();
 
         return [
-            'total_peserta' => $sesiPeserta->count(),
-            'rata_rata'     => $sesiPeserta->avg('nilai_akhir') ?? 0,
-            'nilai_max'     => $sesiPeserta->max('nilai_akhir') ?? 0,
-            'nilai_min'     => $sesiPeserta->min('nilai_akhir') ?? 0,
-            'lulus'         => $sesiPeserta->where('nilai_akhir', '>=', 70)->count(),
-            'tidak_lulus'   => $sesiPeserta->where('nilai_akhir', '<', 70)->count(),
+            'total_peserta' => (int) ($row->total_peserta ?? 0),
+            'rata_rata'     => (float) ($row->rata_rata ?? 0),
+            'nilai_max'     => (float) ($row->nilai_max ?? 0),
+            'nilai_min'     => (float) ($row->nilai_min ?? 0),
+            'lulus'         => (int) ($row->lulus ?? 0),
+            'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
         ];
     }
 
@@ -103,7 +110,7 @@ class LaporanRepository
      */
     public function getSekolahList(): Collection
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get();
+        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
     }
 
     /**
@@ -111,6 +118,6 @@ class LaporanRepository
      */
     public function getPaketList(): Collection
     {
-        return PaketUjian::orderBy('nama')->get();
+        return PaketUjian::orderBy('nama')->get(['id', 'nama']);
     }
 }

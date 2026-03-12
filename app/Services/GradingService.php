@@ -41,17 +41,10 @@ class GradingService
         $perPage = $filters['per_page'] ?? 15;
         $jawabans = $query->latest()->paginate($perPage);
 
-        $totalBelumDinilai = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-            ->whereHas('sesiPeserta', fn ($q) => $q->whereIn('status', ['submit', 'dinilai']))
-            ->whereNull('skor_manual')
-            ->where(function ($q) {
-                $q->whereNotNull('jawaban_teks')
-                  ->where('jawaban_teks', '!=', '');
-            })
-            ->count();
+        $totalBelumDinilai = $jawabans->total();
 
-        $paketList = PaketUjian::orderBy('nama')->get();
-        $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get();
+        $paketList = PaketUjian::orderBy('nama')->get(['id', 'nama']);
+        $sekolahList = Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
 
         return compact('jawabans', 'totalBelumDinilai', 'paketList', 'sekolahList');
     }
@@ -98,27 +91,25 @@ class GradingService
     }
 
     /**
-     * Get grading statistics.
+     * Get grading statistics (single aggregate query instead of 3).
      */
     public function getGradingStats(): array
     {
-        $totalEssay = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-            ->whereNotNull('jawaban_teks')
-            ->count();
+        $row = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
+            ->selectRaw('
+                COUNT(CASE WHEN jawaban_teks IS NOT NULL THEN 1 END) as total_essay,
+                COUNT(CASE WHEN skor_manual IS NOT NULL THEN 1 END) as sudah_dinilai,
+                COUNT(CASE WHEN skor_manual IS NULL AND jawaban_teks IS NOT NULL AND jawaban_teks != \'\' THEN 1 END) as belum_dinilai
+            ')
+            ->first();
 
-        $sudahDinilai = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-            ->whereNotNull('skor_manual')
-            ->count();
-
-        $belumDinilai = JawabanPeserta::whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-            ->whereNull('skor_manual')
-            ->whereNotNull('jawaban_teks')
-            ->count();
+        $totalEssay = (int) ($row->total_essay ?? 0);
+        $sudahDinilai = (int) ($row->sudah_dinilai ?? 0);
 
         return [
             'total_essay'    => $totalEssay,
             'sudah_dinilai'  => $sudahDinilai,
-            'belum_dinilai'  => $belumDinilai,
+            'belum_dinilai'  => (int) ($row->belum_dinilai ?? 0),
             'progress_pct'   => $totalEssay > 0 ? round(($sudahDinilai / $totalEssay) * 100, 1) : 0,
         ];
     }

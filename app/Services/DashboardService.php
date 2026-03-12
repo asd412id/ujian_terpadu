@@ -20,16 +20,15 @@ class DashboardService
     public function getDinasDashboard(): array
     {
         $stats = Cache::remember('dinas.dashboard.stats', 30, function () {
-            $sekolahAktifIds = SesiUjian::where('status', 'berlangsung')
-                ->with('paket')
-                ->get()
-                ->pluck('paket.sekolah_id')
-                ->filter()
-                ->unique();
+            $sekolahAktifCount = SesiUjian::where('sesi_ujian.status', 'berlangsung')
+                ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+                ->whereNotNull('paket_ujian.sekolah_id')
+                ->distinct('paket_ujian.sekolah_id')
+                ->count('paket_ujian.sekolah_id');
 
             return [
                 'total_sekolah'       => Sekolah::where('is_active', true)->count(),
-                'sekolah_aktif'       => $sekolahAktifIds->count(),
+                'sekolah_aktif'       => $sekolahAktifCount,
                 'total_peserta'       => Peserta::count(),
                 'total_paket'         => PaketUjian::count(),
                 'paket_aktif'         => PaketUjian::where('status', 'aktif')->count(),
@@ -95,11 +94,14 @@ class DashboardService
     }
 
     /**
-     * Get Pengawas dashboard data.
+     * Get Pengawas dashboard data (withCount instead of eager-loading all sesiPeserta).
      */
     public function getPengawasDashboard(string $pengawasId): array
     {
-        $sesiList = SesiUjian::with(['paket', 'sesiPeserta'])
+        $sesiList = SesiUjian::with(['paket'])
+            ->withCount([
+                'sesiPeserta as peserta_mengerjakan' => fn ($q) => $q->where('status', 'mengerjakan'),
+            ])
             ->where('pengawas_id', $pengawasId)
             ->whereIn('status', ['persiapan', 'berlangsung'])
             ->get();
@@ -107,7 +109,7 @@ class DashboardService
         $stats = [
             'total_sesi'        => $sesiList->count(),
             'sesi_berlangsung'  => $sesiList->where('status', 'berlangsung')->count(),
-            'peserta_online'    => $sesiList->sum(fn ($sesi) => $sesi->sesiPeserta->where('status', 'mengerjakan')->count()),
+            'peserta_online'    => $sesiList->sum('peserta_mengerjakan'),
         ];
 
         return compact('sesiList', 'stats');
