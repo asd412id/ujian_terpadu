@@ -244,8 +244,9 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
     {
         $blocks  = [];
         $current = null;
-        $listCounters = [];      // [key] => current count for letter list reconstruction
-        $pendingListItems = [];  // accumulated list items (bullet/decimal) for HTML list wrapping
+        $listCounters = [];      // [key] => current count for numbered list reconstruction
+        $pendingListItems = [];  // accumulated list items (bullet/decimal-content) for HTML list wrapping
+        $soalNumId = null;       // num_id of the decimal numbering used for soal numbers (auto-detected)
 
         foreach ($sections as $section) {
             foreach ($section->getElements() as $element) {
@@ -260,13 +261,64 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
 
                 // --- List numbering reconstruction ---
                 // PHPWord strips numbering prefixes (1., A., bullets) from ListItem elements.
-                // Bullet & decimal items are accumulated as HTML lists (<ul>/<ol>) — they are
-                // content WITHIN a soal and must NOT trigger soal-number detection.
+                // We auto-detect the soal-numbering num_id (first decimal list encountered)
+                // and only allow THAT list to trigger soal-number detection ("N. " prefix).
+                // Other decimal lists (e.g. benar/salah "1)", sub-numbering) are handled as
+                // content: parenthesis-style get "N) " for benar/salah parsing, others as <ol>.
                 // Letter items (upperLetter/lowerLetter) get prefix reconstruction for option detection.
+                // Bullet items are accumulated as <ul><li>.
 
-                // Flush pending list items when hitting a non-list element (or different list type)
-                $isAccumulatedFormat = $listInfo && in_array($listInfo['format'], ['bullet', 'decimal']);
-                if (!empty($pendingListItems) && !$isAccumulatedFormat) {
+                // Determine if this list item should be accumulated (not flow through normal parsing)
+                $isContentList = false;
+                if ($listInfo && $listInfo['format'] !== 'unknown') {
+                    if ($listInfo['format'] === 'bullet') {
+                        $isContentList = true;
+                    } elseif ($listInfo['format'] === 'decimal') {
+                        // Auto-detect soal numbering: the first decimal list at depth 0
+                        // with period format (e.g. "%1.") becomes the soal numbering source
+                        if ($soalNumId === null) {
+                            $textPattern = $listInfo['text'] ?? '';
+                            // Soal numbering uses period: "%1." or empty (default is period)
+                            $isPeriodFormat = empty($textPattern) || str_contains($textPattern, '.');
+                            if ($isPeriodFormat && $listInfo['depth'] === 0) {
+                                $soalNumId = $listInfo['num_id'];
+                            }
+                        }
+
+                        if ($listInfo['num_id'] === $soalNumId && $soalNumId !== null) {
+                            // This IS a soal number — reconstruct "N. " prefix
+                            // Let it flow through to normal parsing (soal detection regex)
+                            $numKey = $soalNumId . '_soal';
+                            if (!isset($listCounters[$numKey])) $listCounters[$numKey] = 0;
+                            $listCounters[$numKey]++;
+                            $counter = $listCounters[$numKey];
+                            $prefix = $counter . '. ';
+                            $text = $prefix . $text;
+                            $html = e($prefix) . $html;
+                            // NOT accumulated — flows through to soal detection below
+                        } else {
+                            // Different decimal numbering — check if parenthesis style for benar/salah
+                            $textPattern = $listInfo['text'] ?? '';
+                            if (str_contains($textPattern, ')')) {
+                                // Parenthesis format "1)" — reconstruct "N) " for benar/salah detection
+                                $numKey = ($listInfo['num_id'] ?: 'x') . '_decimal_paren_' . $listInfo['depth'];
+                                if (!isset($listCounters[$numKey])) $listCounters[$numKey] = 0;
+                                $listCounters[$numKey]++;
+                                $counter = $listCounters[$numKey];
+                                $prefix = $counter . ') ';
+                                $text = $prefix . $text;
+                                $html = e($prefix) . $html;
+                                // Flows through to benar/salah regex below
+                            } else {
+                                // Other decimal sub-lists — accumulate as <ol> content
+                                $isContentList = true;
+                            }
+                        }
+                    }
+                }
+
+                // Flush pending content-list items when hitting a non-content-list element
+                if (!empty($pendingListItems) && !$isContentList) {
                     if ($current) {
                         $firstFormat = $pendingListItems[0]['format'] ?? 'bullet';
                         $isOrdered = ($firstFormat === 'decimal');
@@ -290,22 +342,21 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $pendingListItems = [];
                 }
 
-                if ($listInfo && $listInfo['format'] !== 'unknown') {
-                    if ($listInfo['format'] === 'bullet' || $listInfo['format'] === 'decimal') {
-                        // Accumulate bullet/decimal items — flushed as <ul>/<ol> HTML list
-                        // Decimal items must NOT get "N. " prefix to avoid triggering soal detection
-                        if (!empty($text) || !empty($html)) {
-                            $pendingListItems[] = [
-                                'text' => $text,
-                                'html' => !empty($html) ? $html : e($text),
-                                'images' => $images,
-                                'format' => $listInfo['format'],
-                            ];
-                        }
-                        continue;
+                // Accumulate bullet/decimal-content items
+                if ($isContentList) {
+                    if (!empty($text) || !empty($html)) {
+                        $pendingListItems[] = [
+                            'text' => $text,
+                            'html' => !empty($html) ? $html : e($text),
+                            'images' => $images,
+                            'format' => $listInfo['format'],
+                        ];
                     }
+                    continue;
+                }
 
-                    // Letter list — reconstruct prefix so option regex (A./B./C./D.) matches
+                // Letter list — reconstruct prefix so option regex (A./B./C./D.) matches
+                if ($listInfo && in_array($listInfo['format'], ['upperLetter', 'lowerLetter'])) {
                     $numKey = ($listInfo['num_id'] ?: 'x') . '_' . $listInfo['format'] . '_' . $listInfo['depth'];
                     if (!isset($listCounters[$numKey])) {
                         $listCounters[$numKey] = 0;
@@ -413,8 +464,13 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         'bobot'           => $bobot,
                     ];
 
-                    // Reset letter list counters so options restart (A,B,C,D) per soal
-                    $listCounters = [];
+                    // Reset non-soal list counters (options, benar/salah) per new soal
+                    // Keep soal counter intact
+                    foreach (array_keys($listCounters) as $key) {
+                        if (!str_ends_with($key, '_soal')) {
+                            unset($listCounters[$key]);
+                        }
+                    }
 
                 // Benar/Salah pernyataan lines
                 } elseif ($current && $current['jenis'] === 'benar_salah' && preg_match('/^(\d+)\)\s*(.+?)\s*\((BENAR|SALAH)\)\s*$/i', $text, $m)) {
@@ -704,7 +760,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $style = $element->getStyle();
 
         if (!$style) {
-            return ['depth' => $depth, 'format' => 'unknown', 'num_id' => 0];
+            return ['depth' => $depth, 'format' => 'unknown', 'num_id' => 0, 'text' => ''];
         }
 
         $numId = $style->getNumId() ?? 0;
@@ -712,11 +768,12 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
 
         // Bullet types: 1 (square filled), 3 (bullet filled), 5 (bullet empty)
         if (in_array($listType, [1, 3, 5])) {
-            return ['depth' => $depth, 'format' => 'bullet', 'num_id' => $numId];
+            return ['depth' => $depth, 'format' => 'bullet', 'num_id' => $numId, 'text' => ''];
         }
 
         // Numbered types: 7, 8, 9 — try to resolve specific format
         $format = 'decimal';
+        $textPattern = '';
         try {
             $numStyleName = $style->getNumStyle();
             if ($numStyleName) {
@@ -724,8 +781,13 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 if ($numbering && method_exists($numbering, 'getLevels')) {
                     $levels = $numbering->getLevels();
                     if (isset($levels[$depth])) {
-                        $fmt = $levels[$depth]->getFormat();
+                        $level = $levels[$depth];
+                        $fmt = $level->getFormat();
                         if ($fmt) $format = $fmt;
+                        // getText() returns pattern like "%1.", "%1)", "%1. " etc.
+                        if (method_exists($level, 'getText')) {
+                            $textPattern = $level->getText() ?? '';
+                        }
                     }
                 }
             }
@@ -735,10 +797,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
 
         // NumberingLevel format 'bullet' means it's actually a bullet
         if ($format === 'bullet') {
-            return ['depth' => $depth, 'format' => 'bullet', 'num_id' => $numId];
+            return ['depth' => $depth, 'format' => 'bullet', 'num_id' => $numId, 'text' => ''];
         }
 
-        return ['depth' => $depth, 'format' => $format, 'num_id' => $numId];
+        return ['depth' => $depth, 'format' => $format, 'num_id' => $numId, 'text' => $textPattern];
     }
 
     /**
