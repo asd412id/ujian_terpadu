@@ -352,6 +352,9 @@
         <form action="{{ route('dinas.paket.soal.sync', $paket->id) }}" method="POST"
               class="bg-white border border-gray-200 shadow-lg rounded-2xl px-6 py-3.5 flex items-center justify-between max-w-3xl mx-auto">
             @csrf @method('PUT')
+            <template x-if="selectedIds.length === 0">
+                <input type="hidden" name="soal_ids" value="">
+            </template>
             <template x-for="id in selectedIds" :key="id">
                 <input type="hidden" name="soal_ids[]" :value="id">
             </template>

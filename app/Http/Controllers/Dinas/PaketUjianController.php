@@ -191,11 +191,11 @@ class PaketUjianController extends Controller
     public function soalSync(Request $request, PaketUjian $paket)
     {
         $request->validate([
-            'soal_ids'   => 'present|array',
+            'soal_ids'   => 'present|nullable|array',
             'soal_ids.*' => 'exists:soal,id',
         ]);
 
-        $soalIds = $request->input('soal_ids', []);
+        $soalIds = $request->input('soal_ids') ?? [];
         $this->paketUjianService->syncSoalPaket($paket, $soalIds);
 
         return back()->with('success', 'Soal paket berhasil diperbarui (' . count($soalIds) . ' soal).');
