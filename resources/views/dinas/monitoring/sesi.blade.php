@@ -123,6 +123,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($pesertaList as $sp)
+                    @if(!$sp->peserta) @continue @endif
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3">
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama }}</p>
