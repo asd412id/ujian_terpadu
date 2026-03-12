@@ -204,7 +204,7 @@ function sesiMonitoringApp() {
         _loading: false,
 
         init() {
-            setInterval(() => this.loadStats(), 5000);
+            setInterval(() => this.loadStats(), 10000);
         },
 
         async loadStats() {

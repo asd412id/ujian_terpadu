@@ -87,7 +87,9 @@ class MonitoringService
             ->get();
 
         // Stats from single aggregate query (1 query instead of 5)
+        // Only count records with valid peserta (exclude orphans)
         $statsRaw = SesiPeserta::where('sesi_id', $sesi->id)
+            ->whereHas('peserta')
             ->selectRaw("
                 COUNT(*) as total,
                 COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
@@ -103,8 +105,9 @@ class MonitoringService
             'belum_mulai' => $statsRaw->belum_mulai ?? 0,
         ];
 
-        // Paginated peserta list — jawaban count already stored as soal_terjawab column
+        // Paginated peserta list — exclude orphaned records without peserta
         $query = SesiPeserta::with(['peserta.sekolah'])
+            ->whereHas('peserta')
             ->where('sesi_id', $sesi->id);
 
         if (!empty($filters['search'])) {
@@ -310,32 +313,15 @@ class MonitoringService
     }
 
     /**
-     * Get sesi detail data for API.
+     * Get sesi detail stats only (lightweight, for polling API).
      */
-    public function getSesiDetail(string $sesiId): array
+    public function getSesiStats(string $sesiId): array
     {
-        $sesi = SesiUjian::with(['paket'])
-            ->findOrFail($sesiId);
+        $sesi = SesiUjian::findOrFail($sesiId);
 
-        // soal_terjawab is already a denormalized column on sesi_peserta
-        $sesiPeserta = SesiPeserta::with(['peserta.sekolah'])
-            ->where('sesi_id', $sesi->id)
-            ->orderBy('updated_at', 'desc')
-            ->get();
-
-        $data = $sesiPeserta->map(fn ($sp) => [
-            'nama'          => $sp->peserta->nama ?? '–',
-            'no_peserta'    => $sp->peserta->no_peserta ?? '–',
-            'sekolah'       => $sp->peserta->sekolah?->nama ?? '–',
-            'kelas'         => $sp->peserta->kelas ?? '–',
-            'status'        => $sp->status,
-            'soal_dijawab'  => $sp->soal_terjawab ?? 0,
-            'nilai_akhir'   => $sp->nilai_akhir,
-            'last_aktif'    => $sp->updated_at?->diffForHumans(),
-        ]);
-
-        // Stats from single aggregate
+        // Stats from single aggregate — no peserta data loaded
         $statsRaw = SesiPeserta::where('sesi_id', $sesi->id)
+            ->whereHas('peserta')
             ->selectRaw("
                 COUNT(*) as total,
                 COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
@@ -345,14 +331,6 @@ class MonitoringService
             ->first();
 
         return [
-            'sesi' => [
-                'id'             => $sesi->id,
-                'nama'           => $sesi->nama_sesi,
-                'status'         => $sesi->status,
-                'waktu_mulai'    => $sesi->waktu_mulai?->format('H:i'),
-                'waktu_selesai'  => $sesi->waktu_selesai?->format('H:i'),
-            ],
-            'peserta' => $data,
             'stats' => [
                 'total'       => $statsRaw->total ?? 0,
                 'online'      => $statsRaw->online ?? 0,

@@ -78,7 +78,7 @@ class MonitoringController extends Controller
 
     public function apiSesi(SesiUjian $sesi)
     {
-        $data = $this->monitoringService->getSesiDetail($sesi->id);
+        $data = $this->monitoringService->getSesiStats($sesi->id);
 
         return response()->json($data);
     }

@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
+        $schedule->command('ujian:auto-submit')->everyMinute();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         // Trust all proxies (Cloudflare Tunnel forwards requests via HTTP internally)
