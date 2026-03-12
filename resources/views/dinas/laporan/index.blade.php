@@ -121,12 +121,17 @@
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <p class="text-sm text-gray-500">Menampilkan {{ $data->count() }} dari {{ $data->total() }} data</p>
             <button type="button"
-                    onclick="if(confirm('Hitung ulang semua nilai{{ request('paket_id') || request('sekolah_id') ? ' (sesuai filter aktif)' : '' }}? Proses ini mungkin membutuhkan waktu beberapa detik.')) { document.getElementById('recalculate-form').submit(); }"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    id="btn-recalculate"
+                    onclick="handleRecalculate(this)"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-50">
+                <svg class="w-3.5 h-3.5" id="recalculate-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
-                Hitung Ulang Nilai
+                <svg class="w-3.5 h-3.5 animate-spin hidden" id="recalculate-spinner" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span id="recalculate-text">Hitung Ulang Nilai</span>
             </button>
         </div>
         <div class="overflow-x-auto">
@@ -195,3 +200,18 @@
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function handleRecalculate(btn) {
+    if (!confirm('Hitung ulang semua nilai{{ request("paket_id") || request("sekolah_id") ? " (sesuai filter aktif)" : "" }}? Proses ini mungkin membutuhkan waktu beberapa detik.')) return;
+
+    btn.disabled = true;
+    document.getElementById('recalculate-icon').classList.add('hidden');
+    document.getElementById('recalculate-spinner').classList.remove('hidden');
+    document.getElementById('recalculate-text').textContent = 'Menghitung ulang...';
+
+    document.getElementById('recalculate-form').submit();
+}
+</script>
+@endpush
