@@ -43,6 +43,12 @@
             jawabanExisting: @json($jawabanExistingJs),
         };
     </script>
+    <style>
+        .prose p { margin-top: 0.25em; margin-bottom: 0.25em; }
+        .prose table { border-collapse: collapse; width: 100%; }
+        .prose table th, .prose table td { border: 1px solid #999; padding: 4px 8px; }
+        .prose table th { background: #f3f4f6; font-weight: bold; }
+    </style>
 </head>
 
 <body class="h-full bg-gray-50 font-['Inter'] overflow-hidden select-none"

@@ -258,6 +258,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 $images = $result['images'];
                 $isTable = $result['is_table'] ?? false;
                 $listInfo = $result['list_info'] ?? null;
+                $alignment = $result['alignment'] ?? null;
 
                 // --- List numbering reconstruction ---
                 // PHPWord strips numbering prefixes (1., A., bullets) from ListItem elements.
@@ -585,6 +586,15 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         }
                     } elseif (!$current['gambar_soal'] && !str_contains($current['pertanyaan'], '<img ')) {
                         $current['gambar_soal'] = $this->saveImageData($images[0]);
+                    } elseif (!empty($html)) {
+                        // gambar_soal already set or pertanyaan has inline images — append as inline
+                        $pStyle = '';
+                        if ($alignment === 'center') {
+                            $pStyle = ' style="text-align:center"';
+                        }
+                        $imgBlock = '<p' . $pStyle . '>' . $html . '</p>';
+                        $current['pertanyaan'] .= $imgBlock;
+                        $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $imgBlock;
                     }
 
                 // Continuation text (no structural prefix)
@@ -614,9 +624,21 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                             $current['pernyataan_bs'][$lastIdx]['teks'] .= ' ' . $html;
                         }
                     } else {
-                        // No options yet — append to pertanyaan
-                        $current['pertanyaan'] .= '<br>' . $html;
-                        $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . '<br>' . $html;
+                        // No options yet — append to pertanyaan as new paragraph
+                        // Use <p> tags with alignment instead of <br> for proper paragraph breaks
+                        $pStyle = '';
+                        if ($alignment && !in_array($alignment, ['start', 'left'])) {
+                            $cssAlign = match ($alignment) {
+                                'center' => 'center',
+                                'end', 'right' => 'right',
+                                'both', 'justify' => 'justify',
+                                default => '',
+                            };
+                            if ($cssAlign) $pStyle = ' style="text-align:' . $cssAlign . '"';
+                        }
+                        $wrappedHtml = '<p' . $pStyle . '>' . $html . '</p>';
+                        $current['pertanyaan'] .= $wrappedHtml;
+                        $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $wrappedHtml;
                     }
                 }
             }
@@ -670,10 +692,27 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $html   = '';
         $images = [];
         $listInfo = null;
+        $alignment = null;
 
         if ($element instanceof Table) {
             $tableHtml = $this->tableToHtml($element);
             return ['text' => '', 'html' => $tableHtml, 'images' => [], 'is_table' => true];
+        }
+
+        // Extract paragraph alignment (center, right, justify, etc.)
+        if (method_exists($element, 'getParagraphStyle')) {
+            $pStyle = $element->getParagraphStyle();
+            if ($pStyle && is_object($pStyle) && method_exists($pStyle, 'getAlignment')) {
+                $align = $pStyle->getAlignment();
+                if ($align && !in_array($align, ['left', 'start', ''])) {
+                    $alignment = match ($align) {
+                        'center' => 'center',
+                        'right', 'end' => 'right',
+                        'both', 'justify' => 'justify',
+                        default => null,
+                    };
+                }
+            }
         }
 
         // IMPORTANT: ListItemRun extends TextRun, so check ListItem/ListItemRun FIRST
@@ -713,7 +752,11 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $savedPath = $this->saveImageData($child);
                     if ($savedPath) {
                         $url = Storage::disk('public')->url($savedPath);
-                        $html .= '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
+                        $imgStyle = 'max-width:100%;vertical-align:middle;';
+                        if ($alignment === 'center') {
+                            $imgStyle .= 'display:block;margin:0 auto;';
+                        }
+                        $html .= '<img src="' . e($url) . '" alt="gambar" style="' . $imgStyle . '">';
                     }
                 } elseif ($child instanceof Formula) {
                     $latex = $this->formulaToLatex($child);
@@ -733,7 +776,11 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             $savedPath = $this->saveImageData($element);
             if ($savedPath) {
                 $url = Storage::disk('public')->url($savedPath);
-                $html = '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;">';
+                $imgStyle = 'max-width:100%;';
+                if ($alignment === 'center') {
+                    $imgStyle .= 'display:block;margin:0 auto;';
+                }
+                $html = '<img src="' . e($url) . '" alt="gambar" style="' . $imgStyle . '">';
             }
         } elseif (method_exists($element, 'getText')) {
             $text = $element->getText() ?? '';
@@ -743,7 +790,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $text = html_entity_decode(trim((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $html = trim($html);
 
-        return ['text' => $text, 'html' => $html, 'images' => $images, 'is_table' => false, 'list_info' => $listInfo];
+        return ['text' => $text, 'html' => $html, 'images' => $images, 'is_table' => false, 'list_info' => $listInfo, 'alignment' => $alignment];
     }
 
     /**
