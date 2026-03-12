@@ -244,8 +244,8 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
     {
         $blocks  = [];
         $current = null;
-        $listCounters = [];   // [key] => current count for numbered list reconstruction
-        $pendingBullets = []; // accumulated bullet items for <ul> wrapping
+        $listCounters = [];      // [key] => current count for letter list reconstruction
+        $pendingListItems = [];  // accumulated list items (bullet/decimal) for HTML list wrapping
 
         foreach ($sections as $section) {
             foreach ($section->getElements() as $element) {
@@ -260,42 +260,52 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
 
                 // --- List numbering reconstruction ---
                 // PHPWord strips numbering prefixes (1., A., bullets) from ListItem elements.
-                // We reconstruct them here so the existing regex matching works.
+                // Bullet & decimal items are accumulated as HTML lists (<ul>/<ol>) — they are
+                // content WITHIN a soal and must NOT trigger soal-number detection.
+                // Letter items (upperLetter/lowerLetter) get prefix reconstruction for option detection.
 
-                // Flush pending bullet items when hitting a non-bullet element
-                if (!empty($pendingBullets) && (!$listInfo || $listInfo['format'] !== 'bullet')) {
+                // Flush pending list items when hitting a non-list element (or different list type)
+                $isAccumulatedFormat = $listInfo && in_array($listInfo['format'], ['bullet', 'decimal']);
+                if (!empty($pendingListItems) && !$isAccumulatedFormat) {
                     if ($current) {
-                        $bulletHtml = '<ul style="list-style-type:disc;margin:0.3em 0;padding-left:1.5em;">';
-                        foreach ($pendingBullets as $bi) {
-                            $bulletHtml .= '<li>' . ($bi['html'] ?: e($bi['text'])) . '</li>';
+                        $firstFormat = $pendingListItems[0]['format'] ?? 'bullet';
+                        $isOrdered = ($firstFormat === 'decimal');
+                        $tag = $isOrdered ? 'ol' : 'ul';
+                        $style = $isOrdered
+                            ? 'margin:0.3em 0;padding-left:1.5em;'
+                            : 'list-style-type:disc;margin:0.3em 0;padding-left:1.5em;';
+                        $listHtml = '<' . $tag . ' style="' . $style . '">';
+                        foreach ($pendingListItems as $li) {
+                            $listHtml .= '<li>' . ($li['html'] ?: e($li['text'])) . '</li>';
                         }
-                        $bulletHtml .= '</ul>';
+                        $listHtml .= '</' . $tag . '>';
                         if (!empty($current['opsi'])) {
-                            // Append bullet list to last option
                             $lastLabel = array_key_last($current['opsi']);
-                            $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $bulletHtml;
+                            $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $listHtml;
                         } else {
-                            $current['pertanyaan'] .= $bulletHtml;
-                            $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $bulletHtml;
+                            $current['pertanyaan'] .= $listHtml;
+                            $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $listHtml;
                         }
                     }
-                    $pendingBullets = [];
+                    $pendingListItems = [];
                 }
 
                 if ($listInfo && $listInfo['format'] !== 'unknown') {
-                    if ($listInfo['format'] === 'bullet') {
-                        // Accumulate bullet items — will be flushed as <ul> when non-bullet appears
+                    if ($listInfo['format'] === 'bullet' || $listInfo['format'] === 'decimal') {
+                        // Accumulate bullet/decimal items — flushed as <ul>/<ol> HTML list
+                        // Decimal items must NOT get "N. " prefix to avoid triggering soal detection
                         if (!empty($text) || !empty($html)) {
-                            $pendingBullets[] = [
+                            $pendingListItems[] = [
                                 'text' => $text,
                                 'html' => !empty($html) ? $html : e($text),
                                 'images' => $images,
+                                'format' => $listInfo['format'],
                             ];
                         }
                         continue;
                     }
 
-                    // Numbered/lettered list — reconstruct prefix for regex matching
+                    // Letter list — reconstruct prefix so option regex (A./B./C./D.) matches
                     $numKey = ($listInfo['num_id'] ?: 'x') . '_' . $listInfo['format'] . '_' . $listInfo['depth'];
                     if (!isset($listCounters[$numKey])) {
                         $listCounters[$numKey] = 0;
@@ -304,10 +314,9 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $counter = $listCounters[$numKey];
 
                     $prefix = match ($listInfo['format']) {
-                        'decimal' => $counter . '. ',
                         'lowerLetter' => chr(96 + min($counter, 26)) . '. ',
                         'upperLetter' => chr(64 + min($counter, 26)) . '. ',
-                        default => $counter . '. ',
+                        default => '',
                     };
 
                     $text = $prefix . $text;
@@ -404,12 +413,8 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         'bobot'           => $bobot,
                     ];
 
-                    // Reset non-soal list counters so options restart (A,B,C,D) per soal
-                    foreach (array_keys($listCounters) as $key) {
-                        if (!str_contains($key, '_decimal_')) {
-                            unset($listCounters[$key]);
-                        }
-                    }
+                    // Reset letter list counters so options restart (A,B,C,D) per soal
+                    $listCounters = [];
 
                 // Benar/Salah pernyataan lines
                 } elseif ($current && $current['jenis'] === 'benar_salah' && preg_match('/^(\d+)\)\s*(.+?)\s*\((BENAR|SALAH)\)\s*$/i', $text, $m)) {
@@ -559,19 +564,25 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
-        // Flush any remaining pending bullets
-        if (!empty($pendingBullets) && $current) {
-            $bulletHtml = '<ul style="list-style-type:disc;margin:0.3em 0;padding-left:1.5em;">';
-            foreach ($pendingBullets as $bi) {
-                $bulletHtml .= '<li>' . ($bi['html'] ?: e($bi['text'])) . '</li>';
+        // Flush any remaining pending list items (bullets/decimals)
+        if (!empty($pendingListItems) && $current) {
+            $firstFormat = $pendingListItems[0]['format'] ?? 'bullet';
+            $isOrdered = ($firstFormat === 'decimal');
+            $tag = $isOrdered ? 'ol' : 'ul';
+            $style = $isOrdered
+                ? 'margin:0.3em 0;padding-left:1.5em;'
+                : 'list-style-type:disc;margin:0.3em 0;padding-left:1.5em;';
+            $listHtml = '<' . $tag . ' style="' . $style . '">';
+            foreach ($pendingListItems as $li) {
+                $listHtml .= '<li>' . ($li['html'] ?: e($li['text'])) . '</li>';
             }
-            $bulletHtml .= '</ul>';
+            $listHtml .= '</' . $tag . '>';
             if (!empty($current['opsi'])) {
                 $lastLabel = array_key_last($current['opsi']);
-                $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $bulletHtml;
+                $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $listHtml;
             } else {
-                $current['pertanyaan'] .= $bulletHtml;
-                $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $bulletHtml;
+                $current['pertanyaan'] .= $listHtml;
+                $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $listHtml;
             }
         }
 
