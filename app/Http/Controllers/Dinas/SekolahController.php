@@ -152,6 +152,7 @@ class SekolahController extends Controller
             'success_rows'   => $job->success_rows,
             'error_rows'     => $job->error_rows,
             'errors'         => $job->errors ?? [],
+            'catatan'        => $job->catatan,
         ]);
     }
 

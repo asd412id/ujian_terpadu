@@ -49,8 +49,23 @@ class ImportPesertaJob implements ShouldQueue
             $path     = Storage::disk('local')->path($this->importJob->filepath);
             $rows     = Excel::toArray([], $path)[0] ?? [];
 
-            $headers = array_shift($rows);
-            $this->validateHeaders($headers, $isDinas);
+            // Auto-detect header row: scan the first 10 rows to find the expected headers
+            // This handles files with title/merged rows before the actual header
+            $expected = $isDinas ? self::DINAS_HEADERS : self::SEKOLAH_HEADERS;
+            $headerRowIndex = $this->detectHeaderRow($rows, $expected);
+
+            if ($headerRowIndex === null) {
+                // No header row found — give a helpful error message
+                $firstCell = strtolower(trim((string) ($rows[0][0] ?? '')));
+                $templateName = $isDinas ? 'import peserta DINAS' : 'import peserta SEKOLAH';
+                throw new \Exception(
+                    "Template tidak sesuai. Kolom A seharusnya \"{$expected[0]}\", bukan \"{$firstCell}\". " .
+                    "Pastikan Anda menggunakan template {$templateName}."
+                );
+            }
+
+            // Remove everything up to and including the header row
+            $rows = array_slice($rows, $headerRowIndex + 1);
             $this->importJob->update(['total_rows' => count($rows)]);
 
             // Pre-load caches
@@ -276,6 +291,32 @@ class ImportPesertaJob implements ShouldQueue
                 );
             }
         }
+    }
+
+    /**
+     * Scan the first rows to find the header row index.
+     * Returns null if no matching header row is found within the first 10 rows.
+     */
+    private function detectHeaderRow(array $rows, array $expected): ?int
+    {
+        $maxScan = min(10, count($rows));
+        $firstExpected = $expected[0];
+
+        for ($i = 0; $i < $maxScan; $i++) {
+            $row = $rows[$i] ?? [];
+            $firstCell = strtolower(trim((string) ($row[0] ?? '')));
+
+            if ($firstCell === $firstExpected) {
+                $actualHeaders = array_map(fn ($h) => strtolower(trim((string) $h)), $row);
+                $actualHeaders = array_slice($actualHeaders, 0, count($expected));
+
+                if ($actualHeaders === $expected) {
+                    return $i;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function parseDinasRow(array $row, int $baris, array $npsnCache): array

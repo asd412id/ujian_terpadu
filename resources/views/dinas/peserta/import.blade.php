@@ -216,6 +216,7 @@ document.addEventListener('alpine:init', () => {
         progress: 0,
         statusLabel: 'Menunggu...',
         statusText: '',
+        catatan: '',
         errors: [],
         polling: null,
         redirectUrl: null,
@@ -227,7 +228,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const res  = await fetch(url);
                 const data = await res.json();
-                this.errors = data.errors || [];
+                this.errors  = data.errors || [];
+                this.catatan = data.catatan || '';
 
                 if (data.status === 'selesai') {
                     clearInterval(this.polling);
@@ -239,8 +241,9 @@ document.addEventListener('alpine:init', () => {
                     }
                 } else if (data.status === 'gagal') {
                     clearInterval(this.polling);
+                    this.progress    = 100;
                     this.statusLabel = 'Gagal';
-                    this.statusText  = 'Import gagal. Lihat detail error di bawah.';
+                    this.statusText  = this.catatan || 'Import gagal. Periksa file Excel Anda dan coba lagi.';
                 } else if (data.status === 'processing') {
                     const pct        = data.total_rows > 0
                         ? Math.round((data.processed_rows / data.total_rows) * 100)
@@ -248,9 +251,13 @@ document.addEventListener('alpine:init', () => {
                     this.progress    = pct;
                     this.statusLabel = 'Memproses...';
                     this.statusText  = `${data.processed_rows} / ${data.total_rows} baris`;
+                } else {
+                    this.statusLabel = 'Antrian...';
+                    this.statusText  = 'Menunggu proses dimulai';
+                    this.progress    = 5;
                 }
             } catch (e) {
-                // ignore fetch errors, will retry
+                // silent
             }
         }
     }));
