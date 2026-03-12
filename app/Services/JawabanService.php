@@ -212,6 +212,7 @@ class JawabanService
 
     /**
      * Get ujian status by token (server-authoritative).
+     * Includes sesi_status so client can detect when admin ends the session.
      */
     public function getStatusByToken(string $token): array
     {
@@ -220,6 +221,7 @@ class JawabanService
 
         return [
             'status'            => $sesiPeserta->status,
+            'sesi_status'       => $sesiPeserta->sesi->status ?? 'selesai',
             'elapsed_seconds'   => $sesiPeserta->mulai_at
                 ? now()->diffInSeconds($sesiPeserta->mulai_at) : 0,
             'remaining_seconds' => $sesiPeserta->sisa_waktu_detik,

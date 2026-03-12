@@ -16,6 +16,14 @@
 
 @section('page-content')
 
+@if(session('error'))
+<div class="max-w-2xl mb-4">
+    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+        {{ session('error') }}
+    </div>
+</div>
+@endif
+
 <div class="max-w-2xl">
     <div class="card">
         <h2 class="font-semibold text-gray-900 mb-4">Edit Sesi: <span class="text-blue-600">{{ $sesi->nama_sesi }}</span></h2>
@@ -86,14 +94,21 @@
                 {{-- Status --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select name="status"
+                    <select name="status" id="sesi-status"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="persiapan"  @selected(old('status', $sesi->status) === 'persiapan')>Persiapan</option>
                         <option value="berlangsung" @selected(old('status', $sesi->status) === 'berlangsung')>Berlangsung</option>
                         <option value="selesai"    @selected(old('status', $sesi->status) === 'selesai')>Selesai</option>
                     </select>
-                    @if($sesi->status === 'berlangsung')
-                    <p class="text-xs text-amber-600 mt-1">⚠ Sesi sedang berlangsung. Ubah status dengan hati-hati.</p>
+                    @if($activePesertaCount > 0)
+                    <p class="text-xs text-amber-600 mt-1 font-medium">
+                        <span class="inline-flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                            {{ $activePesertaCount }} peserta sedang aktif (login/mengerjakan)
+                        </span>
+                    </p>
+                    @elseif($sesi->status === 'berlangsung')
+                    <p class="text-xs text-amber-600 mt-1">Sesi sedang berlangsung. Tidak ada peserta aktif saat ini.</p>
                     @endif
                 </div>
             </div>
@@ -113,3 +128,25 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const statusSelect = document.getElementById('sesi-status');
+    const originalStatus = @json($sesi->status);
+    const activePeserta = {{ $activePesertaCount }};
+
+    form.addEventListener('submit', function(e) {
+        const newStatus = statusSelect.value;
+
+        if (activePeserta > 0 && newStatus === 'selesai' && originalStatus === 'berlangsung') {
+            e.preventDefault();
+            if (confirm('Ada ' + activePeserta + ' peserta yang sedang aktif (login/mengerjakan).\n\nMengubah status ke "Selesai" akan OTOMATIS mengumpulkan ujian semua peserta tersebut dan menghitung nilai mereka.\n\nLanjutkan?')) {
+                form.submit();
+            }
+        }
+    });
+});
+</script>
+@endpush

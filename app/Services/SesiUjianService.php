@@ -6,10 +6,15 @@ use App\Models\Peserta;
 use App\Models\PaketUjian;
 use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
+use App\Models\LogAktivitasUjian;
 use Illuminate\Support\Facades\DB;
 
 class SesiUjianService
 {
+    public function __construct(
+        protected PenilaianService $penilaianService
+    ) {}
+
     public function createSesi(PaketUjian $paket, array $data): SesiUjian
     {
         $data['paket_id'] = $paket->id;
@@ -24,8 +29,85 @@ class SesiUjianService
 
     public function updateSesi(SesiUjian $sesi, array $data): SesiUjian
     {
+        $oldStatus = $sesi->status;
+        $newStatus = $data['status'] ?? $oldStatus;
+
+        // Block: cannot revert to 'persiapan' if there are active peserta
+        if ($newStatus === 'persiapan' && $oldStatus !== 'persiapan') {
+            $activeCount = $sesi->sesiPeserta()
+                ->whereIn('status', ['login', 'mengerjakan', 'submit', 'dinilai'])
+                ->count();
+            if ($activeCount > 0) {
+                throw new \RuntimeException(
+                    "Tidak dapat mengembalikan sesi ke persiapan. {$activeCount} peserta sudah mengikuti ujian."
+                );
+            }
+        }
+
+        // Auto force-submit all active peserta when sesi moves to 'selesai'
+        if ($newStatus === 'selesai' && $oldStatus === 'berlangsung') {
+            $this->forceSubmitActivePeserta($sesi);
+        }
+
         $sesi->update($data);
         return $sesi->fresh();
+    }
+
+    /**
+     * Force submit all peserta currently in 'mengerjakan' or 'login' status.
+     * Called when admin changes sesi status to 'selesai'.
+     */
+    public function forceSubmitActivePeserta(SesiUjian $sesi): int
+    {
+        $activePeserta = $sesi->sesiPeserta()
+            ->whereIn('status', ['login', 'mengerjakan'])
+            ->get();
+
+        if ($activePeserta->isEmpty()) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($activePeserta as $sp) {
+            $submitAt = now();
+            $durasiDetik = $sp->mulai_at
+                ? (int) $sp->mulai_at->diffInSeconds($submitAt, false)
+                : 0;
+
+            $sp->update([
+                'status'              => 'submit',
+                'submit_at'           => $submitAt,
+                'durasi_aktual_detik' => $durasiDetik,
+            ]);
+
+            $hasil = $this->penilaianService->hitungNilai($sp);
+            $sp->update($hasil);
+
+            LogAktivitasUjian::create([
+                'sesi_peserta_id' => $sp->id,
+                'tipe_event'      => 'submit_ujian',
+                'detail'          => [
+                    'reason'  => 'admin_force_submit',
+                    'durasi'  => $durasiDetik,
+                    'trigger' => 'sesi_status_selesai',
+                ],
+                'created_at'      => $submitAt,
+            ]);
+
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Count active peserta (login + mengerjakan) for a sesi.
+     */
+    public function countActivePeserta(SesiUjian $sesi): int
+    {
+        return $sesi->sesiPeserta()
+            ->whereIn('status', ['login', 'mengerjakan'])
+            ->count();
     }
 
     public function deleteSesi(SesiUjian $sesi): bool

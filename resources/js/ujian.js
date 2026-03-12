@@ -73,11 +73,79 @@ function ujianApp() {
             // Auto-save interval
             setInterval(() => this.autoSync(), cfg.autoSaveInterval * 1000);
 
+            // Poll sesi status every 30s to detect admin ending session
+            this.startStatusPolling();
+
             // Pre-cache semua gambar soal + opsi
             this.preCacheImages(cfg.soalList);
 
             // Init anti-cheat system
             this.initAntiCheat();
+        },
+
+        // ===== SESI STATUS POLLING =====
+        _statusCheckInterval: null,
+        _forceSubmitted: false,
+
+        startStatusPolling() {
+            const cfg = window.UJIAN_CONFIG;
+            if (!cfg.statusUrl) return;
+
+            this._statusCheckInterval = setInterval(() => this.checkSesiStatus(), 30000);
+        },
+
+        async checkSesiStatus() {
+            if (this._forceSubmitted || this.isSubmitting) return;
+
+            const cfg = window.UJIAN_CONFIG;
+            if (!cfg.statusUrl || !navigator.onLine) return;
+
+            try {
+                const res = await fetch(cfg.statusUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                    },
+                });
+
+                if (!res.ok) return;
+
+                const data = await res.json();
+
+                // If sesi is no longer berlangsung, force submit
+                if (data.sesi_status && data.sesi_status !== 'berlangsung') {
+                    console.log('[StatusPoll] Sesi status:', data.sesi_status, '- force submitting...');
+                    this._forceSubmitted = true;
+                    clearInterval(this._statusCheckInterval);
+                    await this.doSubmit();
+                    return;
+                }
+
+                // If peserta status is already submit/dinilai server-side (admin forced)
+                if (data.status && !data.is_active && data.status !== 'mengerjakan') {
+                    console.log('[StatusPoll] Peserta status:', data.status, '- redirecting...');
+                    this._forceSubmitted = true;
+                    clearInterval(this._statusCheckInterval);
+
+                    // Exit fullscreen
+                    if (document.fullscreenElement) {
+                        try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
+                    }
+
+                    window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
+                    return;
+                }
+
+                // Sync remaining time from server (drift correction)
+                if (data.remaining_seconds !== undefined && data.remaining_seconds >= 0) {
+                    const drift = Math.abs(this.sisaWaktu - data.remaining_seconds);
+                    if (drift > 5) {
+                        this.sisaWaktu = data.remaining_seconds;
+                    }
+                }
+            } catch (err) {
+                console.warn('[StatusPoll] Check failed:', err.message);
+            }
         },
 
         // ===== ANTI-CHEAT SYSTEM =====

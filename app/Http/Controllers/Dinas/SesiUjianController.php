@@ -39,8 +39,9 @@ class SesiUjianController extends Controller
         abort_unless($sesi->paket_id === $paket->id, 404);
 
         $pengawas = User::where('role', 'pengawas')->orderBy('name')->get();
+        $activePesertaCount = $this->service->countActivePeserta($sesi);
 
-        return view('dinas.sesi.edit', compact('paket', 'sesi', 'pengawas'));
+        return view('dinas.sesi.edit', compact('paket', 'sesi', 'pengawas', 'activePesertaCount'));
     }
 
     public function update(Request $request, PaketUjian $paket, SesiUjian $sesi)
@@ -57,9 +58,13 @@ class SesiUjianController extends Controller
             'status'        => 'nullable|in:persiapan,berlangsung,selesai',
         ]);
 
-        $this->service->updateSesi($sesi, $request->only([
-            'nama_sesi', 'ruangan', 'pengawas_id', 'waktu_mulai', 'waktu_selesai', 'kapasitas', 'status',
-        ]));
+        try {
+            $this->service->updateSesi($sesi, $request->only([
+                'nama_sesi', 'ruangan', 'pengawas_id', 'waktu_mulai', 'waktu_selesai', 'kapasitas', 'status',
+            ]));
+        } catch (\RuntimeException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('dinas.paket.show', $paket)
                          ->with('success', 'Sesi ujian berhasil diperbarui.');
