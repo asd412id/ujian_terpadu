@@ -49,8 +49,8 @@ class AutoSubmitExpiredExams extends Command
 
             LogAktivitasUjian::create([
                 'sesi_peserta_id' => $sp->id,
-                'tipe_event'      => 'auto_submit_server',
-                'detail'          => ['reason' => 'waktu_habis', 'durasi' => $durasiDetik],
+                'tipe_event'      => 'submit_ujian',
+                'detail'          => ['reason' => 'auto_submit_server_timeout', 'durasi' => $durasiDetik],
                 'created_at'      => $submitAt,
             ]);
 
