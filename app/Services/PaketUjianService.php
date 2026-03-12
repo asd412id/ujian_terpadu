@@ -132,11 +132,11 @@ class PaketUjianService
 
     /**
      * Permanently delete a paket ujian and ALL related data.
-     * CASCADE in DB handles: paket_soal, sesi_ujian → sesi_peserta → jawaban_peserta, log_aktivitas_ujian
+     * Model's forceDeleting event handles cleanup of sesi, sesi_peserta, jawaban, logs, paket_soal.
      */
     public function forceDeletePaket(PaketUjian $paket): bool
     {
-        return (bool) $paket->forceDelete();
+        return DB::transaction(fn () => (bool) $paket->forceDelete());
     }
 
     /**

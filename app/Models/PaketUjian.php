@@ -30,6 +30,25 @@ class PaketUjian extends Model
         'tanggal_selesai' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        // On force-delete: explicitly clean up all children before DB cascade
+        // (safety net — DB cascade should handle it, but belt + suspenders)
+        static::forceDeleting(function (PaketUjian $paket) {
+            $sesiIds = $paket->sesi()->pluck('id');
+            if ($sesiIds->isNotEmpty()) {
+                $spIds = SesiPeserta::whereIn('sesi_id', $sesiIds)->pluck('id');
+                if ($spIds->isNotEmpty()) {
+                    LogAktivitasUjian::whereIn('sesi_peserta_id', $spIds)->delete();
+                    JawabanPeserta::whereIn('sesi_peserta_id', $spIds)->delete();
+                    SesiPeserta::whereIn('id', $spIds)->delete();
+                }
+                SesiUjian::whereIn('id', $sesiIds)->delete();
+            }
+            PaketSoal::where('paket_id', $paket->id)->delete();
+        });
+    }
+
     public function sekolah()
     {
         return $this->belongsTo(Sekolah::class);
