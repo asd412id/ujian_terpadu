@@ -139,6 +139,23 @@ class SoalController extends Controller
                          ->with('success', 'Semua soal berhasil dihapus.');
     }
 
+    public function previewAll(Request $request)
+    {
+        $kategori = $this->soalService->getActiveKategori();
+
+        $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori'])
+            ->orderBy('kategori_soal_id')
+            ->orderBy('id');
+
+        if ($request->filled('kategori')) {
+            $query->where('kategori_soal_id', $request->kategori);
+        }
+
+        $soalList = $query->get();
+
+        return view('dinas.soal.preview-all', compact('soalList', 'kategori'));
+    }
+
     public function showImport()
     {
         $importJobs = $this->soalService->getImportJobsByUser(auth()->id());
