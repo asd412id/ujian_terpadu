@@ -183,7 +183,7 @@ return [
     |
     */
 
-    'memory_limit' => 256,
+    'memory_limit' => 512,
 
     /*
     |--------------------------------------------------------------------------
@@ -214,7 +214,7 @@ return [
             'balance' => false,
             'maxTime' => 3600,
             'maxJobs' => 0,
-            'memory' => 512,
+            'memory' => 384,
             'tries' => 1,
             'timeout' => 1200,
             'nice' => 0,
@@ -243,7 +243,7 @@ return [
                 'tries' => 1,
                 'timeout' => 1200,
                 'maxTime' => 3600,
-                'memory' => 512,
+                'memory' => 384,
             ],
         ],
 

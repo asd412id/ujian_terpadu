@@ -13,13 +13,13 @@
 # Memory Budget:
 #   nginx:       64 MB
 #   app ×3:    1536 MB (3 × 512 MB, each 8 workers)
-#   horizon:    512 MB  (custom php.ini: OPcache 64M, JIT 32M)
+#   horizon:    768 MB  (custom php.ini: OPcache 64M, JIT 32M)
 #   scheduler:  128 MB  (custom php.ini: OPcache 32M, JIT off)
 #   mariadb:    512 MB
-#   redis:      448 MB
+#   redis:      256 MB  (maxmemory 192mb — actual usage ~15 MB)
 #   cloudflared: 64 MB
 #   ─────────────
-#   Total: ~3264 MB (leaves ~4928 MB for OS + Docker overhead)
+#   Total: ~3328 MB (leaves ~4864 MB for OS + Docker overhead)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -121,7 +121,7 @@ services:
           memory: 512M
 
     # --- Horizon (Queue Worker) ---
-  # Memory: 512MB for horizon master + 1 supervisor + 3 worker processes
+  # Memory: 768MB for horizon master + supervisors + worker processes
   # Custom php.ini: OPcache 64M + JIT 32M (reduced from app's 128M + 64M)
   horizon:
     build:
@@ -157,9 +157,9 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512M
+          memory: 768M
         reservations:
-          memory: 128M
+          memory: 256M
 
   # --- Scheduler (Cron) ---
   # Custom php.ini: OPcache 32M, JIT disabled (saves ~96MB vs app config)
@@ -257,7 +257,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 384mb
+      --maxmemory 192mb
       --maxmemory-policy allkeys-lru
       --save 900 1
       --save 300 10
@@ -278,9 +278,9 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 448M
+          memory: 256M
         reservations:
-          memory: 128M
+          memory: 64M
 
 volumes:
   mariadb_data:
