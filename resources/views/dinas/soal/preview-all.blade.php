@@ -75,7 +75,7 @@
 
     {{-- Soal List --}}
     @forelse($soalList as $idx => $soal)
-    <div id="soal-{{ $idx + 1 }}" class="scroll-mt-20">
+    <div id="soal-{{ $idx + 1 }}" class="scroll-mt-20 mb-5">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {{-- Soal Header --}}
             <div class="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
