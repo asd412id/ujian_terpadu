@@ -144,11 +144,11 @@ class SoalController extends Controller
         $kategori = $this->soalService->getActiveKategori();
 
         $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori'])
-            ->orderBy('kategori_soal_id')
+            ->orderBy('kategori_id')
             ->orderBy('id');
 
         if ($request->filled('kategori')) {
-            $query->where('kategori_soal_id', $request->kategori);
+            $query->where('kategori_id', $request->kategori);
         }
 
         $soalList = $query->get();
