@@ -607,7 +607,33 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             return ['text' => '', 'html' => $tableHtml, 'images' => [], 'is_table' => true];
         }
 
-        if ($element instanceof TextRun) {
+        // IMPORTANT: ListItemRun extends TextRun, so check ListItem/ListItemRun FIRST
+        if ($element instanceof ListItem || $element instanceof ListItemRun) {
+            $listInfo = $this->getListInfo($element);
+            if ($element instanceof ListItemRun) {
+                foreach ($element->getElements() as $child) {
+                    if ($child instanceof Text) {
+                        $childText = $child->getText() ?? '';
+                        $text .= $childText;
+                        $html .= $this->textToHtml($childText, $child->getFontStyle());
+                    } elseif ($child instanceof Image) {
+                        $images[] = $child;
+                        $savedPath = $this->saveImageData($child);
+                        if ($savedPath) {
+                            $url = Storage::disk('public')->url($savedPath);
+                            $html .= '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
+                        }
+                    } elseif ($child instanceof Formula) {
+                        $latex = $this->formulaToLatex($child);
+                        $text .= $latex;
+                        $html .= e($latex);
+                    }
+                }
+            } elseif (method_exists($element, 'getText')) {
+                $text = $element->getText() ?? '';
+                $html = e($text);
+            }
+        } elseif ($element instanceof TextRun) {
             foreach ($element->getElements() as $child) {
                 if ($child instanceof Text) {
                     $childText = $child->getText() ?? '';
@@ -633,31 +659,6 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             $latex = $this->formulaToLatex($element);
             $text = $latex;
             $html = e($latex);
-        } elseif ($element instanceof ListItem || $element instanceof ListItemRun) {
-            $listInfo = $this->getListInfo($element);
-            if ($element instanceof ListItemRun) {
-                foreach ($element->getElements() as $child) {
-                    if ($child instanceof Text) {
-                        $childText = $child->getText() ?? '';
-                        $text .= $childText;
-                        $html .= $this->textToHtml($childText, $child->getFontStyle());
-                    } elseif ($child instanceof Image) {
-                        $images[] = $child;
-                        $savedPath = $this->saveImageData($child);
-                        if ($savedPath) {
-                            $url = Storage::disk('public')->url($savedPath);
-                            $html .= '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
-                        }
-                    } elseif ($child instanceof Formula) {
-                        $latex = $this->formulaToLatex($child);
-                        $text .= $latex;
-                        $html .= e($latex);
-                    }
-                }
-            } elseif (method_exists($element, 'getText')) {
-                $text = $element->getText() ?? '';
-                $html = e($text);
-            }
         } elseif ($element instanceof Image) {
             $images[] = $element;
             $savedPath = $this->saveImageData($element);
