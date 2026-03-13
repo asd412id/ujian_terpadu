@@ -52,7 +52,7 @@ class LaporanController extends Controller
 
     public function export(Request $request)
     {
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '256M');
         set_time_limit(300);
 
         $filters = $request->only(['sekolah_id', 'paket_id', 'search', 'status']);
