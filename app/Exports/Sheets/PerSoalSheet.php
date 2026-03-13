@@ -105,14 +105,17 @@ class PerSoalSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
 
                     $sheet->getColumnDimension('D')->setWidth(60);
 
-                    for ($row = 2; $row <= $totalRows; $row++) {
-                        if ($row % 2 === 0) {
-                            $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
-                                'fill' => [
-                                    'fillType' => Fill::FILL_SOLID,
-                                    'startColor' => ['argb' => 'FFF9FAFB'],
-                                ],
-                            ]);
+                    // Skip zebra striping for large datasets
+                    if ($totalRows <= 1001) {
+                        for ($row = 2; $row <= $totalRows; $row++) {
+                            if ($row % 2 === 0) {
+                                $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
+                                    'fill' => [
+                                        'fillType' => Fill::FILL_SOLID,
+                                        'startColor' => ['argb' => 'FFF9FAFB'],
+                                    ],
+                                ]);
+                            }
                         }
                     }
                 }

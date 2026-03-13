@@ -227,6 +227,63 @@ class LaporanRepository
     }
 
     /**
+     * Chunk hasil ujian for memory-efficient export.
+     */
+    public function chunkHasilForExport(array $filters, int $chunkSize, callable $callback): void
+    {
+        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
+            ->whereIn('status', ['submit', 'dinilai']);
+
+        if (!empty($filters['sekolah_id'])) {
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+        }
+
+        if (!empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
+            }
+        }
+
+        $query->latest('updated_at')->chunkById($chunkSize, $callback);
+    }
+
+    /**
+     * Get sesi_peserta IDs for export filters (for perSoal analysis).
+     */
+    public function getExportSesiPesertaIds(array $filters): \Illuminate\Support\Collection
+    {
+        $query = SesiPeserta::whereIn('status', ['submit', 'dinilai']);
+
+        if (!empty($filters['sekolah_id'])) {
+            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+        }
+
+        if (!empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
+            }
+        }
+
+        return $query->pluck('id');
+    }
+
+    /**
      * Build per-soal analysis using DB aggregates (no N+1, no full load).
      */
     public function buildPerSoalAnalysis(\Illuminate\Support\Collection $sesiPesertaIds): array

@@ -63,41 +63,51 @@ class LaporanService
     }
 
     /**
-     * Export hasil ujian data for Excel generation (enriched).
+     * Export hasil ujian data for Excel generation (memory-efficient).
      */
     public function exportHasil(array $filters = []): array
     {
-        $results = $this->repository->getHasilForExport($filters);
+        $hasilData = [];
 
-        $hasilData = $results->map(fn ($sp) => [
-            'nama_peserta'   => $sp->peserta->nama ?? '-',
-            'nis'            => $sp->peserta->nis ?? '-',
-            'nisn'           => $sp->peserta->nisn ?? '-',
-            'kelas'          => $sp->peserta->kelas ?? '-',
-            'jurusan'        => $sp->peserta->jurusan ?? '-',
-            'sekolah'        => $sp->peserta->sekolah->nama ?? '-',
-            'paket'          => $sp->sesi->paket->nama ?? '-',
-            'sesi'           => $sp->sesi->nama_sesi ?? '-',
-            'nilai_akhir'    => round($sp->nilai_akhir ?? 0, 2),
-            'jumlah_benar'   => (int) ($sp->jumlah_benar ?? 0),
-            'jumlah_salah'   => (int) ($sp->jumlah_salah ?? 0),
-            'jumlah_kosong'  => (int) ($sp->jumlah_kosong ?? 0),
-            'total_soal'     => (int) ($sp->jumlah_benar ?? 0) + (int) ($sp->jumlah_salah ?? 0) + (int) ($sp->jumlah_kosong ?? 0),
-            'durasi_menit'   => $sp->durasi_aktual_detik ? round(abs($sp->durasi_aktual_detik) / 60, 1) : 0,
-            'status'         => ucfirst($sp->status),
-            'keterangan'     => ($sp->nilai_akhir ?? 0) >= 70 ? 'Lulus' : 'Tidak Lulus',
-            'mulai_at'       => $sp->mulai_at?->format('Y-m-d H:i:s') ?? '-',
-            'submit_at'      => $sp->submit_at?->format('Y-m-d H:i:s') ?? '-',
-        ])->toArray();
-
-        $sesiPesertaIds = $results->pluck('id');
-        $perSoalData = $this->repository->buildPerSoalAnalysis($sesiPesertaIds);
+        $this->repository->chunkHasilForExport($filters, 500, function ($chunk) use (&$hasilData) {
+            foreach ($chunk as $sp) {
+                $hasilData[] = [
+                    'nama_peserta'   => $sp->peserta->nama ?? '-',
+                    'nis'            => $sp->peserta->nis ?? '-',
+                    'nisn'           => $sp->peserta->nisn ?? '-',
+                    'kelas'          => $sp->peserta->kelas ?? '-',
+                    'jurusan'        => $sp->peserta->jurusan ?? '-',
+                    'sekolah'        => $sp->peserta->sekolah->nama ?? '-',
+                    'paket'          => $sp->sesi->paket->nama ?? '-',
+                    'sesi'           => $sp->sesi->nama_sesi ?? '-',
+                    'nilai_akhir'    => round($sp->nilai_akhir ?? 0, 2),
+                    'jumlah_benar'   => (int) ($sp->jumlah_benar ?? 0),
+                    'jumlah_salah'   => (int) ($sp->jumlah_salah ?? 0),
+                    'jumlah_kosong'  => (int) ($sp->jumlah_kosong ?? 0),
+                    'total_soal'     => (int) ($sp->jumlah_benar ?? 0) + (int) ($sp->jumlah_salah ?? 0) + (int) ($sp->jumlah_kosong ?? 0),
+                    'durasi_menit'   => $sp->durasi_aktual_detik ? round(abs($sp->durasi_aktual_detik) / 60, 1) : 0,
+                    'status'         => ucfirst($sp->status),
+                    'keterangan'     => ($sp->nilai_akhir ?? 0) >= 70 ? 'Lulus' : 'Tidak Lulus',
+                    'mulai_at'       => $sp->mulai_at?->format('Y-m-d H:i:s') ?? '-',
+                    'submit_at'      => $sp->submit_at?->format('Y-m-d H:i:s') ?? '-',
+                ];
+            }
+            // Free Eloquent models after mapping to plain arrays
+            unset($chunk);
+        });
 
         $filterNames = [
             'paket_nama'   => !empty($filters['paket_id']) ? $this->repository->findPaketName($filters['paket_id']) : null,
             'sekolah_nama' => !empty($filters['sekolah_id']) ? $this->repository->findSekolahName($filters['sekolah_id']) : null,
             'status'       => $filters['status'] ?? '',
         ];
+
+        // Only build perSoal if data is small enough (< 2000 rows)
+        $perSoalData = [];
+        if (count($hasilData) < 2000) {
+            $sesiPesertaIds = $this->repository->getExportSesiPesertaIds($filters);
+            $perSoalData = $this->repository->buildPerSoalAnalysis($sesiPesertaIds);
+        }
 
         return [
             'hasil'      => $hasilData,

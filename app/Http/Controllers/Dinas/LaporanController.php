@@ -52,9 +52,12 @@ class LaporanController extends Controller
 
     public function export(Request $request)
     {
-        $exportData = $this->laporanService->exportHasil($request->only([
-            'sekolah_id', 'paket_id', 'search',
-        ]));
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
+        $filters = $request->only(['sekolah_id', 'paket_id', 'search', 'status']);
+
+        $exportData = $this->laporanService->exportHasil($filters);
 
         if (empty($exportData['hasil'])) {
             return back()->with('warning', 'Tidak ada data untuk di-export.');
