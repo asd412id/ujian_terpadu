@@ -807,17 +807,23 @@ function ujianApp() {
         async doSubmit() {
             if (this.isSubmitting) return;
             this.isSubmitting = true;
-
-            // Safety timeout: reset isSubmitting after 45s no matter what
-            const submitSafetyTimer = setTimeout(() => {
-                if (this.isSubmitting) {
-                    console.warn('[Submit] Safety timeout reached (45s), resetting state');
-                    this.isSubmitting = false;
-                }
-            }, 45000);
+            this.showSubmitModal = false;
 
             const cfg = window.UJIAN_CONFIG;
             const selesaiUrl = '/ujian/' + cfg.sesiPesertaId + '/selesai';
+
+            const navigateTo = (url) => {
+                // Force navigation — use replace to avoid back-button returning to exam
+                try { window.location.replace(url); } catch (e) { window.location.href = url; }
+                // Fallback: if still here after 3s, force reload
+                setTimeout(() => { window.location.href = url; }, 3000);
+            };
+
+            // Safety timeout: force navigate after 35s no matter what
+            const submitSafetyTimer = setTimeout(() => {
+                console.warn('[Submit] Safety timeout reached (35s), forcing navigation');
+                navigateTo(selesaiUrl);
+            }, 35000);
 
             try {
                 // Gather ALL answers from IndexedDB as safety net
@@ -832,7 +838,7 @@ function ujianApp() {
                         jawaban:           this.formatJawabanForApi(item.jawaban),
                         idempotency_key:   item.idempotencyKey,
                         client_timestamp:  item.updatedAt,
-                    }));
+                    })).filter(a => a.jawaban !== null);
                 } catch (e) {
                     console.warn('[Submit] Could not read IndexedDB:', e.message);
                 }
@@ -844,8 +850,8 @@ function ujianApp() {
 
                 if (!navigator.onLine) {
                     await this.queueOfflineSubmit(cfg);
-                    window.location.href = selesaiUrl;
-                    return;
+                    clearTimeout(submitSafetyTimer);
+                    return navigateTo(selesaiUrl);
                 }
 
                 const controller = new AbortController();
@@ -869,7 +875,7 @@ function ujianApp() {
 
                     if (res.ok) {
                         let data = {};
-                        try { data = await res.json(); } catch (e) { /* non-JSON response, ignore */ }
+                        try { data = await res.json(); } catch (e) { /* non-JSON response */ }
 
                         // Clear IndexedDB after successful submit
                         try {
@@ -877,21 +883,25 @@ function ujianApp() {
                                 .where('sesiPesertaId').equals(cfg.sesiPesertaId)
                                 .delete();
                         } catch (e) { /* ignore */ }
-                        window.location.href = data.redirect ?? selesaiUrl;
+                        clearTimeout(submitSafetyTimer);
+                        navigateTo(data.redirect ?? selesaiUrl);
                     } else {
                         console.warn('[Submit] Server error:', res.status);
                         await this.queueOfflineSubmit(cfg);
-                        window.location.href = selesaiUrl;
+                        clearTimeout(submitSafetyTimer);
+                        navigateTo(selesaiUrl);
                     }
                 } catch (err) {
                     clearTimeout(timeoutId);
                     console.warn('[Submit] Fetch failed:', err.message);
                     await this.queueOfflineSubmit(cfg);
-                    window.location.href = selesaiUrl;
+                    clearTimeout(submitSafetyTimer);
+                    navigateTo(selesaiUrl);
                 }
-            } finally {
+            } catch (outerErr) {
+                console.error('[Submit] Unexpected error:', outerErr);
                 clearTimeout(submitSafetyTimer);
-                this.isSubmitting = false;
+                navigateTo(selesaiUrl);
             }
         },
 

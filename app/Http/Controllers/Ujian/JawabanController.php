@@ -83,7 +83,7 @@ class JawabanController extends Controller
             $data = $request->validate([
                 'answers'            => 'nullable|array|max:200',
                 'answers.*.soal_id'  => 'required|string',
-                'answers.*.jawaban'  => 'required',
+                'answers.*.jawaban'  => 'present',
             ]);
 
             $finalAnswers = $data['answers'] ?? [];
