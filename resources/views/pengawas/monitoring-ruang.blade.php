@@ -159,12 +159,16 @@ function pengawasApp() {
     return {
         lastUpdate: '{{ now()->format("H:i:s") }}',
         stats: { total: {{ $statsPeserta['total'] }}, online: {{ $statsPeserta['aktif'] }}, submit: {{ $statsPeserta['submit'] }}, belum: {{ $statsPeserta['belum_masuk'] }} },
+        pesertaLive: @json($pesertaLive ?? []),
+        _loading: false,
 
         init() {
-            setInterval(() => this.loadStats(), 5000);
+            setInterval(() => this.loadStats(), 10000);
         },
 
         async loadStats() {
+            if (this._loading) return;
+            this._loading = true;
             try {
                 const res = await fetch('{{ route('pengawas.sesi.api', $sesi->id) }}', {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -172,9 +176,13 @@ function pengawasApp() {
                 if (res.ok) {
                     const data = await res.json();
                     this.stats = data.stats ?? this.stats;
+                    if (data.peserta_live) {
+                        this.pesertaLive = data.peserta_live;
+                    }
                     this.lastUpdate = new Date().toLocaleTimeString('id-ID');
                 }
             } catch (e) {}
+            this._loading = false;
         }
     };
 }

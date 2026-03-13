@@ -14,12 +14,12 @@
 #   nginx:       64 MB
 #   app ×3:    1536 MB (3 × 512 MB, each 8 workers)
 #   horizon:    768 MB  (custom php.ini: OPcache 64M, JIT 32M)
-#   scheduler:  128 MB  (custom php.ini: OPcache 32M, JIT off)
+#   scheduler:  256 MB  (custom php.ini: OPcache 32M, JIT off)
 #   mariadb:    768 MB  (innodb_buffer_pool_size 256M for 6K users)
 #   redis:      384 MB  (maxmemory 256mb)
 #   tunnel ×2:  512 MB  (2 × 256 MB, GOMEMLIMIT=180MiB each)
 #   ─────────────
-#   Total: ~4160 MB (leaves ~3840 MB for OS + Docker overhead)
+#   Total: ~4288 MB (leaves ~3712 MB for OS + Docker overhead)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -194,10 +194,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 128M
+          cpus: "0.5"
+          memory: 256M
         reservations:
-          memory: 48M
+          memory: 64M
 
   # --- Cloudflare Tunnel (×2 replicas) ---
   # Go runtime uses ~1.3GB virtual memory but only ~70MB RSS.

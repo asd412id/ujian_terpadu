@@ -19,7 +19,7 @@
         <div>
             <h1 class="text-xl font-bold text-gray-900">Monitoring Ujian</h1>
             <p class="text-sm text-gray-500 mt-0.5">
-                Update otomatis setiap 5 detik.
+                Update otomatis setiap 10 detik.
                 Terakhir: <span x-text="lastUpdate">—</span>
             </p>
         </div>
@@ -190,7 +190,7 @@ function monitoringApp() {
 
         init() {
             this.updateTime();
-            this.pollInterval = setInterval(() => this.loadData(), 5000);
+            this.pollInterval = setInterval(() => this.loadData(), 10000);
         },
 
         updateTime() {

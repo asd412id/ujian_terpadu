@@ -45,6 +45,7 @@ class MonitoringController extends Controller
             'pesertaList' => $data['pesertaList'],
             'stats'       => $data['stats'],
             'sekolahList' => $data['sekolahList'],
+            'pesertaLive' => $data['pesertaLive'] ?? [],
             'filters'     => $filters,
         ]);
     }

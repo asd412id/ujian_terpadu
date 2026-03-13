@@ -206,7 +206,7 @@ function sesiMonitoringApp() {
             submit: {{ $stats['submit'] }},
             belum_mulai: {{ $stats['belum_mulai'] }},
         },
-        pesertaLive: {},
+        pesertaLive: @json($pesertaLive ?? []),
         _loading: false,
 
         init() {

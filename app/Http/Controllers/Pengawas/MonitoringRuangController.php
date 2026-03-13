@@ -25,6 +25,7 @@ class MonitoringRuangController extends Controller
             'sesi'             => $data['sesi'],
             'statsPeserta'     => $data['statsPeserta'],
             'pesertaPaginated' => $data['pesertaPaginated'],
+            'pesertaLive'      => $data['pesertaLive'] ?? [],
             'filters'          => $filters,
         ]);
     }

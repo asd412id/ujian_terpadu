@@ -47,8 +47,9 @@ class MonitoringService
         $stats = $this->repository->getSesiPesertaStats($sesi->id);
         $pesertaList = $this->repository->getSesiPesertaPaginated($sesi->id, $filters);
         $sekolahList = $this->repository->getSekolahListBySesi($sesi->id);
+        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesi->id);
 
-        return compact('sesi', 'alerts', 'pesertaList', 'stats', 'sekolahList');
+        return compact('sesi', 'alerts', 'pesertaList', 'stats', 'sekolahList', 'pesertaLive');
     }
 
     /**
