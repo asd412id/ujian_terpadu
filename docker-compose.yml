@@ -1,7 +1,7 @@
 # =================================================================
 # Docker Compose — Ujian Terpadu (Production)
 # Laravel Octane + FrankenPHP + Nginx LB + Horizon + Cloudflare Tunnel
-# Optimized for 4 core / 8GB RAM / 3000 concurrent users
+# Optimized for 4 core / 8GB RAM / 6000 concurrent users
 #
 # Architecture:
 #   Internet → Cloudflare Tunnel → Nginx LB → App replicas (×3)
@@ -15,11 +15,11 @@
 #   app ×3:    1536 MB (3 × 512 MB, each 8 workers)
 #   horizon:    768 MB  (custom php.ini: OPcache 64M, JIT 32M)
 #   scheduler:  128 MB  (custom php.ini: OPcache 32M, JIT off)
-#   mariadb:    512 MB
-#   redis:      256 MB  (maxmemory 192mb — actual usage ~15 MB)
-#   cloudflared: 64 MB
+#   mariadb:    768 MB  (innodb_buffer_pool_size 256M for 6K users)
+#   redis:      384 MB  (maxmemory 256mb)
+#   tunnel ×2:  512 MB  (2 × 256 MB, GOMEMLIMIT=180MiB each)
 #   ─────────────
-#   Total: ~3328 MB (leaves ~4864 MB for OS + Docker overhead)
+#   Total: ~4160 MB (leaves ~3840 MB for OS + Docker overhead)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -199,26 +199,32 @@ services:
         reservations:
           memory: 48M
 
-  # --- Cloudflare Tunnel ---
+  # --- Cloudflare Tunnel (×2 replicas) ---
+  # Go runtime uses ~1.3GB virtual memory but only ~70MB RSS.
+  # OOM was triggered by cgroup limit — raised to 256M with GOMEMLIMIT
+  # to let Go GC be aware of the constraint and collect aggressively.
+  # 2 replicas for HA: if one restarts, the other keeps serving traffic.
   tunnel:
     image: cloudflare/cloudflared:latest
-    container_name: ujian_tunnel
     restart: unless-stopped
     command: tunnel --protocol http2 run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+      - GOMAXPROCS=1
+      - GOMEMLIMIT=180MiB
     depends_on:
       nginx:
         condition: service_healthy
     networks:
       - frontend
     deploy:
+      replicas: 2
       resources:
         limits:
-          cpus: "0.25"
-          memory: 64M
+          cpus: "0.5"
+          memory: 256M
         reservations:
-          memory: 32M
+          memory: 64M
 
   # --- MariaDB 11.7 ---
   mariadb:
@@ -245,9 +251,9 @@ services:
       resources:
         limits:
           cpus: "1.5"
-          memory: 512M
+          memory: 768M
         reservations:
-          memory: 256M
+          memory: 384M
 
   # --- Redis ---
   redis:
@@ -257,7 +263,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 192mb
+      --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --save 900 1
       --save 300 10
@@ -278,9 +284,9 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 384M
         reservations:
-          memory: 64M
+          memory: 128M
 
 volumes:
   mariadb_data:

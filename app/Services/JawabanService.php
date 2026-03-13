@@ -188,6 +188,7 @@ class JawabanService
             'elapsed_seconds'   => $sesiPeserta->mulai_at
                 ? now()->diffInSeconds($sesiPeserta->mulai_at) : 0,
             'remaining_seconds' => $sesiPeserta->sisa_waktu_detik,
+            'durasi_menit'      => $sesiPeserta->sesi->paket->durasi_menit ?? null,
             'soal_terjawab'     => $sesiPeserta->soal_terjawab,
             'server_timestamp'  => now()->timestamp,
             'is_active'         => in_array($sesiPeserta->status, ['login', 'mengerjakan']),

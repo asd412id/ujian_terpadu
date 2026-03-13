@@ -88,8 +88,9 @@ class MonitoringService
         $sesi = $this->repository->findSesiWithPaketById($sesiId);
         $statsPeserta = $this->repository->getSesiPesertaStatsSimple($sesi->id);
         $pesertaPaginated = $this->repository->getPesertaByRuangPaginated($sesi->id, $filters);
+        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesi->id);
 
-        return compact('sesi', 'statsPeserta', 'pesertaPaginated');
+        return compact('sesi', 'statsPeserta', 'pesertaPaginated', 'pesertaLive');
     }
 
     /**
@@ -140,12 +141,16 @@ class MonitoringService
     }
 
     /**
-     * Get sesi detail stats only (lightweight, for polling API).
+     * Get sesi detail stats + per-peserta live data (for polling API).
      */
     public function getSesiStats(string $sesiId): array
     {
         $stats = $this->repository->getSesiPesertaStats($sesiId);
+        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesiId);
 
-        return ['stats' => $stats];
+        return [
+            'stats'        => $stats,
+            'peserta_live' => $pesertaLive,
+        ];
     }
 }

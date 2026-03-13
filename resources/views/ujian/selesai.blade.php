@@ -3,6 +3,8 @@
 @section('title', 'Ujian Selesai')
 
 @section('content')
+<div x-data="selesaiApp()" x-init="init()">
+
 {{-- Top Navigation Bar --}}
 <header class="w-full bg-white border-b border-gray-200 px-6 py-3.5">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
@@ -10,22 +12,22 @@
             <img src="/images/logo.svg" alt="Logo" class="w-9 h-9 rounded-xl">
             <span class="text-sm font-bold text-gray-900">{{ strtoupper(config('app.name')) }}</span>
         </div>
-        <form action="{{ route('ujian.logout') }}" method="POST">
-            @csrf
-            <button type="submit" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                </svg>
-                Keluar
-            </button>
-        </form>
+        <template x-if="!hasPendingSync">
+            <form action="{{ route('ujian.logout') }}" method="POST">
+                @csrf
+                <button type="submit" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Keluar
+                </button>
+            </form>
+        </template>
     </div>
 </header>
 
-<main class="min-h-screen bg-slate-100 flex items-center justify-center p-6"
-      x-data="selesaiApp()"
-      x-init="init()">
+<main class="min-h-screen bg-slate-100 flex items-center justify-center p-6">
 
     {{-- Offline Banner --}}
     <div x-show="!isOnline && hasPendingSync"
@@ -153,23 +155,51 @@
                     </ul>
                 </div>
 
-                {{-- Tombol Keluar --}}
-                <form action="{{ route('ujian.logout') }}" method="POST">
-                    @csrf
-                    <button type="submit"
-                            class="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 active:scale-95
-                                   text-gray-700 text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                        </svg>
-                        Keluar
+                {{-- Tombol Sinkronkan Ulang (saat masih pending) --}}
+                <template x-if="hasPendingSync">
+                    <button @click="trySyncPending()"
+                            :disabled="isSyncing"
+                            class="w-full flex items-center justify-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200"
+                            :class="isSyncing
+                                ? 'bg-blue-100 text-blue-400 cursor-wait'
+                                : 'bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-700'">
+                        <template x-if="isSyncing">
+                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </template>
+                        <template x-if="!isSyncing">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </template>
+                        <span x-text="isSyncing ? 'Menyinkronkan...' : 'Coba Sinkronkan Ulang'"></span>
                     </button>
-                </form>
+                </template>
+
+                {{-- Tombol Keluar (hanya muncul setelah tersinkron) --}}
+                <template x-if="!hasPendingSync">
+                    <form action="{{ route('ujian.logout') }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                                class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95
+                                       text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            Keluar
+                        </button>
+                    </form>
+                </template>
             </div>
         </div>
     </div>
 </main>
+
+</div>{{-- end x-data selesaiApp --}}
 
 <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
 <script>
@@ -268,8 +298,12 @@ function selesaiApp() {
                         continue;
                     }
 
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
                     const res = await fetch('/api/ujian/sync-jawaban', {
                         method: 'POST',
+                        signal: controller.signal,
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                         body: JSON.stringify({
                             sesi_token: sesiToken,
@@ -277,6 +311,8 @@ function selesaiApp() {
                             tandai_list: state?.tandaiList ?? [],
                         }),
                     });
+
+                    clearTimeout(timeoutId);
 
                     if (res.ok) {
                         // Mark synced

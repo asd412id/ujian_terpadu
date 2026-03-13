@@ -319,4 +319,36 @@ class MonitoringRepository
             'sudah_submit'   => $summary['sudah_submit'],
         ];
     }
+
+    /**
+     * Get live data for all peserta in a sesi (lightweight, for polling).
+     * Returns sisa_waktu_detik, status, soal_terjawab, soal_ditandai per peserta.
+     */
+    public function getSesiPesertaLiveData(string $sesiId): array
+    {
+        $sesi = SesiUjian::with('paket')->findOrFail($sesiId);
+        $durasiDetik = ($sesi->paket->durasi_menit ?? 0) * 60;
+
+        return SesiPeserta::where('sesi_id', $sesiId)
+            ->whereHas('peserta')
+            ->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
+            ->map(function ($sp) use ($durasiDetik) {
+                $sisaWaktu = 0;
+                if ($sp->mulai_at && in_array($sp->status, ['login', 'mengerjakan'])) {
+                    $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
+                    $sisaWaktu = max(0, $durasiDetik - $elapsed);
+                }
+
+                return [
+                    'id'             => $sp->id,
+                    'status'         => $sp->status,
+                    'soal_terjawab'  => $sp->soal_terjawab ?? 0,
+                    'soal_ditandai'  => $sp->soal_ditandai ?? 0,
+                    'sisa_waktu'     => $sisaWaktu,
+                    'nilai_akhir'    => $sp->nilai_akhir,
+                ];
+            })
+            ->keyBy('id')
+            ->toArray();
+    }
 }

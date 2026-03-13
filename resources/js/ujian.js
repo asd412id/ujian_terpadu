@@ -36,7 +36,11 @@ function ujianApp() {
 
         // Timer
         sisaWaktu:       0,
+        durasiDetik:     0,
+        mulaiAtTimestamp: null,
         timerInterval:   null,
+        showDurasiToast: false,
+        durasiToastMsg:  '',
 
         // Cache progress (pre-warm)
         cacheTotal:      0,
@@ -70,6 +74,8 @@ function ujianApp() {
 
             this.totalSoal   = cfg.soalList.length;
             this.sisaWaktu   = cfg.sisaWaktuDetik;
+            this.durasiDetik = cfg.durasiMenit * 60;
+            this.mulaiAtTimestamp = cfg.mulaiAt ?? null;
 
             // Restore state from IndexedDB
             await this.restoreState(cfg.sesiPesertaId);
@@ -147,6 +153,32 @@ function ujianApp() {
                     const drift = Math.abs(this.sisaWaktu - data.remaining_seconds);
                     if (drift > 5) {
                         this.sisaWaktu = data.remaining_seconds;
+                    }
+                }
+
+                // Detect duration change from admin (durasi paket diubah saat ujian berlangsung)
+                if (data.durasi_menit !== undefined) {
+                    const newDurasiDetik = data.durasi_menit * 60;
+                    if (newDurasiDetik !== this.durasiDetik) {
+                        const oldMenit = Math.round(this.durasiDetik / 60);
+                        const newMenit = data.durasi_menit;
+                        console.log(`[StatusPoll] Duration changed: ${oldMenit} → ${newMenit} menit`);
+                        this.durasiDetik = newDurasiDetik;
+
+                        // Force-sync sisaWaktu from server immediately
+                        if (data.remaining_seconds !== undefined) {
+                            this.sisaWaktu = data.remaining_seconds;
+                        }
+
+                        // Show toast notification to student
+                        const diff = newMenit - oldMenit;
+                        if (diff > 0) {
+                            this.durasiToastMsg = `Durasi ujian ditambah ${diff} menit (sekarang ${newMenit} menit)`;
+                        } else {
+                            this.durasiToastMsg = `Durasi ujian dikurangi ${Math.abs(diff)} menit (sekarang ${newMenit} menit)`;
+                        }
+                        this.showDurasiToast = true;
+                        setTimeout(() => { this.showDurasiToast = false; }, 8000);
                     }
                 }
             } catch (err) {
@@ -417,14 +449,12 @@ function ujianApp() {
 
         // ===== TIMER (SERVER-AUTHORITATIVE) =====
         startTimer(mulaiAtTimestamp, durasiMenit) {
-            const durasiDetik = durasiMenit * 60;
-
             const tick = () => {
-                if (!mulaiAtTimestamp) {
+                if (!this.mulaiAtTimestamp) {
                     this.sisaWaktu = Math.max(0, this.sisaWaktu - 1);
                 } else {
-                    const elapsed  = Math.floor(Date.now() / 1000) - mulaiAtTimestamp;
-                    this.sisaWaktu = Math.max(0, durasiDetik - elapsed);
+                    const elapsed  = Math.floor(Date.now() / 1000) - this.mulaiAtTimestamp;
+                    this.sisaWaktu = Math.max(0, this.durasiDetik - elapsed);
                 }
 
                 if (this.sisaWaktu <= 0) {
@@ -774,8 +804,12 @@ function ujianApp() {
             }
 
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
                 const res = await fetch(cfg.submitUrl, {
                     method:  'POST',
+                    signal:  controller.signal,
                     headers: {
                         'Content-Type':  'application/json',
                         'Accept':        'application/json',
@@ -786,6 +820,8 @@ function ujianApp() {
                     }),
                 });
 
+                clearTimeout(timeoutId);
+
                 const data = await res.json();
                 if (res.ok) {
                     // Clear IndexedDB after successful submit
@@ -795,26 +831,17 @@ function ujianApp() {
                             .delete();
                     } catch (e) { /* ignore */ }
                     window.location.href = data.redirect ?? '/ujian/' + cfg.sesiPesertaId + '/selesai';
+                } else {
+                    // Server returned error — queue offline and redirect to selesai
+                    console.warn('[Submit] Server error:', res.status);
+                    await this.queueOfflineSubmit(cfg);
+                    window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
                 }
             } catch (err) {
-                // Fallback: form submit
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/ujian/${cfg.sesiPesertaId}/submit`;
-                const csrf = document.createElement('input');
-                csrf.type = 'hidden'; csrf.name = '_token';
-                csrf.value = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-                form.appendChild(csrf);
-                // Include answers in hidden field as fallback
-                if (allAnswers.length > 0) {
-                    const answersInput = document.createElement('input');
-                    answersInput.type = 'hidden';
-                    answersInput.name = 'answers_json';
-                    answersInput.value = JSON.stringify(allAnswers);
-                    form.appendChild(answersInput);
-                }
-                document.body.appendChild(form);
-                form.submit();
+                // Network error or timeout — queue offline submit then redirect to selesai
+                console.warn('[Submit] Fetch failed:', err.message);
+                await this.queueOfflineSubmit(cfg);
+                window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
             }
         },
 

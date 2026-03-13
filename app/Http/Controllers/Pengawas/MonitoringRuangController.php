@@ -35,6 +35,9 @@ class MonitoringRuangController extends Controller
 
         $data = $this->monitoringService->getPesertaByRuang($sesi->id);
 
-        return response()->json($data);
+        return response()->json([
+            'stats'        => $data['statsPeserta'],
+            'peserta_live' => $data['pesertaLive'] ?? [],
+        ]);
     }
 }

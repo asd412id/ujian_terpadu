@@ -124,7 +124,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($pesertaList as $sp)
                     @if(!$sp->peserta) @continue @endif
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50" x-data="{ live: pesertaLive['{{ $sp->id }}'] ?? null }">
                         <td class="px-5 py-3">
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->nis ?? $sp->peserta->nisn }}</p>
@@ -132,37 +132,42 @@
                         <td class="px-5 py-3 hidden sm:table-cell text-xs text-gray-600">{{ $sp->peserta->sekolah?->nama ?? '—' }}</td>
                         <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $sp->peserta->kelas ?? '—' }}</td>
                         <td class="px-5 py-3 text-center">
-                            @if($sp->status === 'submit' || $sp->status === 'dinilai')
+                            <template x-if="live && (live.status === 'submit' || live.status === 'dinilai')">
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
-                            @elseif($sp->status === 'mengerjakan' || $sp->status === 'login')
+                            </template>
+                            <template x-if="live && (live.status === 'mengerjakan' || live.status === 'login')">
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                     Online
                                 </span>
-                            @else
+                            </template>
+                            <template x-if="!live || (!['submit','dinilai','mengerjakan','login'].includes(live.status))">
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Belum</span>
-                            @endif
+                            </template>
                         </td>
-                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sp->soal_terjawab ?? 0 }}/{{ $sesi->paket?->jumlah_soal ?? '?' }}</td>
-                        <td class="px-5 py-3 text-center text-amber-600 font-medium">{{ $sp->soal_ditandai ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-medium text-gray-900">
+                            <span x-text="live ? (live.soal_terjawab + '/{{ $sesi->paket?->jumlah_soal ?? '?' }}') : '{{ ($sp->soal_terjawab ?? 0) . '/' . ($sesi->paket?->jumlah_soal ?? '?') }}'"></span>
+                        </td>
+                        <td class="px-5 py-3 text-center text-amber-600 font-medium">
+                            <span x-text="live ? live.soal_ditandai : '{{ $sp->soal_ditandai ?? 0 }}'"></span>
+                        </td>
                         <td class="px-5 py-3 text-center">
-                            @if(in_array($sp->status, ['submit', 'dinilai']) && $sp->nilai_akhir !== null)
-                                <span class="font-bold {{ $sp->nilai_akhir >= 70 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ number_format($sp->nilai_akhir, 1) }}
-                                </span>
-                            @else
+                            <template x-if="live && ['submit','dinilai'].includes(live.status) && live.nilai_akhir !== null">
+                                <span :class="live.nilai_akhir >= 70 ? 'font-bold text-green-600' : 'font-bold text-red-600'"
+                                      x-text="parseFloat(live.nilai_akhir).toFixed(1)"></span>
+                            </template>
+                            <template x-if="!live || !['submit','dinilai'].includes(live.status) || live.nilai_akhir === null">
                                 <span class="text-gray-400">—</span>
-                            @endif
+                            </template>
                         </td>
                         <td class="px-5 py-3 text-center hidden md:table-cell">
-                            @if($sp->status === 'mengerjakan' && $sp->getSisaWaktuDetikAttribute() !== null)
-                                @php $sisa = $sp->getSisaWaktuDetikAttribute(); @endphp
-                                <span class="{{ $sisa < 600 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
-                                    {{ floor($sisa / 60) }}:{{ str_pad($sisa % 60, 2, '0', STR_PAD_LEFT) }}
-                                </span>
-                            @else
+                            <template x-if="live && live.sisa_waktu > 0 && ['mengerjakan','login'].includes(live.status)">
+                                <span :class="live.sisa_waktu < 600 ? 'text-red-600 font-bold' : 'text-gray-600'"
+                                      x-text="Math.floor(live.sisa_waktu/60) + ':' + String(live.sisa_waktu%60).padStart(2,'0')"></span>
+                            </template>
+                            <template x-if="!live || live.sisa_waktu <= 0 || !['mengerjakan','login'].includes(live.status)">
                                 <span class="text-gray-400">—</span>
-                            @endif
+                            </template>
                         </td>
                         <td class="px-5 py-3 text-center hidden lg:table-cell text-xs text-gray-500">
                             {{ $sp->mulai_at ? \Carbon\Carbon::parse($sp->mulai_at)->format('H:i:s') : '—' }}
@@ -201,9 +206,12 @@ function sesiMonitoringApp() {
             submit: {{ $stats['submit'] }},
             belum_mulai: {{ $stats['belum_mulai'] }},
         },
+        pesertaLive: {},
         _loading: false,
 
         init() {
+            // Initial load
+            this.loadStats();
             setInterval(() => this.loadStats(), 10000);
         },
 
@@ -217,6 +225,9 @@ function sesiMonitoringApp() {
                 if (res.ok) {
                     const data = await res.json();
                     this.stats = data.stats ?? this.stats;
+                    if (data.peserta_live) {
+                        this.pesertaLive = data.peserta_live;
+                    }
                     this.lastUpdate = new Date().toLocaleTimeString('id-ID');
                 }
             } catch (e) { /* offline */ }

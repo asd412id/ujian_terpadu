@@ -96,35 +96,36 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($pesertaPaginated as $sp)
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50" x-data="{ live: pesertaLive['{{ $sp->id }}'] ?? null }">
                         <td class="px-5 py-3">
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama_lengkap ?? $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->kelas ?? '' }}</p>
                         </td>
                         <td class="px-5 py-3 text-center">
-                            @if($sp->status === 'submit')
+                            <template x-if="live && live.status === 'submit'">
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
-                            @elseif($sp->status === 'mengerjakan' || $sp->status === 'login')
+                            </template>
+                            <template x-if="live && (live.status === 'mengerjakan' || live.status === 'login')">
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                     Online
                                 </span>
-                            @else
+                            </template>
+                            <template x-if="!live || !['submit','mengerjakan','login'].includes(live.status)">
                                 <span class="text-xs text-gray-400">Belum</span>
-                            @endif
+                            </template>
                         </td>
                         <td class="px-5 py-3 text-center hidden sm:table-cell text-gray-700 font-medium">
-                            {{ $sp->jumlah_terjawab ?? 0 }}
+                            <span x-text="live ? live.soal_terjawab : '{{ $sp->jumlah_terjawab ?? 0 }}'"></span>
                         </td>
                         <td class="px-5 py-3 text-center hidden sm:table-cell">
-                            @if($sp->status === 'mengerjakan' && $sp->getSisaWaktuDetikAttribute() !== null)
-                                @php $sisa = $sp->getSisaWaktuDetikAttribute(); @endphp
-                                <span class="{{ $sisa < 600 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
-                                    {{ floor($sisa / 60) }}:{{ str_pad($sisa % 60, 2, '0', STR_PAD_LEFT) }}
-                                </span>
-                            @else
+                            <template x-if="live && live.sisa_waktu > 0 && ['mengerjakan','login'].includes(live.status)">
+                                <span :class="live.sisa_waktu < 600 ? 'text-red-600 font-bold' : 'text-gray-600'"
+                                      x-text="Math.floor(live.sisa_waktu/60) + ':' + String(live.sisa_waktu%60).padStart(2,'0')"></span>
+                            </template>
+                            <template x-if="!live || live.sisa_waktu <= 0 || !['mengerjakan','login'].includes(live.status)">
                                 <span class="text-gray-400">—</span>
-                            @endif
+                            </template>
                         </td>
                         <td class="px-5 py-3 text-center hidden md:table-cell text-xs text-gray-500">
                             {{ $sp->mulai_at ? \Carbon\Carbon::parse($sp->mulai_at)->format('H:i:s') : '—' }}
