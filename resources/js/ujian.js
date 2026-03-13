@@ -38,6 +38,7 @@ function ujianApp() {
         sisaWaktu:       0,
         durasiDetik:     0,
         mulaiAtTimestamp: null,
+        waktuSelesaiSesi: null,
         timerInterval:   null,
         showDurasiToast: false,
         durasiToastMsg:  '',
@@ -77,6 +78,7 @@ function ujianApp() {
             this.sisaWaktu   = cfg.sisaWaktuDetik;
             this.durasiDetik = cfg.durasiMenit * 60;
             this.mulaiAtTimestamp = cfg.mulaiAt ?? null;
+            this.waktuSelesaiSesi = cfg.waktuSelesaiSesi ?? null;
 
             // Restore state from IndexedDB
             await this.restoreState(cfg.sesiPesertaId);
@@ -155,6 +157,11 @@ function ujianApp() {
                     if (drift > 5) {
                         this.sisaWaktu = data.remaining_seconds;
                     }
+                }
+
+                // Sync sesi waktu_selesai from server (may be set/changed by admin mid-exam)
+                if (data.waktu_selesai_sesi !== undefined) {
+                    this.waktuSelesaiSesi = data.waktu_selesai_sesi;
                 }
 
                 // Detect duration change from admin (durasi paket diubah saat ujian berlangsung)
@@ -457,11 +464,21 @@ function ujianApp() {
         // ===== TIMER (SERVER-AUTHORITATIVE) =====
         startTimer(mulaiAtTimestamp, durasiMenit) {
             const tick = () => {
+                const nowSec = Math.floor(Date.now() / 1000);
+
                 if (!this.mulaiAtTimestamp) {
                     this.sisaWaktu = Math.max(0, this.sisaWaktu - 1);
                 } else {
-                    const elapsed  = Math.floor(Date.now() / 1000) - this.mulaiAtTimestamp;
-                    this.sisaWaktu = Math.max(0, this.durasiDetik - elapsed);
+                    const elapsed  = nowSec - this.mulaiAtTimestamp;
+                    let sisa = Math.max(0, this.durasiDetik - elapsed);
+
+                    // Cap by sesi waktu_selesai if set
+                    if (this.waktuSelesaiSesi) {
+                        const sisaBySesi = Math.max(0, this.waktuSelesaiSesi - nowSec);
+                        sisa = Math.min(sisa, sisaBySesi);
+                    }
+
+                    this.sisaWaktu = sisa;
                 }
 
                 if (this.sisaWaktu <= 0) {

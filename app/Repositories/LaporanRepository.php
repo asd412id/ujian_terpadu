@@ -123,7 +123,9 @@ class LaporanRepository
             if ($filters['status'] === 'lulus') {
                 $query->where('nilai_akhir', '>=', 70);
             } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where('nilai_akhir', '<', 70);
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
             }
         }
 
@@ -146,10 +148,20 @@ class LaporanRepository
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
         }
 
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
+            }
+        }
+
         $row = $query->selectRaw('
             COUNT(*) as total_peserta,
             SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-            SUM(CASE WHEN nilai_akhir < 70 THEN 1 ELSE 0 END) as tidak_lulus,
+            SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus,
             ROUND(AVG(nilai_akhir), 1) as rata_rata
         ')->first();
 

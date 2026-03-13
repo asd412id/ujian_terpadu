@@ -34,6 +34,7 @@
             sisaWaktuDetik: {{ $sisaWaktu }},
             mulaiAt:        {{ $sesiPeserta->mulai_at?->timestamp ?? 'null' }},
             durasiMenit:    {{ $paket->durasi_menit }},
+            waktuSelesaiSesi: {{ $waktuSelesaiSesi ?? 'null' }},
             autoSaveInterval: {{ config('ujian.auto_save_interval', 30) }},
             syncUrl:        "{{ route('api.ujian.sync') }}",
             statusUrl:      "{{ route('api.ujian.status', $sesiPeserta->token_ujian) }}",

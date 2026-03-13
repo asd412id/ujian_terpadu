@@ -96,8 +96,10 @@ class UjianController extends Controller
             'is_ditandai'      => $j->is_ditandai,
         ])->values()->all();
 
+        $waktuSelesaiSesi = $sesiPeserta->sesi->waktu_selesai?->timestamp;
+
         return view('ujian.soal', compact(
-            'peserta', 'sesiPeserta', 'paket', 'soalList', 'soalListJs', 'jawabanExistingJs', 'sisaWaktu'
+            'peserta', 'sesiPeserta', 'paket', 'soalList', 'soalListJs', 'jawabanExistingJs', 'sisaWaktu', 'waktuSelesaiSesi'
         ));
     }
 
@@ -141,11 +143,12 @@ class UjianController extends Controller
             abort(403);
         }
 
-        $result     = $this->ujianService->getHasilUjian($sesiPeserta->id);
-        $sesiPeserta = $result['sesiPeserta'];
-        $ringkasan   = $result['ringkasan'];
-        $sesiToken   = $sesiPeserta->token_ujian;
+        $result         = $this->ujianService->getHasilUjian($sesiPeserta->id);
+        $sesiPeserta    = $result['sesiPeserta'];
+        $ringkasan      = $result['ringkasan'];
+        $sesiToken      = $sesiPeserta->token_ujian;
+        $tampilkanHasil = $result['tampilkanHasil'];
 
-        return view('ujian.selesai', compact('sesiPeserta', 'peserta', 'ringkasan', 'sesiToken'));
+        return view('ujian.selesai', compact('sesiPeserta', 'peserta', 'ringkasan', 'sesiToken', 'tampilkanHasil'));
     }
 }

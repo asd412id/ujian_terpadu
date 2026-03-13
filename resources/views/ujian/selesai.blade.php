@@ -97,6 +97,54 @@
                     </p>
                 </div>
 
+                {{-- Hasil Nilai (hanya jika tampilkan_hasil aktif di paket) --}}
+                <template x-if="tampilkanHasil">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Hasil Penilaian</p>
+
+                        {{-- Loading state: scoring sedang diproses --}}
+                        <div x-show="nilaiLoading" class="bg-blue-50 border border-blue-200 rounded-xl p-5 text-center">
+                            <svg class="w-6 h-6 animate-spin text-blue-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="text-sm text-blue-700 font-medium">Menghitung nilai...</p>
+                            <p class="text-xs text-blue-500 mt-1">Hasil akan muncul dalam beberapa detik</p>
+                        </div>
+
+                        {{-- Nilai ready --}}
+                        <div x-show="!nilaiLoading && nilaiAkhir !== null" x-transition class="space-y-3">
+                            {{-- Nilai besar --}}
+                            <div class="rounded-xl p-5 text-center"
+                                 :class="nilaiAkhir >= 70 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+                                <p class="text-xs font-medium mb-1"
+                                   :class="nilaiAkhir >= 70 ? 'text-green-600' : 'text-red-600'"
+                                   x-text="nilaiAkhir >= 70 ? 'LULUS' : 'TIDAK LULUS'"></p>
+                                <p class="text-4xl font-black"
+                                   :class="nilaiAkhir >= 70 ? 'text-green-700' : 'text-red-700'"
+                                   x-text="parseFloat(nilaiAkhir).toFixed(1)"></p>
+                                <p class="text-xs text-gray-500 mt-1">Nilai Akhir</p>
+                            </div>
+
+                            {{-- Detail benar/salah/kosong --}}
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="bg-green-50 rounded-lg px-2 py-2 text-center">
+                                    <p class="text-lg font-bold text-green-700" x-text="jumlahBenar ?? '-'"></p>
+                                    <p class="text-[10px] text-gray-500">Benar</p>
+                                </div>
+                                <div class="bg-red-50 rounded-lg px-2 py-2 text-center">
+                                    <p class="text-lg font-bold text-red-600" x-text="jumlahSalah ?? '-'"></p>
+                                    <p class="text-[10px] text-gray-500">Salah</p>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg px-2 py-2 text-center">
+                                    <p class="text-lg font-bold text-gray-500" x-text="jumlahKosong ?? '-'"></p>
+                                    <p class="text-[10px] text-gray-500">Kosong</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
                 {{-- Detail Info --}}
                 <div class="bg-slate-50 rounded-xl px-4 py-3 space-y-1.5">
                     <div class="flex justify-between text-sm">
@@ -137,7 +185,7 @@
                     <svg class="w-5 h-5 mx-auto mb-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    Semua jawaban berhasil diterima server. Hasil ujian akan segera diproses.
+                    <span x-text="tampilkanHasil && nilaiAkhir !== null ? 'Semua jawaban berhasil diterima dan dinilai.' : 'Semua jawaban berhasil diterima server. Hasil ujian akan segera diproses.'"></span>
                 </div>
 
                 {{-- Langkah Selanjutnya --}}
@@ -214,6 +262,12 @@ window.SELESAI_CONFIG = {
     serverTerjawab: {{ $ringkasan['terjawab'] }},
     serverRagu: {{ $ringkasan['ragu'] }},
     serverKosong: {{ $ringkasan['kosong'] }},
+    tampilkanHasil: {{ $tampilkanHasil ? 'true' : 'false' }},
+    nilaiAkhir: {{ $sesiPeserta->nilai_akhir !== null ? $sesiPeserta->nilai_akhir : 'null' }},
+    jumlahBenar: {{ $sesiPeserta->jumlah_benar ?? 'null' }},
+    jumlahSalah: {{ $sesiPeserta->jumlah_salah ?? 'null' }},
+    jumlahKosong: {{ $sesiPeserta->jumlah_kosong ?? 'null' }},
+    statusUrl: '{{ route("api.ujian.status", $sesiToken) }}',
 };
 
 function selesaiApp() {
@@ -225,10 +279,17 @@ function selesaiApp() {
         maxRetries: 10,
         _db: null,
         _retryTimer: null,
+        _nilaiPollTimer: null,
         terjawab: window.SELESAI_CONFIG.serverTerjawab,
         ragu: window.SELESAI_CONFIG.serverRagu,
         kosong: window.SELESAI_CONFIG.serverKosong,
         countsFromLocal: false,
+        tampilkanHasil: window.SELESAI_CONFIG.tampilkanHasil,
+        nilaiAkhir: window.SELESAI_CONFIG.nilaiAkhir,
+        jumlahBenar: window.SELESAI_CONFIG.jumlahBenar,
+        jumlahSalah: window.SELESAI_CONFIG.jumlahSalah,
+        jumlahKosong: window.SELESAI_CONFIG.jumlahKosong,
+        nilaiLoading: window.SELESAI_CONFIG.tampilkanHasil && window.SELESAI_CONFIG.nilaiAkhir === null,
 
         _getDb() {
             if (!this._db) {
@@ -261,6 +322,51 @@ function selesaiApp() {
             if (this.hasPendingSync && this.isOnline) {
                 this.trySyncPending();
             }
+
+            // Poll for scoring result if tampilkan_hasil is on and nilai not ready yet
+            if (this.tampilkanHasil && this.nilaiAkhir === null) {
+                this.pollNilai();
+            }
+        },
+
+        async pollNilai() {
+            if (!this.tampilkanHasil || this.nilaiAkhir !== null) return;
+
+            const cfg = window.SELESAI_CONFIG;
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            const poll = async () => {
+                if (this.nilaiAkhir !== null || attempts >= maxAttempts) {
+                    this.nilaiLoading = false;
+                    return;
+                }
+                attempts++;
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    const res = await fetch(cfg.statusUrl, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
+                    clearTimeout(timeoutId);
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.nilai_akhir !== null && data.nilai_akhir !== undefined) {
+                            this.nilaiAkhir = parseFloat(data.nilai_akhir);
+                            this.jumlahBenar = data.jumlah_benar ?? this.jumlahBenar;
+                            this.jumlahSalah = data.jumlah_salah ?? this.jumlahSalah;
+                            this.jumlahKosong = data.jumlah_kosong ?? this.jumlahKosong;
+                            this.nilaiLoading = false;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Selesai] pollNilai error:', e.message);
+                }
+                // Retry with 2s interval
+                this._nilaiPollTimer = setTimeout(poll, 2000);
+            };
+
+            poll();
         },
 
         async updateCountsFromLocal() {

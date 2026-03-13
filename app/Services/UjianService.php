@@ -165,7 +165,8 @@ class UjianService
     {
         $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithJawaban($sesiPesertaId);
 
-        $totalSoal = $sesiPeserta->sesi->paket->loadCount('soal')->soal_count;
+        $paket    = $sesiPeserta->sesi->paket;
+        $totalSoal = $paket->loadCount('soal')->soal_count;
         $terjawab  = $sesiPeserta->jawaban()->where('is_terjawab', true)->count();
         $kosong    = max(0, $totalSoal - $terjawab);
         $ragu      = (int) $sesiPeserta->soal_ditandai;
@@ -177,8 +178,9 @@ class UjianService
         $ringkasan = compact('terjawab', 'kosong', 'ragu', 'durasi');
 
         return [
-            'sesiPeserta' => $sesiPeserta,
-            'ringkasan'   => $ringkasan,
+            'sesiPeserta'    => $sesiPeserta,
+            'ringkasan'      => $ringkasan,
+            'tampilkanHasil' => (bool) $paket->tampilkan_hasil,
         ];
     }
 

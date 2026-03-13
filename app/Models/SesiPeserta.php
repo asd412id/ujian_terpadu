@@ -50,11 +50,23 @@ class SesiPeserta extends Model
     }
 
     // Waktu tersisa dalam detik (server-authoritative)
+    // Capped by sesi_ujian.waktu_selesai — jika sesi berakhir lebih dulu, itu yang dipakai
     public function getSisaWaktuDetikAttribute(): int
     {
         $durasi = $this->sesi->paket->durasi_menit * 60;
         if (! $this->mulai_at) return $durasi;
-        $elapsed = (int) $this->mulai_at->diffInSeconds(now(), false);
-        return max(0, $durasi - $elapsed);
+
+        $now = now();
+        $elapsed = (int) $this->mulai_at->diffInSeconds($now, false);
+        $sisaByDurasi = max(0, $durasi - $elapsed);
+
+        // Cap by sesi waktu_selesai if set
+        $waktuSelesai = $this->sesi->waktu_selesai;
+        if ($waktuSelesai) {
+            $sisaBySesi = max(0, (int) $now->diffInSeconds($waktuSelesai, false));
+            return min($sisaByDurasi, $sisaBySesi);
+        }
+
+        return $sisaByDurasi;
     }
 }

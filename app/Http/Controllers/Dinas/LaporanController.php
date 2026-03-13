@@ -18,7 +18,7 @@ class LaporanController extends Controller
     public function index(Request $request)
     {
         $data = $this->laporanService->getHasilUjian($request->only([
-            'sekolah_id', 'paket_id', 'page', 'per_page', 'search',
+            'sekolah_id', 'paket_id', 'status', 'page', 'per_page', 'search',
         ]));
 
         return view('dinas.laporan.index', [

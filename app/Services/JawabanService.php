@@ -182,9 +182,15 @@ class JawabanService
                 ? now()->diffInSeconds($sesiPeserta->mulai_at) : 0,
             'remaining_seconds' => $sesiPeserta->sisa_waktu_detik,
             'durasi_menit'      => $sesiPeserta->sesi->paket->durasi_menit ?? null,
+            'waktu_selesai_sesi' => $sesiPeserta->sesi->waktu_selesai?->timestamp,
             'soal_terjawab'     => $sesiPeserta->soal_terjawab,
             'server_timestamp'  => now()->timestamp,
             'is_active'         => in_array($sesiPeserta->status, ['login', 'mengerjakan']),
+            'nilai_akhir'       => $sesiPeserta->nilai_akhir,
+            'jumlah_benar'      => $sesiPeserta->jumlah_benar,
+            'jumlah_salah'      => $sesiPeserta->jumlah_salah,
+            'jumlah_kosong'     => $sesiPeserta->jumlah_kosong,
+            'tampilkan_hasil'   => (bool) ($sesiPeserta->sesi->paket->tampilkan_hasil ?? false),
         ];
     }
 
