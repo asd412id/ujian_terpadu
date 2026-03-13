@@ -121,13 +121,12 @@ class JawabanService
 
             // Re-score if answers arrived after auto-submit (offline late sync)
             if ($isAlreadySubmitted && $synced > 0) {
-                $hasil = $this->penilaianService->hitungNilai($sesiPeserta->fresh());
-                $sesiPeserta->update($hasil);
+                \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'rescore_late_sync');
 
                 LogAktivitasUjianJob::dispatch(
                     $sesiPeserta->id,
                     'rescore_late_sync',
-                    ['synced' => $synced, 'new_nilai' => $hasil['nilai_akhir']],
+                    ['synced' => $synced],
                     $requestMeta['ip_address'] ?? null,
                 );
             }
@@ -199,12 +198,10 @@ class JawabanService
         );
 
         if ($sesiPeserta->status === 'submit') {
-            // Already auto-submitted by server — sync any late answers and re-score
+            // Already auto-submitted by server — sync any late answers and queue re-score
             if (!empty($finalAnswers)) {
                 try {
                     $this->syncOfflineAnswers($token, $finalAnswers, [], true);
-                    $hasil = $this->penilaianService->hitungNilai($sesiPeserta->fresh());
-                    $sesiPeserta->update($hasil);
                 } catch (\Exception $e) {
                     $this->repository->createLog([
                         'sesi_peserta_id' => $sesiPeserta->id,
@@ -242,12 +239,12 @@ class JawabanService
             'durasi_aktual_detik' => $durasi,
         ]);
 
-        $hasil = $this->penilaianService->hitungNilai($sesiPeserta);
-        $sesiPeserta->update($hasil);
+        // Dispatch scoring to queue — UI returns immediately
+        \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'submit');
 
         return [
             'message'     => 'Ujian berhasil disubmit',
-            'nilai_akhir' => $sesiPeserta->fresh()->nilai_akhir,
+            'redirect'    => route('ujian.selesai', $sesiPeserta),
         ];
     }
 

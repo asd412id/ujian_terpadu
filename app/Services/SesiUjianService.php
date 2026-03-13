@@ -80,8 +80,7 @@ class SesiUjianService
                 'durasi_aktual_detik' => $durasiDetik,
             ]);
 
-            $hasil = $this->penilaianService->hitungNilai($sp);
-            $sp->update($hasil);
+            \App\Jobs\HitungNilaiJob::dispatch($sp->id, 'admin_force_submit');
 
             $this->repository->logAktivitas([
                 'sesi_peserta_id' => $sp->id,

@@ -141,9 +141,8 @@ class UjianService
             'durasi_aktual_detik' => $durasi,
         ]);
 
-        // Calculate score automatically
-        $hasil = $this->penilaianService->hitungNilai($sesiPeserta);
-        $sesiPeserta->update($hasil);
+        // Dispatch scoring to queue — page redirects immediately
+        \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'form_submit');
 
         $this->sesiUjianRepository->logAktivitas([
             'sesi_peserta_id' => $sesiPeserta->id,
