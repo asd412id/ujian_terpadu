@@ -56,6 +56,7 @@ function ujianApp() {
         isFullscreen:          false,
         _cheatingQueue:        [],
         _cheatingFlushTimer:   null,
+        _lastViolationAt:      0,
 
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
@@ -331,6 +332,12 @@ function ujianApp() {
         },
 
         recordViolation(type, message) {
+            // Debounce: ignore violations within 2s of each other
+            // (single Alt+Tab can trigger fullscreenchange + resize + visibilitychange simultaneously)
+            const now = Date.now();
+            if (now - this._lastViolationAt < 2000) return;
+            this._lastViolationAt = now;
+
             this.violationCount++;
             this.violationType = type;
             this.violationMessage = message;
@@ -688,9 +695,13 @@ function ujianApp() {
                 client_timestamp:  item.updatedAt,
             }));
 
+            const controller = new AbortController();
+            const syncTimeoutId = setTimeout(() => controller.abort(), 20000);
+
             try {
                 const res = await fetch(cfg.syncUrl, {
                     method:  'POST',
+                    signal:  controller.signal,
                     headers: {
                         'Content-Type':  'application/json',
                         'Accept':        'application/json',
@@ -703,8 +714,11 @@ function ujianApp() {
                     }),
                 });
 
+                clearTimeout(syncTimeoutId);
+
                 if (res.ok) {
-                    const data = await res.json();
+                    let data = {};
+                    try { data = await res.json(); } catch (e) { /* non-JSON response */ }
 
                     // Mark synced in IndexedDB
                     await Promise.all(pending.map(item =>
@@ -734,7 +748,8 @@ function ujianApp() {
                     this._scheduleRetry();
                 }
             } catch (err) {
-                // Network error — retry with backoff
+                clearTimeout(syncTimeoutId);
+                // Network error or timeout — retry with backoff
                 console.warn('[Sync] Network error, will retry:', err.message);
                 this._scheduleRetry();
             } finally {
@@ -786,76 +801,90 @@ function ujianApp() {
             if (this.isSubmitting) return;
             this.isSubmitting = true;
 
+            // Safety timeout: reset isSubmitting after 45s no matter what
+            const submitSafetyTimer = setTimeout(() => {
+                if (this.isSubmitting) {
+                    console.warn('[Submit] Safety timeout reached (45s), resetting state');
+                    this.isSubmitting = false;
+                }
+            }, 45000);
+
             const cfg = window.UJIAN_CONFIG;
-
-            // Gather ALL answers from IndexedDB as safety net
-            let allAnswers = [];
-            try {
-                const allRecords = await db.exam_answers
-                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                    .toArray();
-
-                allAnswers = allRecords.map(item => ({
-                    soal_id:           item.soalId,
-                    jawaban:           this.formatJawabanForApi(item.jawaban),
-                    idempotency_key:   item.idempotencyKey,
-                    client_timestamp:  item.updatedAt,
-                }));
-            } catch (e) {
-                console.warn('[Submit] Could not read IndexedDB:', e.message);
-            }
-
-            // Exit fullscreen before navigating
-            if (document.fullscreenElement) {
-                try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
-            }
-
-            if (!navigator.onLine) {
-                // Offline submit — queue untuk dikirim nanti
-                await this.queueOfflineSubmit(cfg);
-                window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
-                return;
-            }
+            const selesaiUrl = '/ujian/' + cfg.sesiPesertaId + '/selesai';
 
             try {
+                // Gather ALL answers from IndexedDB as safety net
+                let allAnswers = [];
+                try {
+                    const allRecords = await db.exam_answers
+                        .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                        .toArray();
+
+                    allAnswers = allRecords.map(item => ({
+                        soal_id:           item.soalId,
+                        jawaban:           this.formatJawabanForApi(item.jawaban),
+                        idempotency_key:   item.idempotencyKey,
+                        client_timestamp:  item.updatedAt,
+                    }));
+                } catch (e) {
+                    console.warn('[Submit] Could not read IndexedDB:', e.message);
+                }
+
+                // Exit fullscreen before navigating
+                if (document.fullscreenElement) {
+                    try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
+                }
+
+                if (!navigator.onLine) {
+                    await this.queueOfflineSubmit(cfg);
+                    window.location.href = selesaiUrl;
+                    return;
+                }
+
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-                const res = await fetch(cfg.submitUrl, {
-                    method:  'POST',
-                    signal:  controller.signal,
-                    headers: {
-                        'Content-Type':  'application/json',
-                        'Accept':        'application/json',
-                    },
-                    body: JSON.stringify({
-                        sesi_token: cfg.sesiToken,
-                        answers:    allAnswers,
-                    }),
-                });
+                try {
+                    const res = await fetch(cfg.submitUrl, {
+                        method:  'POST',
+                        signal:  controller.signal,
+                        headers: {
+                            'Content-Type':  'application/json',
+                            'Accept':        'application/json',
+                        },
+                        body: JSON.stringify({
+                            sesi_token: cfg.sesiToken,
+                            answers:    allAnswers,
+                        }),
+                    });
 
-                clearTimeout(timeoutId);
+                    clearTimeout(timeoutId);
 
-                const data = await res.json();
-                if (res.ok) {
-                    // Clear IndexedDB after successful submit
-                    try {
-                        await db.exam_answers
-                            .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                            .delete();
-                    } catch (e) { /* ignore */ }
-                    window.location.href = data.redirect ?? '/ujian/' + cfg.sesiPesertaId + '/selesai';
-                } else {
-                    // Server returned error — queue offline and redirect to selesai
-                    console.warn('[Submit] Server error:', res.status);
+                    if (res.ok) {
+                        let data = {};
+                        try { data = await res.json(); } catch (e) { /* non-JSON response, ignore */ }
+
+                        // Clear IndexedDB after successful submit
+                        try {
+                            await db.exam_answers
+                                .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                                .delete();
+                        } catch (e) { /* ignore */ }
+                        window.location.href = data.redirect ?? selesaiUrl;
+                    } else {
+                        console.warn('[Submit] Server error:', res.status);
+                        await this.queueOfflineSubmit(cfg);
+                        window.location.href = selesaiUrl;
+                    }
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    console.warn('[Submit] Fetch failed:', err.message);
                     await this.queueOfflineSubmit(cfg);
-                    window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
+                    window.location.href = selesaiUrl;
                 }
-            } catch (err) {
-                // Network error or timeout — queue offline submit then redirect to selesai
-                console.warn('[Submit] Fetch failed:', err.message);
-                await this.queueOfflineSubmit(cfg);
-                window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
+            } finally {
+                clearTimeout(submitSafetyTimer);
+                this.isSubmitting = false;
             }
         },
 

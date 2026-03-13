@@ -52,8 +52,8 @@ class SesiPeserta extends Model
     // Waktu tersisa dalam detik (server-authoritative)
     public function getSisaWaktuDetikAttribute(): int
     {
-        if (! $this->mulai_at) return 0;
-        $durasi  = $this->sesi->paket->durasi_menit * 60;
+        $durasi = $this->sesi->paket->durasi_menit * 60;
+        if (! $this->mulai_at) return $durasi;
         $elapsed = (int) $this->mulai_at->diffInSeconds(now(), false);
         return max(0, $durasi - $elapsed);
     }

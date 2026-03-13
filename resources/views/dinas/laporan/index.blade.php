@@ -184,12 +184,16 @@
                             </span>
                         </td>
                         <td class="px-5 py-3 text-center">
-                            @if($hasil->status === 'dinilai')
-                                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Dinilai</span>
+                            @if($hasil->status === 'dinilai' && $hasil->nilai_akhir !== null)
+                                @if($hasil->nilai_akhir >= 70)
+                                    <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Lulus</span>
+                                @else
+                                    <span class="text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Tidak Lulus</span>
+                                @endif
                             @elseif($hasil->status === 'submit')
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
                             @else
-                                <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{{ ucfirst($hasil->status) }}</span>
+                                <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{{ ucfirst(str_replace('_', ' ', $hasil->status)) }}</span>
                             @endif
                         </td>
                     </tr>
