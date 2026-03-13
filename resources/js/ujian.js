@@ -747,11 +747,25 @@ function ujianApp() {
             if (this._syncRetries > this._maxRetries) {
                 console.warn('[Sync] Max retries reached, waiting for next auto-sync interval');
                 this._syncRetries = 0;
+                // Register SW background sync as fallback
+                this._registerBackgroundSync();
                 return;
             }
             const delay = forceDelay ?? Math.min(1000 * Math.pow(2, this._syncRetries - 1), 30000);
             if (this._retryTimer) clearTimeout(this._retryTimer);
             this._retryTimer = setTimeout(() => this.syncToServer(), delay);
+        },
+
+        async _registerBackgroundSync() {
+            try {
+                if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                    const reg = await navigator.serviceWorker.ready;
+                    await reg.sync.register('jawaban-sync');
+                    console.log('[Sync] Background sync registered');
+                }
+            } catch (e) {
+                console.warn('[Sync] Background sync registration failed:', e.message);
+            }
         },
 
         formatJawabanForApi(jawaban) {
@@ -927,6 +941,10 @@ function ujianApp() {
 
         onOffline() {
             this.isOffline = true;
+            // Register background sync so SW can sync when connection returns
+            if (this.pendingSync > 0) {
+                this._registerBackgroundSync();
+            }
         },
 
         // ===== PRE-CACHE IMAGES =====

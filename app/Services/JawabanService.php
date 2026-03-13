@@ -201,7 +201,7 @@ class JawabanService
     public function submitByToken(string $token, array $finalAnswers = []): array
     {
         $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaket(
-            $token, ['login', 'mengerjakan']
+            $token, ['login', 'mengerjakan', 'submit']
         );
 
         if ($sesiPeserta->status === 'submit') {

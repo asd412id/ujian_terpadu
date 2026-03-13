@@ -79,18 +79,22 @@
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Ringkasan Pengerjaan</p>
                     <div class="grid grid-cols-3 gap-3">
                         <div class="bg-slate-50 rounded-xl px-3 py-3 text-center">
-                            <p class="text-2xl font-bold text-gray-900">{{ $ringkasan['terjawab'] }}</p>
+                            <p class="text-2xl font-bold text-gray-900" x-text="terjawab"></p>
                             <p class="text-xs text-gray-500 mt-1">Terjawab</p>
                         </div>
                         <div class="bg-amber-50 rounded-xl px-3 py-3 text-center">
-                            <p class="text-2xl font-bold text-amber-600">{{ $ringkasan['ragu'] }}</p>
+                            <p class="text-2xl font-bold text-amber-600" x-text="ragu"></p>
                             <p class="text-xs text-gray-500 mt-1">Ditandai</p>
                         </div>
                         <div class="bg-red-50 rounded-xl px-3 py-3 text-center">
-                            <p class="text-2xl font-bold text-red-500">{{ $ringkasan['kosong'] }}</p>
+                            <p class="text-2xl font-bold text-red-500" x-text="kosong"></p>
                             <p class="text-xs text-gray-500 mt-1">Kosong</p>
                         </div>
                     </div>
+                    <p x-show="countsFromLocal" x-transition
+                       class="text-xs text-amber-600 text-center mt-1">
+                        * Berdasarkan data lokal — akan diperbarui setelah sinkronisasi
+                    </p>
                 </div>
 
                 {{-- Detail Info --}}
@@ -206,6 +210,10 @@
 window.SELESAI_CONFIG = {
     sesiPesertaId: '{{ $sesiPeserta->id }}',
     sesiToken: '{{ $sesiToken ?? '' }}',
+    totalSoal: {{ $ringkasan['terjawab'] + $ringkasan['kosong'] }},
+    serverTerjawab: {{ $ringkasan['terjawab'] }},
+    serverRagu: {{ $ringkasan['ragu'] }},
+    serverKosong: {{ $ringkasan['kosong'] }},
 };
 
 function selesaiApp() {
@@ -217,6 +225,10 @@ function selesaiApp() {
         maxRetries: 10,
         _db: null,
         _retryTimer: null,
+        terjawab: window.SELESAI_CONFIG.serverTerjawab,
+        ragu: window.SELESAI_CONFIG.serverRagu,
+        kosong: window.SELESAI_CONFIG.serverKosong,
+        countsFromLocal: false,
 
         _getDb() {
             if (!this._db) {
@@ -242,15 +254,54 @@ function selesaiApp() {
             }
 
             await this.checkPendingSync();
+
+            // If server shows 0 terjawab but we have local answers, use local counts
+            await this.updateCountsFromLocal();
+
             if (this.hasPendingSync && this.isOnline) {
                 this.trySyncPending();
+            }
+        },
+
+        async updateCountsFromLocal() {
+            try {
+                const db = this._getDb();
+                const cfg = window.SELESAI_CONFIG;
+                const localAnswers = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .toArray();
+
+                // Count local answers that have actual jawaban content
+                const localTerjawab = localAnswers.filter(a => {
+                    const j = a.jawaban;
+                    if (!j) return false;
+                    if (j.terjawab === true) return true;
+                    if (j.pg?.length > 0) return true;
+                    if (j.teks !== undefined && j.teks !== '') return true;
+                    if (j.benarSalah && Object.keys(j.benarSalah).length > 0) return true;
+                    if (j.pasangan && Object.keys(j.pasangan).length > 0) return true;
+                    return false;
+                }).length;
+
+                // Use the higher count between server and local
+                if (localTerjawab > this.terjawab) {
+                    this.terjawab = localTerjawab;
+                    this.kosong = Math.max(0, cfg.totalSoal - localTerjawab);
+                    this.countsFromLocal = true;
+                }
+            } catch (e) {
+                console.warn('[Selesai] updateCountsFromLocal error:', e.message);
             }
         },
 
         async checkPendingSync() {
             try {
                 const db = this._getDb();
-                const pending = await db.exam_answers.filter(a => !a.synced).count();
+                const cfg = window.SELESAI_CONFIG;
+                const pending = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .and(a => !a.synced)
+                    .count();
                 this.hasPendingSync = pending > 0;
             } catch (e) {
                 console.warn('[Selesai] checkPendingSync error:', e.message);
@@ -338,6 +389,12 @@ function selesaiApp() {
                 }
 
                 await this.checkPendingSync();
+
+                // After successful sync, reload page to get fresh server counts
+                if (!this.hasPendingSync) {
+                    window.location.reload();
+                    return;
+                }
             } catch (e) {
                 console.warn('[Selesai] Sync failed:', e.message);
                 this.syncRetries++;
