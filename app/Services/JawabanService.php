@@ -49,16 +49,10 @@ class JawabanService
     public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = [], bool $isFinalSubmit = false): array
     {
         $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaket(
-            $sesiToken, ['mengerjakan', 'login', 'submit']
+            $sesiToken, ['mengerjakan', 'login', 'submit', 'dinilai']
         );
 
-        $isAlreadySubmitted = $sesiPeserta->status === 'submit';
-
-        if (!$isFinalSubmit && !$isAlreadySubmitted && $sesiPeserta->sisa_waktu_detik <= 0) {
-            throw ValidationException::withMessages([
-                'waktu' => 'Waktu ujian telah habis.',
-            ]);
-        }
+        $isAlreadySubmitted = in_array($sesiPeserta->status, ['submit', 'dinilai']);
 
         $errors  = [];
         $maxRetries = 3;

@@ -372,11 +372,20 @@ function selesaiApp() {
 
                         // If pendingSubmit, also submit
                         if (state?.pendingSubmit) {
-                            await fetch('/api/ujian/submit/' + sesiToken, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                                body: JSON.stringify({ sesi_token: sesiToken }),
-                            });
+                            const submitCtrl = new AbortController();
+                            const submitTimeout = setTimeout(() => submitCtrl.abort(), 20000);
+                            try {
+                                await fetch('/api/ujian/submit/' + sesiToken, {
+                                    method: 'POST',
+                                    signal: submitCtrl.signal,
+                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                    body: JSON.stringify({ sesi_token: sesiToken }),
+                                });
+                                clearTimeout(submitTimeout);
+                            } catch (submitErr) {
+                                clearTimeout(submitTimeout);
+                                console.warn('[Selesai] Submit fetch failed:', submitErr.message);
+                            }
                             await db.exam_state.update(sesiPesertaId, { pendingSubmit: false });
                         }
 

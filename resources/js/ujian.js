@@ -735,9 +735,16 @@ function ujianApp() {
                         setTimeout(() => { this.showSyncToast = false; }, 3000);
                     }
                 } else if (res.status === 422) {
-                    // Validation error — answers may be invalid, don't retry
-                    console.warn('[Sync] Validation error (422), skipping retry');
-                    this._syncRetries = 0;
+                    // Validation error — retry once in case of transient issue
+                    let errMsg = '';
+                    try { const errData = await res.json(); errMsg = errData.error || errData.message || ''; } catch {}
+                    console.warn('[Sync] Validation error (422):', errMsg);
+                    if (this._syncRetries < 2) {
+                        this._scheduleRetry(5000);
+                    } else {
+                        console.warn('[Sync] 422 persistent, waiting for next auto-sync');
+                        this._syncRetries = 0;
+                    }
                 } else if (res.status === 429) {
                     // Rate limited — retry after longer delay
                     console.warn('[Sync] Rate limited (429), backing off...');
