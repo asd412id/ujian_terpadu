@@ -116,16 +116,18 @@
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7.5 3h-3C3.67 3 3 3.67 3 4.5v3h2V5h2V3zm9 0v2h2v2.5h2v-3C20.5 3.67 19.83 3 19 3h-2.5zM3 16.5v3c0 .83.67 1.5 1.5 1.5h3v-2H5v-2.5H3zm17 0V19h-2.5v2H19c.83 0 1.5-.67 1.5-1.5v-3h-2zM12 6l-4 8h2.5l.7-1.5h3.6l.7 1.5H18L14 6h-2zm-.7 5L12 9.2l.7 1.8h-1.4z"/></svg>
         </button>
         <div x-show="showMathInput" @click.away="showMathInput = false" x-transition
-             class="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 w-56">
-            <div class="px-3 py-1.5">
-                <p class="text-xs text-gray-500 mb-1">Ketik <code class="bg-gray-100 px-1 rounded">$...$</code> untuk inline, <code class="bg-gray-100 px-1 rounded">$$...$$</code> untuk block</p>
+             class="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-2 w-52">
+            <button type="button" @click="insertInlineMath(); showMathInput = false" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-5 h-5 bg-blue-50 rounded text-blue-600 font-mono text-[10px] font-bold shrink-0">fx</span>
+                <span>Rumus Inline</span>
+            </button>
+            <button type="button" @click="insertBlockMath(); showMathInput = false" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-5 h-5 bg-indigo-50 rounded text-indigo-600 font-mono text-[10px] font-bold shrink-0">Fx</span>
+                <span>Rumus Block (baris terpisah)</span>
+            </button>
+            <div class="border-t border-gray-100 mt-1 pt-1 px-3">
+                <p class="text-[10px] text-gray-400 leading-tight">Klik rumus di editor untuk mengedit. Gunakan sintaks LaTeX.</p>
             </div>
-            <button type="button" @click="insertInlineMath(); showMathInput = false" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100">
-                <span class="font-medium">Rumus Inline</span> — sisipkan di baris
-            </button>
-            <button type="button" @click="insertBlockMath(); showMathInput = false" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100">
-                <span class="font-medium">Rumus Block</span> — baris terpisah
-            </button>
         </div>
     </div>
 
