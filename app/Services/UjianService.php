@@ -166,8 +166,8 @@ class UjianService
         $sesiPeserta = $this->sesiUjianRepository->findSesiPesertaWithJawaban($sesiPesertaId);
 
         $paket    = $sesiPeserta->sesi->paket;
-        $totalSoal = $paket->loadCount('soal')->soal_count;
-        $terjawab  = $sesiPeserta->jawaban()->where('is_terjawab', true)->count();
+        $totalSoal = $paket->paketSoal->count();
+        $terjawab  = $sesiPeserta->jawaban->where('is_terjawab', true)->count();
         $kosong    = max(0, $totalSoal - $terjawab);
         $ragu      = (int) $sesiPeserta->soal_ditandai;
 

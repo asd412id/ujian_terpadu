@@ -45,7 +45,11 @@ class PenilaianService
                 $updates[] = ['id' => $jawaban->id, 'skor_auto' => 0];
                 if ($jawaban->skor_manual !== null) {
                     $nilaiBenar += $jawaban->skor_manual;
-                    $jumlahBenar++;
+                    if ($jawaban->skor_manual > 0) {
+                        $jumlahBenar++;
+                    } else {
+                        $jumlahSalah++;
+                    }
                 }
                 continue;
             }

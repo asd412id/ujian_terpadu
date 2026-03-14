@@ -60,7 +60,12 @@ class PesertaService
     public function getById(string $id): mixed
     {
         $peserta = $this->repository->findById($id);
-        $peserta?->load('sekolah');
+
+        if (! $peserta) {
+            abort(404, 'Peserta tidak ditemukan.');
+        }
+
+        $peserta->load('sekolah');
         return $peserta;
     }
 

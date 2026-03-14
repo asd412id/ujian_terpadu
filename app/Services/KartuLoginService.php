@@ -30,9 +30,7 @@ class KartuLoginService
     {
         return $this->repository->getActiveBySekolah($sekolahId)
             ->map(function ($peserta) {
-                $peserta->password_kartu = $peserta->password_plain
-                    ? decrypt($peserta->password_plain)
-                    : '(hubungi admin)';
+                $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
                 return $peserta;
             });
     }
@@ -44,9 +42,7 @@ class KartuLoginService
     {
         return $this->repository->getByIds($pesertaIds)
             ->map(function ($peserta) {
-                $peserta->password_kartu = $peserta->password_plain
-                    ? decrypt($peserta->password_plain)
-                    : '(hubungi admin)';
+                $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
                 return $peserta;
             });
     }
@@ -57,9 +53,7 @@ class KartuLoginService
     public function getKartuPeserta(string $pesertaId): array
     {
         $peserta = $this->repository->findOrFail($pesertaId);
-        $passwordKartu = $peserta->password_plain
-            ? decrypt($peserta->password_plain)
-            : '(hubungi admin)';
+        $passwordKartu = $this->decryptPassword($peserta->password_plain);
 
         return compact('peserta', 'passwordKartu');
     }
@@ -73,9 +67,7 @@ class KartuLoginService
 
         $pesertaList = $sesi->sesiPeserta->map(function ($sp) {
             $peserta = $sp->peserta;
-            $peserta->password_kartu = $peserta->password_plain
-                ? decrypt($peserta->password_plain)
-                : '(hubungi admin)';
+            $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
             return $peserta;
         });
 
@@ -85,5 +77,22 @@ class KartuLoginService
             'sekolah'     => $sesi->paket->sekolah,
             'pesertaList' => $pesertaList,
         ];
+    }
+
+    /**
+     * Safely decrypt password_plain with fallback on failure.
+     */
+    protected function decryptPassword(?string $encrypted): string
+    {
+        if (empty($encrypted)) {
+            return '(hubungi admin)';
+        }
+
+        try {
+            return decrypt($encrypted);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            report($e);
+            return '(error - hubungi admin)';
+        }
     }
 }

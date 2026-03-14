@@ -81,7 +81,7 @@ class JawabanController extends Controller
             abort_unless(strlen($token) === 64 && ctype_alnum($token), 404);
 
             $data = $request->validate([
-                'answers'            => 'nullable|array|max:200',
+                'answers'            => 'present|array|max:200',
                 'answers.*.soal_id'  => 'required|string',
                 'answers.*.jawaban'  => 'present',
             ]);

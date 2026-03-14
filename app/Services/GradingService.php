@@ -44,7 +44,8 @@ class GradingService
         $jawaban = $this->repository->findJawabanOrFail($jawabanId);
         $jawaban->load('soal');
 
-        $maxScore = $jawaban->soal->bobot ?? 100;
+        $bobot = $jawaban->soal->bobot ?? 1;
+        $maxScore = max($bobot, 100);
         if ($nilai < 0 || $nilai > $maxScore) {
             throw ValidationException::withMessages([
                 'skor_manual' => "Nilai harus antara 0 dan {$maxScore}.",

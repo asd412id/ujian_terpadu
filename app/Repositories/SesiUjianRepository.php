@@ -156,7 +156,7 @@ class SesiUjianRepository
      */
     public function findSesiPesertaWithJawaban(string $id): SesiPeserta
     {
-        return SesiPeserta::with(['sesi.paket', 'jawaban.soal'])->findOrFail($id);
+        return SesiPeserta::with(['sesi.paket.paketSoal', 'jawaban.soal'])->findOrFail($id);
     }
 
     /**

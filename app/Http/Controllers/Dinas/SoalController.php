@@ -192,7 +192,7 @@ class SoalController extends Controller
     public function importWord(Request $request)
     {
         $request->validate([
-            'file'             => 'required|file|mimes:docx,doc|max:51200',
+            'file'             => 'required|file|mimes:docx|max:51200',
             'kategori_soal_id' => 'required|exists:kategori_soal,id',
         ]);
 

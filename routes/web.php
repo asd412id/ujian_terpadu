@@ -25,6 +25,11 @@ Route::get('/', function () {
         return redirect()->route($user->getDashboardRoute());
     }
     if (Auth::guard('peserta')->check()) {
+        $peserta = Auth::guard('peserta')->user();
+        if (! $peserta->is_active) {
+            Auth::guard('peserta')->logout();
+            return redirect()->route('login');
+        }
         return redirect()->route('ujian.lobby');
     }
     return redirect()->route('login');
@@ -129,8 +134,8 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 
     // Paket Ujian
     Route::get('/paket/trash', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'trash'])->name('paket.trash');
-    Route::post('/paket/{paket_trashed}/restore', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'restore'])->name('paket.restore');
-    Route::delete('/paket/{paket_trashed}/force-delete', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'forceDelete'])->name('paket.force-delete');
+    Route::post('/paket/{paket_trashed}/restore', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'restore'])->name('paket.restore')->withTrashed();
+    Route::delete('/paket/{paket_trashed}/force-delete', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'forceDelete'])->name('paket.force-delete')->withTrashed();
     Route::resource('paket', \App\Http\Controllers\Dinas\PaketUjianController::class)->names('paket');
     Route::post('/paket/{paket}/publish', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'publish'])->name('paket.publish');
     Route::post('/paket/{paket}/draft', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'draft'])->name('paket.draft');
