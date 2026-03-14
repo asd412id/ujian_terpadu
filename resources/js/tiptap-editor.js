@@ -150,23 +150,42 @@ export function tiptapEditor({
                 return;
             }
 
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Ukuran gambar terlalu besar. Maksimal 5MB.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('image', file);
 
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.content;
+                if (!token) {
+                    alert('Sesi telah berakhir. Silakan refresh halaman.');
+                    return;
+                }
+
                 const res = await fetch(uploadUrl, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': token,
                         'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: formData,
                 });
 
                 if (!res.ok) {
+                    if (res.status === 419) {
+                        alert('Sesi telah berakhir (CSRF expired). Silakan refresh halaman.');
+                        return;
+                    }
+                    if (res.status === 413) {
+                        alert('Ukuran gambar terlalu besar untuk server. Maksimal 5MB.');
+                        return;
+                    }
                     const err = await res.json().catch(() => ({}));
-                    alert(err.message || 'Gagal upload gambar. Pastikan ukuran < 5MB.');
+                    alert(err.message || 'Gagal upload gambar. Pastikan format jpeg/png/gif/webp dan ukuran < 5MB.');
                     return;
                 }
 
@@ -176,7 +195,11 @@ export function tiptapEditor({
                 }
             } catch (e) {
                 console.error('Image upload failed:', e);
-                alert('Gagal upload gambar. Periksa koneksi internet.');
+                if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
+                    alert('Gagal upload gambar. Periksa koneksi internet Anda.');
+                } else {
+                    alert('Gagal upload gambar: ' + (e.message || 'Error tidak diketahui'));
+                }
             }
         },
 

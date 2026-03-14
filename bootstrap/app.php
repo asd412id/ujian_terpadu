@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
         $schedule->command('ujian:auto-submit')->everyMinute();
+        $schedule->command('soal:cleanup-orphan-images')->dailyAt('03:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
         // Trust all proxies (Cloudflare Tunnel forwards requests via HTTP internally)

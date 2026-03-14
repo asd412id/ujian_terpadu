@@ -165,7 +165,7 @@ class JawabanRepository
             $bindings = array_merge($bindings, $ids);
 
             \Illuminate\Support\Facades\DB::update(
-                "UPDATE jawaban SET skor_auto = CASE {$caseStr} ELSE skor_auto END WHERE id IN ({$placeholders})",
+                "UPDATE jawaban_peserta SET skor_auto = CASE {$caseStr} ELSE skor_auto END WHERE id IN ({$placeholders})",
                 $bindings
             );
         }

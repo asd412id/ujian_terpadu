@@ -20,7 +20,7 @@
             chtml: { scale: 1.15 },
             options: {
                 skipHtmlTags: ['script','noscript','style','textarea'],
-                ignoreHtmlClass: 'tiptap-content|tiptap-content-mini|katex',
+                ignoreHtmlClass: 'tiptap-content|tiptap-content-mini|tiptap-toolbar|katex',
             }
         };
     </script>
