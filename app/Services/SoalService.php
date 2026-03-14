@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Mews\Purifier\Facades\Purifier;
 
 class SoalService
 {
@@ -66,11 +67,11 @@ class SoalService
             $data = [
                 'kategori_id'       => $validated['kategori_soal_id'],
                 'tipe_soal'         => $this->jenisMap[$validated['jenis_soal']],
-                'pertanyaan'        => $validated['pertanyaan'],
+                'pertanyaan'        => $this->normalizeEditorContent($validated['pertanyaan']),
                 'posisi_gambar'     => $validated['posisi_gambar'] ?? null,
                 'tingkat_kesulitan' => $validated['tingkat_kesulitan'],
                 'bobot'             => $validated['bobot'],
-                'pembahasan'        => $validated['pembahasan'] ?? null,
+                'pembahasan'        => $this->normalizeEditorContent($validated['pembahasan'] ?? null),
                 'sumber'            => $validated['sumber'] ?? null,
                 'tahun_soal'        => $validated['tahun_soal'] ?? null,
             ];
@@ -113,11 +114,11 @@ class SoalService
             $data = [
                 'kategori_id'       => $validated['kategori_soal_id'],
                 'tipe_soal'         => $this->jenisMap[$validated['jenis_soal']],
-                'pertanyaan'        => $validated['pertanyaan'],
+                'pertanyaan'        => $this->normalizeEditorContent($validated['pertanyaan']),
                 'posisi_gambar'     => $validated['posisi_gambar'] ?? null,
                 'tingkat_kesulitan' => $validated['tingkat_kesulitan'],
                 'bobot'             => $validated['bobot'],
-                'pembahasan'        => $validated['pembahasan'] ?? null,
+                'pembahasan'        => $this->normalizeEditorContent($validated['pembahasan'] ?? null),
             ];
 
             if ($request->hasFile('gambar_pertanyaan')) {
@@ -186,6 +187,30 @@ class SoalService
         }
 
         $this->deleteOpsiAndPasanganImages($soal);
+    }
+
+    /**
+     * Normalize Tiptap editor HTML content.
+     * Sanitizes HTML via HTMLPurifier to prevent XSS.
+     * Returns null if content is empty or contains only empty HTML tags.
+     * Preserves content that has images even without text.
+     */
+    private function normalizeEditorContent(?string $html): ?string
+    {
+        if ($html === null || trim($html) === '') {
+            return null;
+        }
+
+        // Sanitize HTML to prevent stored XSS
+        $html = Purifier::clean($html, 'tiptap');
+
+        // Check for text content or embedded images
+        $textOnly = trim(strip_tags($html));
+        if ($textOnly === '' && !str_contains($html, '<img')) {
+            return null;
+        }
+
+        return trim($html);
     }
 
     private function deleteOpsiAndPasanganImages(Soal $soal): void
@@ -279,7 +304,7 @@ class SoalService
         });
     }
 
-    /**
+        /**
      * Save opsi jawaban for PG / PG Kompleks types.
      */
     private function saveOpsi(Soal $soal, Request $request): void
@@ -289,7 +314,7 @@ class SoalService
 
         $opsiRecords = [];
         foreach ($opsiData as $i => $opsi) {
-            $teks   = $opsi['teks'] ?? null;
+            $teks   = $this->normalizeEditorContent($opsi['teks'] ?? null);
             $file   = $request->file("opsi.$i.gambar");
             $gambar = null;
 
@@ -315,7 +340,7 @@ class SoalService
         }
     }
 
-    /**
+        /**
      * Save pernyataan for Benar/Salah type.
      */
     private function saveOpsiBenarSalah(Soal $soal, Request $request): void
@@ -324,7 +349,7 @@ class SoalService
 
         $opsiRecords = [];
         foreach ($pernyataanData as $i => $item) {
-            $teks = $item['teks'] ?? null;
+            $teks = $this->normalizeEditorContent($item['teks'] ?? null);
             $file = $request->file("pernyataan_bs.$i.gambar");
             $gambar = null;
 
@@ -401,7 +426,7 @@ class SoalService
      */
     private function saveKunciJawaban(Soal $soal, Request $request): void
     {
-        $kunci = $request->input('kunci_jawaban');
+        $kunci = $this->normalizeEditorContent($request->input('kunci_jawaban'));
         if ($kunci) {
             $this->repository->saveOpsiJawaban($soal, [[
                 'label'    => 'KUNCI',
@@ -430,7 +455,7 @@ class SoalService
             foreach ($rows as $index => $row) {
                 try {
                     $soalData = array_merge([
-                        'pertanyaan'   => $row['teks_soal'] ?? $row['pertanyaan'] ?? null,
+                        'pertanyaan'   => $this->normalizeEditorContent($row['teks_soal'] ?? $row['pertanyaan'] ?? null),
                         'tipe_soal'    => $row['tipe_soal'] ?? 'pg',
                         'bobot'        => $row['bobot'] ?? 1,
                         'kategori_id'  => $row['kategori_id'] ?? $meta['kategori_id'] ?? null,
@@ -451,7 +476,7 @@ class SoalService
                     foreach ($opsiLabels as $label) {
                         $key = strtolower($label);
                         if (!empty($row[$key]) || !empty($row["opsi_{$key}"])) {
-                            $teksOpsi = $row[$key] ?? $row["opsi_{$key}"];
+                            $teksOpsi = $this->normalizeEditorContent($row[$key] ?? $row["opsi_{$key}"] ?? null);
                             $isBenar = false;
 
                             // Check if this option is the correct answer

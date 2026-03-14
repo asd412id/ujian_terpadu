@@ -30,28 +30,20 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Pertanyaan <span class="text-red-500">*</span>
                     </label>
-                    <textarea name="pertanyaan" rows="5"
-                              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                              placeholder="Tuliskan pertanyaan di sini...">{{ old('pertanyaan', $soal->pertanyaan ?? '') }}</textarea>
-                    <p class="text-xs text-gray-400 mt-1">Mendukung format HTML dasar dan LaTeX (gunakan \(...\) untuk inline math).</p>
-                </div>
-
-                {{-- Gambar Pertanyaan --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Gambar Pertanyaan (opsional)</label>
-                    @if(isset($soal) && $soal->gambar_soal)
-                    <div class="mb-2 flex items-center gap-3">
-                        <img src="{{ Storage::url($soal->gambar_soal) }}" alt="Gambar soal"
-                             class="h-20 w-auto rounded-lg border border-gray-200 object-contain">
-                        <label class="flex items-center gap-1.5 text-xs text-red-600 cursor-pointer">
-                            <input type="checkbox" name="hapus_gambar_pertanyaan" value="1">
-                            Hapus gambar
-                        </label>
+                    <div x-data="tiptapEditor({
+                        name: 'pertanyaan',
+                        content: @js(old('pertanyaan', $soal->pertanyaan ?? '')),
+                        placeholder: 'Tuliskan pertanyaan di sini... (Ctrl+V untuk paste gambar)',
+                        uploadUrl: '{{ route('dinas.soal.upload-image') }}',
+                        minimal: false
+                    })">
+                        <div class="tiptap-wrap">
+                            @include('dinas.soal._tiptap-toolbar')
+                            <div x-ref="editorEl" class="tiptap-content"></div>
+                        </div>
+                        <input type="hidden" name="pertanyaan" x-ref="hiddenInput">
                     </div>
-                    @endif
-                    <input type="file" name="gambar_pertanyaan" accept="image/*"
-                           class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
-                    <p class="text-xs text-gray-400 mt-1">Maks 2MB, format JPG/PNG/GIF/WEBP.</p>
+                    <p class="text-xs text-gray-400 mt-1">Paste gambar langsung dari clipboard (Ctrl+V). Mendukung LaTeX (gunakan \(...\) untuk inline math).</p>
                 </div>
             </div>
 
@@ -80,37 +72,19 @@
                         {{-- Label Opsi --}}
                         <span class="flex-shrink-0 mt-2 w-6 h-6 bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex items-center justify-center"
                               x-text="String.fromCharCode(65 + idx)"></span>
-                        {{-- Input teks --}}
-                        <div class="flex-1 space-y-2">
-                            <textarea :name="`opsi[${idx}][teks]`" rows="2"
-                                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                      :placeholder="`Opsi ${String.fromCharCode(65 + idx)} (teks opsional jika ada gambar)`"
-                                      x-model="opsi.teks"
-                                      @paste="handleOpsiPaste($event, idx)"></textarea>
-                            {{-- Upload / paste gambar opsi --}}
-                            <input type="hidden" :name="`opsi[${idx}][gambar_existing]`" :value="opsi.gambar || ''">
-                            {{-- Preview gambar existing (dari server) --}}
-                            <template x-if="opsi.gambar && !opsi.pastedPreview">
-                                <div class="mt-1 flex items-center gap-2">
-                                    <img :src="'/storage/' + opsi.gambar" class="h-10 w-10 rounded object-cover border">
-                                    <span class="text-xs text-gray-400">Gambar saat ini</span>
-                                    <button type="button" @click="opsi.gambar = null" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
-                                </div>
-                            </template>
-                            {{-- Preview gambar dari paste clipboard --}}
-                            <template x-if="opsi.pastedPreview">
-                                <div class="mt-1 flex items-center gap-2">
-                                    <img :src="opsi.pastedPreview" class="h-16 max-w-[120px] rounded object-cover border">
-                                    <span class="text-xs text-green-600">Gambar dari clipboard</span>
-                                    <button type="button" @click="removePastedImage(idx)" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
-                                </div>
-                            </template>
-                            <div class="flex items-center gap-2">
-                                <input type="file" :id="`opsi-gambar-${idx}`" :name="`opsi[${idx}][gambar]`" accept="image/*"
-                                       @change="handleOpsiFileChange($event, idx)"
-                                       class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
-                                <span class="text-xs text-gray-400 whitespace-nowrap">atau Ctrl+V di teks</span>
+                        {{-- Rich text editor for opsi --}}
+                        <div class="flex-1" x-data="tiptapEditor({
+                            name: `opsi[${idx}][teks]`,
+                            content: opsi.teks || '',
+                            placeholder: `Opsi ${String.fromCharCode(65 + idx)}... (Ctrl+V untuk paste gambar)`,
+                            uploadUrl: '{{ route('dinas.soal.upload-image') }}',
+                            minimal: true
+                        })">
+                            <div class="tiptap-wrap-mini">
+                                @include('dinas.soal._tiptap-toolbar-mini')
+                                <div x-ref="editorEl" class="tiptap-content-mini"></div>
                             </div>
+                            <input type="hidden" :name="`opsi[${idx}][teks]`" x-ref="hiddenInput">
                         </div>
                         {{-- Hapus opsi --}}
                         <button type="button" @click="removeOpsi(idx)"
@@ -240,29 +214,20 @@
                         <span class="flex-shrink-0 mt-2 w-6 h-6 bg-indigo-100 rounded-full text-xs font-bold text-indigo-700 flex items-center justify-center"
                               x-text="idx + 1"></span>
                         <div class="flex-1 space-y-2">
-                            <textarea :name="`pernyataan_bs[${idx}][teks]`" rows="2"
-                                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                      :placeholder="`Pernyataan ke-${idx + 1}`"
-                                      x-model="item.teks"></textarea>
-                            {{-- Gambar pernyataan --}}
-                            <input type="hidden" :name="`pernyataan_bs[${idx}][gambar_existing]`" :value="item.gambar || ''">
-                            <template x-if="item.gambar && !item.preview">
-                                <div class="flex items-center gap-2">
-                                    <img :src="'/storage/' + item.gambar" class="h-10 w-10 rounded object-cover border">
-                                    <span class="text-xs text-gray-400">Gambar saat ini</span>
-                                    <button type="button" @click="item.gambar = null" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
+                            {{-- Rich text editor for pernyataan B/S --}}
+                            <div x-data="tiptapEditor({
+                                name: `pernyataan_bs[${idx}][teks]`,
+                                content: item.teks || '',
+                                placeholder: `Pernyataan ke-${idx + 1}... (Ctrl+V untuk paste gambar)`,
+                                uploadUrl: '{{ route('dinas.soal.upload-image') }}',
+                                minimal: true
+                            })">
+                                <div class="tiptap-wrap-mini">
+                                    @include('dinas.soal._tiptap-toolbar-mini')
+                                    <div x-ref="editorEl" class="tiptap-content-mini"></div>
                                 </div>
-                            </template>
-                            <template x-if="item.preview">
-                                <div class="flex items-center gap-2">
-                                    <img :src="item.preview" class="h-10 w-10 rounded object-cover border">
-                                    <span class="text-xs text-green-600">Gambar baru</span>
-                                    <button type="button" @click="removeBsImage(idx)" class="text-xs text-red-400 hover:text-red-600">Hapus</button>
-                                </div>
-                            </template>
-                            <input type="file" :id="`bs-gambar-${idx}`" :name="`pernyataan_bs[${idx}][gambar]`" accept="image/*"
-                                   @change="handleBsImage($event, idx)"
-                                   class="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer">
+                                <input type="hidden" :name="`pernyataan_bs[${idx}][teks]`" x-ref="hiddenInput">
+                            </div>
                             <div class="flex items-center gap-3">
                                 <span class="text-xs text-gray-500 font-medium">Kunci:</span>
                                 <label class="flex items-center gap-1.5 cursor-pointer">
@@ -304,15 +269,35 @@
             <div class="card space-y-4" x-show="jenis === 'essay'" x-transition>
                 <div>
                     <h2 class="font-semibold text-gray-900 mb-3">Kunci Jawaban</h2>
-                    <textarea :name="jenis === 'essay' ? 'kunci_jawaban' : ''" rows="4"
-                              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                              placeholder="Jawaban yang diharapkan...">{{ old('kunci_jawaban', $soal->kunci_jawaban ?? '') }}</textarea>
+                    <div x-data="tiptapEditor({
+                        name: jenis === 'essay' ? 'kunci_jawaban' : '',
+                        content: @js(old('kunci_jawaban', $soal->kunci_jawaban ?? '')),
+                        placeholder: 'Jawaban yang diharapkan...',
+                        uploadUrl: '{{ route('dinas.soal.upload-image') }}',
+                        minimal: false
+                    })">
+                        <div class="tiptap-wrap">
+                            @include('dinas.soal._tiptap-toolbar')
+                            <div x-ref="editorEl" class="tiptap-content"></div>
+                        </div>
+                        <input type="hidden" :name="jenis === 'essay' ? 'kunci_jawaban' : ''" x-ref="hiddenInput">
+                    </div>
                 </div>
                 <div>
                     <h2 class="font-semibold text-gray-900 mb-3">Panduan Penilaian (Opsional)</h2>
-                    <textarea name="pembahasan" rows="4"
-                              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                              placeholder="Tuliskan panduan atau rubrik penilaian untuk membantu penilai...">{{ old('pembahasan', $soal->pembahasan ?? '') }}</textarea>
+                    <div x-data="tiptapEditor({
+                        name: 'pembahasan',
+                        content: @js(old('pembahasan', $soal->pembahasan ?? '')),
+                        placeholder: 'Tuliskan panduan atau rubrik penilaian...',
+                        uploadUrl: '{{ route('dinas.soal.upload-image') }}',
+                        minimal: false
+                    })">
+                        <div class="tiptap-wrap">
+                            @include('dinas.soal._tiptap-toolbar')
+                            <div x-ref="editorEl" class="tiptap-content"></div>
+                        </div>
+                        <input type="hidden" name="pembahasan" x-ref="hiddenInput">
+                    </div>
                 </div>
             </div>
         </div>
@@ -422,14 +407,14 @@
 
 @php
     $opsiListData = isset($soal) && $soal->opsiJawaban->count()
-        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar, 'pastedPreview' => null])->toArray()
-        : [['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null], ['teks' => '', 'benar' => false, 'gambar' => null, 'pastedPreview' => null]];
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
+        : [['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false]];
     $pasanganListData = isset($soal) && $soal->pasangan->count()
         ? $soal->pasangan->map(fn($p) => ['kiri' => $p->kiri_teks, 'kanan' => $p->kanan_teks, 'kiri_gambar' => $p->kiri_gambar, 'kanan_gambar' => $p->kanan_gambar, 'kiri_preview' => null, 'kanan_preview' => null])->toArray()
         : [['kiri' => '', 'kanan' => '', 'kiri_gambar' => null, 'kanan_gambar' => null, 'kiri_preview' => null, 'kanan_preview' => null], ['kiri' => '', 'kanan' => '', 'kiri_gambar' => null, 'kanan_gambar' => null, 'kiri_preview' => null, 'kanan_preview' => null]];
     $pernyataanBsData = isset($soal) && $soal->tipe_soal === 'benar_salah' && $soal->opsiJawaban->count()
-        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar, 'preview' => null])->toArray()
-        : [['teks' => '', 'benar' => true, 'gambar' => null, 'preview' => null], ['teks' => '', 'benar' => true, 'gambar' => null, 'preview' => null], ['teks' => '', 'benar' => true, 'gambar' => null, 'preview' => null]];
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
+        : [['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true]];
     $jenisMap = ['pg'=>'pilihan_ganda','pg_kompleks'=>'pilihan_ganda_kompleks','benar_salah'=>'benar_salah','menjodohkan'=>'menjodohkan','isian'=>'isian','essay'=>'essay'];
     $currentJenis = old('jenis_soal', isset($soal) ? ($jenisMap[$soal->tipe_soal] ?? 'pilihan_ganda') : 'pilihan_ganda');
 @endphp
@@ -445,7 +430,7 @@ function soalForm() {
         init() {},
 
         addOpsi() {
-            if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false, gambar: null, pastedPreview: null });
+            if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false });
         },
         removeOpsi(idx) {
             this.opsiList.splice(idx, 1);
@@ -454,54 +439,6 @@ function soalForm() {
             this.opsiList.forEach((o, i) => o.benar = i === idx);
         },
 
-        handleOpsiPaste(event, idx) {
-            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
-            for (const item of items) {
-                if (item.type.startsWith('image/')) {
-                    event.preventDefault();
-                    const file = item.getAsFile();
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.opsiList[idx].pastedPreview = e.target.result;
-                        this.opsiList[idx].gambar = null;
-                    };
-                    reader.readAsDataURL(file);
-
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    const fileInput = document.getElementById(`opsi-gambar-${idx}`);
-                    if (fileInput) {
-                        fileInput.files = dt.files;
-                    }
-                    return;
-                }
-            }
-        },
-
-        handleOpsiFileChange(event, idx) {
-            const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.opsiList[idx].pastedPreview = e.target.result;
-                    this.opsiList[idx].gambar = null;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                this.opsiList[idx].pastedPreview = null;
-            }
-        },
-
-        removePastedImage(idx) {
-            this.opsiList[idx].pastedPreview = null;
-            this.opsiList[idx].gambar = null;
-            const fileInput = document.getElementById(`opsi-gambar-${idx}`);
-            if (fileInput) {
-                fileInput.value = '';
-            }
-        },
         addPasangan() {
             this.pasanganList.push({ kiri: '', kanan: '', kiri_gambar: null, kanan_gambar: null, kiri_preview: null, kanan_preview: null });
         },
@@ -524,27 +461,10 @@ function soalForm() {
             this.pasanganList[idx][side + '_gambar'] = null;
         },
         addPernyataanBs() {
-            this.pernyataanBsList.push({ teks: '', benar: true, gambar: null, preview: null });
+            this.pernyataanBsList.push({ teks: '', benar: true });
         },
         removePernyataanBs(idx) {
             this.pernyataanBsList.splice(idx, 1);
-        },
-        handleBsImage(event, idx) {
-            const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.pernyataanBsList[idx].preview = e.target.result;
-                    this.pernyataanBsList[idx].gambar = null;
-                };
-                reader.readAsDataURL(file);
-            }
-        },
-        removeBsImage(idx) {
-            this.pernyataanBsList[idx].preview = null;
-            this.pernyataanBsList[idx].gambar = null;
-            const fileInput = document.getElementById(`bs-gambar-${idx}`);
-            if (fileInput) fileInput.value = '';
         }
     };
 }

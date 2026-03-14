@@ -18,7 +18,10 @@
         window.MathJax = {
             tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
             chtml: { scale: 1.15 },
-            options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+            options: {
+                skipHtmlTags: ['script','noscript','style','textarea'],
+                ignoreHtmlClass: 'tiptap-content|tiptap-content-mini|katex',
+            }
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async defer></script>

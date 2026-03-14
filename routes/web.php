@@ -121,6 +121,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/soal/import/template/zip', [\App\Http\Controllers\Dinas\SoalController::class, 'templateZip'])->name('soal.import.template.zip');
     Route::delete('/soal/destroy-all', [\App\Http\Controllers\Dinas\SoalController::class, 'destroyAll'])->name('soal.destroy-all');
     Route::get('/soal/preview-all', [\App\Http\Controllers\Dinas\SoalController::class, 'previewAll'])->name('soal.preview-all');
+    Route::post('/soal/upload-image', [\App\Http\Controllers\Dinas\SoalController::class, 'uploadImage'])->name('soal.upload-image');
     Route::resource('soal', \App\Http\Controllers\Dinas\SoalController::class)->names('soal');
 
     // Kategori Soal

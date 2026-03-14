@@ -123,6 +123,22 @@ class SoalController extends Controller
         return view('dinas.soal.show', compact('soal'));
     }
 
+    /**
+     * Upload image from Tiptap editor (paste/drop).
+     */
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,gif,webp|max:5120',
+        ]);
+
+        $path = $request->file('image')->store('soal/inline', 'public');
+
+        return response()->json([
+            'url' => Storage::disk('public')->url($path),
+        ]);
+    }
+
     public function destroy(Soal $soal)
     {
         $this->soalService->deleteSoal($soal);
