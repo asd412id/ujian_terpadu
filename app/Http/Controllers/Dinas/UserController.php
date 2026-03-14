@@ -73,6 +73,11 @@ class UserController extends Controller
     {
         abort_if($user->id === auth()->id(), 403, 'Tidak dapat menghapus akun sendiri.');
 
+        if (in_array($user->role, ['super_admin', 'admin_dinas'])) {
+            $adminCount = User::whereIn('role', ['super_admin', 'admin_dinas'])->count();
+            abort_if($adminCount <= 1, 403, 'Tidak dapat menghapus admin terakhir.');
+        }
+
         $this->userService->deleteUser($user);
 
         return redirect()->route('dinas.users.index')

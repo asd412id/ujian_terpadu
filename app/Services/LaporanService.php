@@ -51,16 +51,7 @@ class LaporanService
         return $this->repository->getGlobalStatistik();
     }
 
-    /**
-     * Get rekap nilai with filters.
-     */
-    public function getRekapNilai(array $filters = []): mixed
-    {
-        return $this->repository->getRekapNilai(
-            $filters['sekolah_id'] ?? null,
-            $filters['paket_id'] ?? null
-        );
-    }
+        // Removed: getRekapNilai was dead code (0 callers)
 
     /**
      * Export hasil ujian data for Excel generation (memory-efficient).

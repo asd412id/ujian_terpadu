@@ -155,7 +155,8 @@ class JawabanRepository
      */
     public function findActiveSesiPeserta(string $id): SesiPeserta
     {
-        return SesiPeserta::whereIn('status', ['mengerjakan', 'login'])
+        return SesiPeserta::with(['sesi.paket'])
+            ->whereIn('status', ['mengerjakan', 'login'])
             ->findOrFail($id);
     }
 

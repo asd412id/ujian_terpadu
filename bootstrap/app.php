@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'            => \App\Http\Middleware\RoleMiddleware::class,
             'peserta'         => \App\Http\Middleware\AuthPeserta::class,
             'no.active.exam'  => \App\Http\Middleware\EnsureNoActiveExam::class,
+            'verify.ujian.token' => \App\Http\Middleware\VerifyUjianToken::class,
         ]);
 
         // Where to redirect authenticated users who hit "guest" routes (e.g. /login)

@@ -59,24 +59,7 @@ class LaporanRepository
         ];
     }
 
-    /**
-     * Get rekap nilai for reporting (all sekolah).
-     */
-    public function getRekapNilai(?string $sekolahId = null, ?string $paketId = null): Collection
-    {
-        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
-            ->whereIn('status', ['submit', 'dinilai']);
-
-        if ($sekolahId) {
-            $query->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId));
-        }
-
-        if ($paketId) {
-            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $paketId));
-        }
-
-        return $query->get();
-    }
+        // Removed: getRekapNilai was dead code (0 callers)
 
     /**
      * Get detail nilai for a specific peserta in a sesi.
