@@ -53,13 +53,13 @@ export function tiptapEditor({
                     codeBlock: false,
                     code: false,
                 }),
-                Image.configure({
-                    inline: true,
-                    allowBase64: false,
-                    HTMLAttributes: {
-                        class: 'tiptap-image',
-                    },
-                }),
+            Image.configure({
+                inline: false,
+                allowBase64: false,
+                HTMLAttributes: {
+                    class: 'tiptap-image',
+                },
+            }),
                 TextAlign.configure({
                     types: ['heading', 'paragraph'],
                 }),
@@ -260,16 +260,21 @@ export function tiptapEditor({
         },
 
         insertInlineMath() {
-            this.editor.chain().focus().insertContent({
-                type: 'inlineMath',
-                attrs: { latex: 'x', evaluate: 'no', display: 'no' },
-            }).run();
+            if (!this.editor) return;
+            // Ensure editor has focus and valid cursor position before inserting math node
+            this.editor.commands.focus();
+            const { from, to } = this.editor.state.selection;
+            this.editor.chain().insertContentAt({ from, to }, [
+                { type: 'inlineMath', attrs: { latex: 'x', evaluate: 'no', display: 'no' } },
+            ]).run();
         },
         insertBlockMath() {
-            this.editor.chain().focus().insertContent({
-                type: 'inlineMath',
-                attrs: { latex: 'x^2 + y^2 = z^2', evaluate: 'no', display: 'yes' },
-            }).run();
+            if (!this.editor) return;
+            this.editor.commands.focus();
+            const { from, to } = this.editor.state.selection;
+            this.editor.chain().insertContentAt({ from, to }, [
+                { type: 'inlineMath', attrs: { latex: 'x^2 + y^2 = z^2', evaluate: 'no', display: 'yes' } },
+            ]).run();
         },
 
         // Check states for toolbar button active states
