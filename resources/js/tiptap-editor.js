@@ -5,7 +5,6 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
-import Underline from '@tiptap/extension-underline';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -67,7 +66,6 @@ export function tiptapEditor({
                 TextStyle,
                 Color,
                 Highlight.configure({ multicolor: true }),
-                Underline,
                 Placeholder.configure({
                     placeholder,
                     emptyEditorClass: 'is-editor-empty',
@@ -93,7 +91,9 @@ export function tiptapEditor({
                 content: this.htmlContent || '',
                 editorProps: {
                     attributes: {
-                        class: 'tiptap-content prose prose-sm max-w-none focus:outline-none',
+                        class: minimal
+                            ? 'tiptap-content-mini prose prose-sm max-w-none focus:outline-none'
+                            : 'tiptap-content prose prose-sm max-w-none focus:outline-none',
                     },
                     handlePaste: (view, event) => {
                         const items = event.clipboardData?.items;
@@ -191,7 +191,11 @@ export function tiptapEditor({
 
                 const data = await res.json();
                 if (data.url) {
-                    this.editor.chain().focus().setImage({ src: data.url }).run();
+                    // Use setTimeout to ensure we apply in a clean editor state
+                    // (the async fetch may have caused the editor state to change)
+                    setTimeout(() => {
+                        this.editor.chain().focus().setImage({ src: data.url }).run();
+                    }, 0);
                 }
             } catch (e) {
                 console.error('Image upload failed:', e);
@@ -256,10 +260,16 @@ export function tiptapEditor({
         },
 
         insertInlineMath() {
-            this.editor.chain().focus().insertContent('$x$').run();
+            this.editor.chain().focus().insertContent({
+                type: 'inlineMath',
+                attrs: { latex: 'x', evaluate: 'no', display: 'no' },
+            }).run();
         },
         insertBlockMath() {
-            this.editor.chain().focus().insertContent('$$\nx^2 + y^2 = z^2\n$$').run();
+            this.editor.chain().focus().insertContent({
+                type: 'inlineMath',
+                attrs: { latex: 'x^2 + y^2 = z^2', evaluate: 'no', display: 'yes' },
+            }).run();
         },
 
         // Check states for toolbar button active states

@@ -78,7 +78,7 @@
     {{-- Pertanyaan --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Pertanyaan</h2>
-        <div class="prose prose-sm max-w-none text-gray-800">
+        <div class="prose prose-sm max-w-none text-gray-800 mathjax-process">
             @if($soal->pertanyaan === strip_tags($soal->pertanyaan))
                 {!! nl2br(e($soal->pertanyaan)) !!}
             @else
@@ -104,7 +104,7 @@
                 </span>
                 <div class="flex-1">
                     @if($opsi->teks)
-                    <p class="text-sm text-gray-800">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</p>
+                    <p class="text-sm text-gray-800 mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</p>
                     @endif
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar opsi {{ $opsi->label }}" class="{{ $opsi->teks ? 'mt-2' : '' }} max-h-32 rounded border">
@@ -183,12 +183,12 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Kunci Jawaban</h2>
         <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div class="text-sm text-gray-800 prose prose-sm max-w-none">{!! $soal->kunci_jawaban ?? '—' !!}</div>
+            <div class="text-sm text-gray-800 prose prose-sm max-w-none mathjax-process">{!! $soal->kunci_jawaban ?? '—' !!}</div>
         </div>
         @if($soal->pembahasan)
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-4 mb-2">Pembahasan / Panduan Penilaian</h2>
         <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div class="text-sm text-gray-800 prose prose-sm max-w-none">{!! $soal->pembahasan !!}</div>
+            <div class="text-sm text-gray-800 prose prose-sm max-w-none mathjax-process">{!! $soal->pembahasan !!}</div>
         </div>
         @endif
     </div>

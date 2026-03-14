@@ -54,7 +54,7 @@
         {{-- Pertanyaan --}}
         <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <p class="text-xs text-blue-500 font-medium uppercase tracking-wide mb-2">Pertanyaan</p>
-            <div class="text-sm text-gray-800 prose prose-sm max-w-none">
+            <div class="text-sm text-gray-800 prose prose-sm max-w-none mathjax-process">
                 {!! $jawaban->soal->pertanyaan !!}
             </div>
             @if($jawaban->soal->gambar_soal && !str_contains($jawaban->soal->pertanyaan ?? '', '<img '))

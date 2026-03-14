@@ -22,6 +22,7 @@
             chtml: { scale: 1.15 },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea'],
+                processHtmlClass: 'mathjax-process',
                 ignoreHtmlClass: 'tiptap-content|tiptap-content-mini|tiptap-toolbar|katex',
             }
         };

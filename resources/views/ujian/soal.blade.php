@@ -20,6 +20,7 @@
             chtml: { scale: 1.15 },
             options: {
                 skipHtmlTags: ['script','noscript','style','textarea'],
+                processHtmlClass: 'mathjax-process',
                 ignoreHtmlClass: 'tiptap-content|tiptap-content-mini|tiptap-toolbar|katex',
             }
         };
@@ -238,7 +239,7 @@
                             </div>
                             @endif
 
-                            <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+                            <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed mathjax-process">
                                 {!! $soal['pertanyaan'] !!}
                             </div>
 
@@ -270,7 +271,7 @@
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     @if($opsi['teks'])
-                                    <span class="text-sm text-gray-800">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</span>
+                                    <span class="text-sm text-gray-800 mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</span>
                                     @endif
                                     @if($opsi['gambar'])
                                     <img src="{{ asset('storage/'.$opsi['gambar']) }}"
