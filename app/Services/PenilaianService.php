@@ -14,7 +14,7 @@ class PenilaianService
 
     public function hitungNilai(SesiPeserta $sesiPeserta): array
     {
-        $sesiPeserta->load(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal.soal']);
+        $sesiPeserta->loadMissing(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal.soal']);
         $paket = $sesiPeserta->sesi->paket;
 
         $jumlahBenar  = 0;

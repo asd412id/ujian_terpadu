@@ -89,6 +89,63 @@
         @endif
     </form>
 
+    {{-- Recalculate Progress Banner --}}
+    <div x-data="recalcProgress()" x-show="show" x-cloak
+         class="rounded-lg border p-4 text-sm"
+         :class="{
+            'bg-blue-50 border-blue-200 text-blue-800': status === 'processing',
+            'bg-green-50 border-green-200 text-green-800': status === 'done',
+         }">
+        <div class="flex items-center gap-2">
+            <svg x-show="status === 'processing'" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span x-text="message"></span>
+        </div>
+        <template x-if="status === 'done'">
+            <button @click="clear()" class="mt-2 text-xs underline">Tutup & refresh</button>
+        </template>
+    </div>
+
+    <script>
+    function recalcProgress() {
+        return {
+            show: false,
+            status: 'idle',
+            message: '',
+            interval: null,
+            init() {
+                this.checkProgress();
+                this.interval = setInterval(() => this.checkProgress(), 3000);
+            },
+            async checkProgress() {
+                try {
+                    const res = await fetch('{{ route("dinas.laporan.recalculate-progress") }}');
+                    const data = await res.json();
+                    this.status = data.status;
+                    if (data.status === 'processing') {
+                        this.show = true;
+                        this.message = `Recalculate sedang berjalan... ${data.updated}/${data.total} (${data.changed} berubah)`;
+                    } else if (data.status === 'done') {
+                        this.show = true;
+                        this.message = `Recalculate selesai: ${data.changed} dari ${data.updated} nilai diperbarui.`;
+                        clearInterval(this.interval);
+                    } else {
+                        if (this.show && this.status === 'done') return;
+                        this.show = false;
+                        clearInterval(this.interval);
+                    }
+                } catch (e) {}
+            },
+            clear() {
+                this.show = false;
+                window.location.reload();
+            }
+        }
+    }
+    </script>
+
     {{-- Rekap Statistik --}}
     @if(isset($rekap))
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">

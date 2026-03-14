@@ -140,13 +140,34 @@ class JawabanRepository
             ->keyBy('soal_id');
     }
 
-    /**
-     * Batch update skor_auto for multiple jawaban.
+            /**
+     * Batch update skor_auto for multiple jawaban using chunked upsert.
      */
     public function batchUpdateSkorAuto(array $updates): void
     {
-        foreach ($updates as $upd) {
-            $this->model->where('id', $upd['id'])->update(['skor_auto' => $upd['skor_auto']]);
+        if (empty($updates)) {
+            return;
+        }
+
+        foreach (array_chunk($updates, 500) as $chunk) {
+            $ids = array_column($chunk, 'id');
+            $cases = [];
+            $bindings = [];
+
+            foreach ($chunk as $upd) {
+                $cases[] = 'WHEN id = ? THEN ?';
+                $bindings[] = $upd['id'];
+                $bindings[] = (float) $upd['skor_auto'];
+            }
+
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $caseStr = implode(' ', $cases);
+            $bindings = array_merge($bindings, $ids);
+
+            \Illuminate\Support\Facades\DB::update(
+                "UPDATE jawaban SET skor_auto = CASE {$caseStr} ELSE skor_auto END WHERE id IN ({$placeholders})",
+                $bindings
+            );
         }
     }
 

@@ -99,6 +99,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     // Laporan
     Route::get('/laporan', [DinasLaporanController::class, 'index'])->name('laporan');
     Route::post('/laporan/recalculate', [DinasLaporanController::class, 'recalculate'])->name('laporan.recalculate');
+    Route::get('/laporan/recalculate-progress', [DinasLaporanController::class, 'recalculateProgress'])->name('laporan.recalculate-progress');
     Route::get('/laporan/export', [DinasLaporanController::class, 'export'])->name('laporan.export');
     Route::get('/laporan/analisis-soal/{paket}', [DinasLaporanController::class, 'analisisSoal'])->name('laporan.analisis-soal');
     Route::get('/laporan/detail-siswa/{sesiPeserta}', [DinasLaporanController::class, 'detailSiswa'])->name('laporan.detail-siswa');
