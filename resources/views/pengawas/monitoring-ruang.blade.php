@@ -163,7 +163,11 @@ function pengawasApp() {
         _loading: false,
 
         init() {
-            setInterval(() => this.loadStats(), 10000);
+            this._pollInterval = setInterval(() => this.loadStats(), 10000);
+        },
+
+        destroy() {
+            clearInterval(this._pollInterval);
         },
 
         async loadStats() {
@@ -181,7 +185,7 @@ function pengawasApp() {
                     }
                     this.lastUpdate = new Date().toLocaleTimeString('id-ID');
                 }
-            } catch (e) {}
+            } catch (e) { console.warn('monitoring:ruang', e); }
             this._loading = false;
         }
     };

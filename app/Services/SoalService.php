@@ -437,7 +437,7 @@ class SoalService
         }
     }
 
-        /**
+            /**
      * Import soal from Excel file data.
      *
      * @param  array  $rows  Parsed rows from Excel
@@ -450,57 +450,62 @@ class SoalService
         $skipped = 0;
         $errors = [];
 
-        foreach ($rows as $index => $row) {
-            try {
-                DB::beginTransaction();
+        DB::beginTransaction();
+        try {
+            foreach ($rows as $index => $row) {
+                try {
+                    $soalData = array_merge([
+                        'pertanyaan'   => $this->normalizeEditorContent($row['pertanyaan'] ?? $row['teks_soal'] ?? null),
+                        'tipe_soal'    => $row['tipe_soal'] ?? 'pg',
+                        'bobot'        => $row['bobot'] ?? 1,
+                        'kategori_id'  => $row['kategori_id'] ?? $meta['kategori_id'] ?? null,
+                        'created_by'   => $meta['created_by'] ?? null,
+                    ], $meta);
 
-                $soalData = array_merge([
-                    'pertanyaan'   => $this->normalizeEditorContent($row['pertanyaan'] ?? $row['teks_soal'] ?? null),
-                    'tipe_soal'    => $row['tipe_soal'] ?? 'pg',
-                    'bobot'        => $row['bobot'] ?? 1,
-                    'kategori_id'  => $row['kategori_id'] ?? $meta['kategori_id'] ?? null,
-                    'created_by'   => $meta['created_by'] ?? null,
-                ], $meta);
-
-                if (empty($soalData['pertanyaan'])) {
-                    DB::rollBack();
-                    $skipped++;
-                    $errors[] = "Baris " . ($index + 1) . ": Teks soal kosong";
-                    continue;
-                }
-
-                unset($soalData['opsi_jawaban'], $soalData['pasangan']);
-                $soal = $this->repository->create($soalData);
-
-                // Import opsi jawaban from columns (A, B, C, D, E, jawaban_benar)
-                $opsiLabels = ['A', 'B', 'C', 'D', 'E'];
-                foreach ($opsiLabels as $label) {
-                    $key = strtolower($label);
-                    if (!empty($row[$key]) || !empty($row["opsi_{$key}"])) {
-                        $teksOpsi = $this->normalizeEditorContent($row[$key] ?? $row["opsi_{$key}"] ?? null);
-                        $isBenar = false;
-
-                        // Check if this option is the correct answer
-                        $jawabanBenar = $row['jawaban_benar'] ?? $row['kunci'] ?? '';
-                        if (strtoupper(trim($jawabanBenar)) === $label) {
-                            $isBenar = true;
-                        }
-
-                        $soal->opsiJawaban()->create([
-                            'label'    => $label,
-                            'teks'     => $teksOpsi,
-                            'is_benar' => $isBenar,
-                        ]);
+                    if (empty($soalData['pertanyaan'])) {
+                        $skipped++;
+                        $errors[] = "Baris " . ($index + 1) . ": Teks soal kosong";
+                        continue;
                     }
-                }
 
-                DB::commit();
-                $imported++;
-            } catch (\Exception $e) {
-                DB::rollBack();
-                $skipped++;
-                $errors[] = "Baris " . ($index + 1) . ": " . $e->getMessage();
+                    unset($soalData['opsi_jawaban'], $soalData['pasangan']);
+                    $soal = $this->repository->create($soalData);
+
+                    $opsiLabels = ['A', 'B', 'C', 'D', 'E'];
+                    foreach ($opsiLabels as $label) {
+                        $key = strtolower($label);
+                        if (!empty($row[$key]) || !empty($row["opsi_{$key}"])) {
+                            $teksOpsi = $this->normalizeEditorContent($row[$key] ?? $row["opsi_{$key}"] ?? null);
+                            $isBenar = false;
+
+                            $jawabanBenar = $row['jawaban_benar'] ?? $row['kunci'] ?? '';
+                            if (strtoupper(trim($jawabanBenar)) === $label) {
+                                $isBenar = true;
+                            }
+
+                            $soal->opsiJawaban()->create([
+                                'label'    => $label,
+                                'teks'     => $teksOpsi,
+                                'is_benar' => $isBenar,
+                            ]);
+                        }
+                    }
+
+                    $imported++;
+                } catch (\Exception $e) {
+                    $skipped++;
+                    $errors[] = "Baris " . ($index + 1) . ": " . $e->getMessage();
+                }
             }
+
+            if ($imported > 0) {
+                DB::commit();
+            } else {
+                DB::rollBack();
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
 
         return [

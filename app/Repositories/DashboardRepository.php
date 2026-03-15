@@ -25,20 +25,35 @@ class DashboardRepository
             ->distinct('paket_ujian.sekolah_id')
             ->count('paket_ujian.sekolah_id');
 
+        // Combine simple model counts into fewer queries
+        $counts = \Illuminate\Support\Facades\DB::selectOne("
+            SELECT
+                (SELECT COUNT(*) FROM sekolah WHERE is_active = 1) as total_sekolah,
+                (SELECT COUNT(*) FROM peserta WHERE deleted_at IS NULL) as total_peserta,
+                (SELECT COUNT(*) FROM paket_ujian WHERE deleted_at IS NULL) as total_paket,
+                (SELECT COUNT(*) FROM paket_ujian WHERE status = 'aktif' AND deleted_at IS NULL) as paket_aktif,
+                (SELECT COUNT(*) FROM sesi_ujian WHERE status = 'berlangsung') as sesi_berlangsung,
+                (SELECT COUNT(*) FROM sesi_peserta WHERE status IN ('login','mengerjakan')) as peserta_online,
+                (SELECT COUNT(*) FROM soal WHERE deleted_at IS NULL) as total_soal,
+                (SELECT COUNT(*) FROM kategori_soal WHERE is_active = 1) as total_kategori
+        ");
+
+        $essayBelumDinilai = JawabanPeserta::where('is_terjawab', true)
+            ->whereNull('skor_manual')
+            ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
+            ->count();
+
         return [
-            'total_sekolah'       => Sekolah::where('is_active', true)->count(),
+            'total_sekolah'       => (int) $counts->total_sekolah,
             'sekolah_aktif'       => $sekolahAktifCount,
-            'total_peserta'       => Peserta::count(),
-            'total_paket'         => PaketUjian::count(),
-            'paket_aktif'         => PaketUjian::where('status', 'aktif')->count(),
-            'sesi_berlangsung'    => SesiUjian::where('status', 'berlangsung')->count(),
-            'peserta_online'      => SesiPeserta::whereIn('status', ['login', 'mengerjakan'])->count(),
-            'essay_belum_dinilai' => JawabanPeserta::where('is_terjawab', true)
-                ->whereNull('skor_manual')
-                ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
-                ->count(),
-            'total_soal'          => Soal::count(),
-            'total_kategori'      => KategoriSoal::where('is_active', true)->count(),
+            'total_peserta'       => (int) $counts->total_peserta,
+            'total_paket'         => (int) $counts->total_paket,
+            'paket_aktif'         => (int) $counts->paket_aktif,
+            'sesi_berlangsung'    => (int) $counts->sesi_berlangsung,
+            'peserta_online'      => (int) $counts->peserta_online,
+            'essay_belum_dinilai' => $essayBelumDinilai,
+            'total_soal'          => (int) $counts->total_soal,
+            'total_kategori'      => (int) $counts->total_kategori,
         ];
     }
 

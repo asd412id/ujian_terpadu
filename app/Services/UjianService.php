@@ -73,7 +73,7 @@ class UjianService
         $sisaWaktu = $sesiPeserta->sisa_waktu_detik;
 
         return [
-            'sesiPeserta'     => $sesiPeserta->fresh(),
+            'sesiPeserta'     => $sesiPeserta,
             'paket'           => $paket,
             'soalList'        => $soalList,
             'jawabanExisting' => $jawabanExisting,

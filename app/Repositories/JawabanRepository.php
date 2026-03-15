@@ -130,17 +130,6 @@ class JawabanRepository
     }
 
     /**
-     * Find jawaban by ID or fail.
-     */
-    public function getJawabanBySesiPeserta(string $sesiPesertaId): Collection
-    {
-        return $this->model
-            ->where('sesi_peserta_id', $sesiPesertaId)
-            ->get()
-            ->keyBy('soal_id');
-    }
-
-            /**
      * Batch update skor_auto for multiple jawaban using chunked upsert.
      */
     public function batchUpdateSkorAuto(array $updates): void

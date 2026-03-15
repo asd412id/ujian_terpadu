@@ -212,7 +212,11 @@ function sesiMonitoringApp() {
         init() {
             // Initial load
             this.loadStats();
-            setInterval(() => this.loadStats(), 10000);
+            this._pollInterval = setInterval(() => this.loadStats(), 10000);
+        },
+
+        destroy() {
+            clearInterval(this._pollInterval);
         },
 
         async loadStats() {

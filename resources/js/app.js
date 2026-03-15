@@ -1,11 +1,25 @@
 import './bootstrap';
 import Alpine from 'alpinejs';
 import Persist from '@alpinejs/persist';
+import DOMPurify from 'dompurify';
 import { ujianApp } from './ujian';
 import { richEditor } from './rich-editor';
 
 // Register Alpine plugins
 Alpine.plugin(Persist);
+
+// Register Alpine directive: x-safe-html (sanitizes HTML with DOMPurify)
+Alpine.directive('safe-html', (el, { expression }, { evaluateLater, effect }) => {
+    const getValue = evaluateLater(expression);
+    effect(() => {
+        getValue(value => {
+            el.innerHTML = DOMPurify.sanitize(value || '', {
+                ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'msubsup', 'mfrac', 'msqrt', 'mroot', 'mover', 'munder', 'munderover', 'mtable', 'mtr', 'mtd', 'mspace', 'mtext', 'menclose', 'mpadded', 'mphantom', 'merror', 'annotation'],
+                ADD_ATTR: ['encoding', 'xmlns'],
+            });
+        });
+    });
+});
 
 // Register Alpine components
 Alpine.data('ujianApp', ujianApp);

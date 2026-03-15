@@ -7,6 +7,7 @@ use App\Models\SesiUjian;
 use App\Models\SesiPeserta;
 use App\Models\LogAktivitasUjian;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class MonitoringRepository
 {
@@ -156,48 +157,50 @@ class MonitoringRepository
      */
     public function getSekolahMonitoringBatch(): array
     {
-        $sekolahList = Sekolah::withCount(['peserta'])
-            ->where('is_active', true)
-            ->get();
+        return Cache::remember('sekolah_monitoring_batch', 30, function () {
+            $sekolahList = Sekolah::withCount(['peserta'])
+                ->where('is_active', true)
+                ->get();
 
-        $sekolahIds = $sekolahList->pluck('id');
+            $sekolahIds = $sekolahList->pluck('id');
 
-        $sesiAktifMap = SesiUjian::where('status', 'berlangsung')
-            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
-            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
-            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
-            ->groupBy('paket_ujian.sekolah_id')
-            ->pluck('cnt', 'sekolah_id');
+            $sesiAktifMap = SesiUjian::where('status', 'berlangsung')
+                ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+                ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+                ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+                ->groupBy('paket_ujian.sekolah_id')
+                ->pluck('cnt', 'sekolah_id');
 
-        $pesertaOnlineMap = SesiPeserta::whereIn('sesi_peserta.status', ['login', 'mengerjakan'])
-            ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
-            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
-            ->where('sesi_ujian.status', 'berlangsung')
-            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
-            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
-            ->groupBy('paket_ujian.sekolah_id')
-            ->pluck('cnt', 'sekolah_id');
+            $pesertaOnlineMap = SesiPeserta::whereIn('sesi_peserta.status', ['login', 'mengerjakan'])
+                ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
+                ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+                ->where('sesi_ujian.status', 'berlangsung')
+                ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+                ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+                ->groupBy('paket_ujian.sekolah_id')
+                ->pluck('cnt', 'sekolah_id');
 
-        $pesertaSelesaiMap = SesiPeserta::where('sesi_peserta.status', 'submit')
-            ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
-            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
-            ->whereDate('sesi_ujian.created_at', today())
-            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
-            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
-            ->groupBy('paket_ujian.sekolah_id')
-            ->pluck('cnt', 'sekolah_id');
+            $pesertaSelesaiMap = SesiPeserta::where('sesi_peserta.status', 'submit')
+                ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
+                ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+                ->whereDate('sesi_ujian.created_at', today())
+                ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+                ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+                ->groupBy('paket_ujian.sekolah_id')
+                ->pluck('cnt', 'sekolah_id');
 
-        $cheatingMap = LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
-            ->whereDate('log_aktivitas_ujian.created_at', today())
-            ->join('sesi_peserta', 'log_aktivitas_ujian.sesi_peserta_id', '=', 'sesi_peserta.id')
-            ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
-            ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
-            ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
-            ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
-            ->groupBy('paket_ujian.sekolah_id')
-            ->pluck('cnt', 'sekolah_id');
+            $cheatingMap = LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
+                ->whereDate('log_aktivitas_ujian.created_at', today())
+                ->join('sesi_peserta', 'log_aktivitas_ujian.sesi_peserta_id', '=', 'sesi_peserta.id')
+                ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
+                ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+                ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
+                ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
+                ->groupBy('paket_ujian.sekolah_id')
+                ->pluck('cnt', 'sekolah_id');
 
-        return compact('sekolahList', 'sesiAktifMap', 'pesertaOnlineMap', 'pesertaSelesaiMap', 'cheatingMap');
+            return compact('sekolahList', 'sesiAktifMap', 'pesertaOnlineMap', 'pesertaSelesaiMap', 'cheatingMap');
+        });
     }
 
     /**
@@ -326,29 +329,35 @@ class MonitoringRepository
      */
     public function getSesiPesertaLiveData(string $sesiId): array
     {
-        $sesi = SesiUjian::with('paket')->findOrFail($sesiId);
-        $durasiDetik = ($sesi->paket->durasi_menit ?? 0) * 60;
+        return Cache::remember(
+            "sesi_live_{$sesiId}",
+            5,
+            function () use ($sesiId) {
+                $sesi = SesiUjian::with('paket')->findOrFail($sesiId);
+                $durasiDetik = ($sesi->paket->durasi_menit ?? 0) * 60;
 
-        return SesiPeserta::where('sesi_id', $sesiId)
-            ->whereHas('peserta')
-            ->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
-            ->map(function ($sp) use ($durasiDetik) {
-                $sisaWaktu = 0;
-                if ($sp->mulai_at && in_array($sp->status, ['login', 'mengerjakan'])) {
-                    $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
-                    $sisaWaktu = max(0, $durasiDetik - $elapsed);
-                }
+                return SesiPeserta::where('sesi_id', $sesiId)
+                    ->whereHas('peserta')
+                    ->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
+                    ->map(function ($sp) use ($durasiDetik) {
+                        $sisaWaktu = 0;
+                        if ($sp->mulai_at && in_array($sp->status, ['login', 'mengerjakan'])) {
+                            $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
+                            $sisaWaktu = max(0, $durasiDetik - $elapsed);
+                        }
 
-                return [
-                    'id'             => $sp->id,
-                    'status'         => $sp->status,
-                    'soal_terjawab'  => $sp->soal_terjawab ?? 0,
-                    'soal_ditandai'  => $sp->soal_ditandai ?? 0,
-                    'sisa_waktu'     => $sisaWaktu,
-                    'nilai_akhir'    => $sp->nilai_akhir,
-                ];
-            })
-            ->keyBy('id')
-            ->toArray();
+                        return [
+                            'id'             => $sp->id,
+                            'status'         => $sp->status,
+                            'soal_terjawab'  => $sp->soal_terjawab ?? 0,
+                            'soal_ditandai'  => $sp->soal_ditandai ?? 0,
+                            'sisa_waktu'     => $sisaWaktu,
+                            'nilai_akhir'    => $sp->nilai_akhir,
+                        ];
+                    })
+                    ->keyBy('id')
+                    ->toArray();
+            }
+        );
     }
 }

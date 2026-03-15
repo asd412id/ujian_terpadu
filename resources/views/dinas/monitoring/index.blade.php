@@ -193,6 +193,10 @@ function monitoringApp() {
             this.pollInterval = setInterval(() => this.loadData(), 10000);
         },
 
+        destroy() {
+            clearInterval(this.pollInterval);
+        },
+
         updateTime() {
             this.lastUpdate = new Date().toLocaleTimeString('id-ID');
         },

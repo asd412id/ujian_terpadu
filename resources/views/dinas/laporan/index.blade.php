@@ -122,6 +122,7 @@
             async checkProgress() {
                 try {
                     const res = await fetch('{{ route("dinas.laporan.recalculate-progress") }}');
+                    if (!res.ok) return;
                     const data = await res.json();
                     this.status = data.status;
                     if (data.status === 'processing') {
@@ -136,11 +137,14 @@
                         this.show = false;
                         clearInterval(this.interval);
                     }
-                } catch (e) {}
+                } catch (e) { console.warn('laporan:progress', e); }
             },
             clear() {
                 this.show = false;
                 window.location.reload();
+            },
+            destroy() {
+                clearInterval(this.interval);
             }
         }
     }

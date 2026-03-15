@@ -24,12 +24,14 @@ class VerifyUjianToken
             return response()->json(['error' => 'Token ujian tidak valid.'], 401);
         }
 
-        // Verify token exists in database
-        $exists = SesiPeserta::where('token_ujian', $token)->exists();
+        // Load full sesi_peserta and share via request attributes (avoids duplicate query in controller)
+        $sesiPeserta = SesiPeserta::where('token_ujian', $token)->first();
 
-        if (! $exists) {
+        if (! $sesiPeserta) {
             return response()->json(['error' => 'Sesi ujian tidak ditemukan.'], 401);
         }
+
+        $request->attributes->set('sesiPeserta', $sesiPeserta);
 
         return $next($request);
     }

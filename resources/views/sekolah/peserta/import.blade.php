@@ -207,9 +207,13 @@ document.addEventListener('alpine:init', () => {
             this.redirectUrl = redirectUrl || null;
             this.polling = setInterval(() => this.checkStatus(statusUrl), 1500);
         },
+        destroy() {
+            clearInterval(this.polling);
+        },
         async checkStatus(url) {
             try {
                 const res  = await fetch(url);
+                if (!res.ok) return;
                 const data = await res.json();
                 this.errors  = data.errors || [];
                 this.catatan = data.catatan || '';

@@ -204,11 +204,16 @@ function monitorSekolah() {
             this.$watch('filterStatus', () => {});
         },
 
+        destroy() {
+            clearInterval(this.timer);
+        },
+
         async fetchData() {
             try {
                 const res = await fetch('{{ route('dinas.monitoring.sekolah.api') }}', {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
+                if (!res.ok) return;
                 const data = await res.json();
                 this.sekolahList = data.sekolah || [];
                 this.summary     = data.summary || this.summary;
@@ -238,9 +243,10 @@ function monitorSekolah() {
                 const res = await fetch(`/dinas/monitoring/sesi?sekolah_id=${sekolah.id}&json=1`, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
+                if (!res.ok) return;
                 const data = await res.json();
                 this.selectedSekolah.sesi = data.sesi || [];
-            } catch (e) {}
+            } catch (e) { console.warn('monitoring:detail', e); }
         }
     };
 }

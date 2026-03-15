@@ -56,90 +56,90 @@ class JawabanService
 
         $errors  = [];
         $maxRetries = 3;
-        $attempt = 0;
 
-        retry:
-        $attempt++;
-        DB::beginTransaction();
-        try {
-            $incomingKeys = array_filter(array_column($answers, 'idempotency_key'));
-            $existingKeys = [];
-            if (!empty($incomingKeys)) {
-                $existingKeys = $this->repository->getExistingIdempotencyKeys($incomingKeys);
-            }
-
-            $upsertRows = [];
-            $now = now();
-            $synced = 0;
-            $skipped = 0;
-            foreach ($answers as $ans) {
-                $key = $ans['idempotency_key'] ?? null;
-                if ($key && isset($existingKeys[$key])) {
-                    $skipped++;
-                    continue;
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            DB::beginTransaction();
+            try {
+                $incomingKeys = array_filter(array_column($answers, 'idempotency_key'));
+                $existingKeys = [];
+                if (!empty($incomingKeys)) {
+                    $existingKeys = $this->repository->getExistingIdempotencyKeys($incomingKeys);
                 }
 
-                $jawabanData = $this->parseJawaban($ans['jawaban'] ?? null);
+                $upsertRows = [];
+                $now = now();
+                $synced = 0;
+                $skipped = 0;
+                foreach ($answers as $ans) {
+                    $key = $ans['idempotency_key'] ?? null;
+                    if ($key && isset($existingKeys[$key])) {
+                        $skipped++;
+                        continue;
+                    }
 
-                $upsertRows[] = [
-                    'sesi_peserta_id' => $sesiPeserta->id,
-                    'soal_id'         => $ans['soal_id'],
-                    'jawaban_pg'      => isset($jawabanData['jawaban_pg']) ? json_encode($jawabanData['jawaban_pg']) : null,
-                    'jawaban_teks'    => $jawabanData['jawaban_teks'],
-                    'jawaban_pasangan'=> isset($jawabanData['jawaban_pasangan']) ? json_encode($jawabanData['jawaban_pasangan']) : null,
-                    'is_terjawab'     => $jawabanData['is_terjawab'],
-                    'idempotency_key' => $key,
-                    'waktu_jawab'     => $now,
-                    'updated_at'      => $now,
-                ];
-                $synced++;
-            }
+                    $jawabanData = $this->parseJawaban($ans['jawaban'] ?? null);
 
-            $this->repository->bulkUpsert($upsertRows);
+                    $upsertRows[] = [
+                        'sesi_peserta_id' => $sesiPeserta->id,
+                        'soal_id'         => $ans['soal_id'],
+                        'jawaban_pg'      => isset($jawabanData['jawaban_pg']) ? json_encode($jawabanData['jawaban_pg']) : null,
+                        'jawaban_teks'    => $jawabanData['jawaban_teks'],
+                        'jawaban_pasangan'=> isset($jawabanData['jawaban_pasangan']) ? json_encode($jawabanData['jawaban_pasangan']) : null,
+                        'is_terjawab'     => $jawabanData['is_terjawab'],
+                        'idempotency_key' => $key,
+                        'waktu_jawab'     => $now,
+                        'updated_at'      => $now,
+                    ];
+                    $synced++;
+                }
 
-            $terjawab = $this->repository->countAnswered($sesiPeserta->id);
-            $updateData = ['soal_terjawab' => $terjawab];
-            if (isset($requestMeta['soal_ditandai'])) {
-                $updateData['soal_ditandai'] = $requestMeta['soal_ditandai'];
-            }
-            $sesiPeserta->update($updateData);
+                $this->repository->bulkUpsert($upsertRows);
 
-            if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
-                $this->repository->syncTandaiList($sesiPeserta->id, $requestMeta['tandai_list']);
-            } elseif (isset($requestMeta['tandai_list']) && empty($requestMeta['tandai_list'])) {
-                $this->repository->clearAllTandai($sesiPeserta->id);
-            }
+                $terjawab = $this->repository->countAnswered($sesiPeserta->id);
+                $updateData = ['soal_terjawab' => $terjawab];
+                if (isset($requestMeta['soal_ditandai'])) {
+                    $updateData['soal_ditandai'] = $requestMeta['soal_ditandai'];
+                }
+                $sesiPeserta->update($updateData);
 
-            DB::commit();
+                if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
+                    $this->repository->syncTandaiList($sesiPeserta->id, $requestMeta['tandai_list']);
+                } elseif (isset($requestMeta['tandai_list']) && empty($requestMeta['tandai_list'])) {
+                    $this->repository->clearAllTandai($sesiPeserta->id);
+                }
 
-            LogAktivitasUjianJob::dispatch(
-                $sesiPeserta->id,
-                'sync_offline',
-                ['synced' => $synced, 'skipped' => $skipped, 'late_sync' => $isAlreadySubmitted],
-                $requestMeta['ip_address'] ?? null,
-            );
-
-            // Re-score if answers arrived after auto-submit (offline late sync)
-            if ($isAlreadySubmitted && $synced > 0) {
-                \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'rescore_late_sync');
+                DB::commit();
 
                 LogAktivitasUjianJob::dispatch(
                     $sesiPeserta->id,
-                    'rescore_late_sync',
-                    ['synced' => $synced],
+                    'sync_offline',
+                    ['synced' => $synced, 'skipped' => $skipped, 'late_sync' => $isAlreadySubmitted],
                     $requestMeta['ip_address'] ?? null,
                 );
+
+                if ($isAlreadySubmitted && $synced > 0) {
+                    \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'rescore_late_sync');
+
+                    LogAktivitasUjianJob::dispatch(
+                        $sesiPeserta->id,
+                        'rescore_late_sync',
+                        ['synced' => $synced],
+                        $requestMeta['ip_address'] ?? null,
+                    );
+                }
+
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                DB::rollBack();
+                if ($e->errorInfo[1] == 1020 && $attempt < $maxRetries) {
+                    usleep(50000 * $attempt);
+                    continue;
+                }
+                throw $e;
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
-        } catch (\Illuminate\Database\QueryException $e) {
-            DB::rollBack();
-            if ($e->errorInfo[1] == 1020 && $attempt < $maxRetries) {
-                usleep(50000 * $attempt);
-                goto retry;
-            }
-            throw $e;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
         }
 
         return [

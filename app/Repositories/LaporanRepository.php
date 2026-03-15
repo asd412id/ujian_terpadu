@@ -46,7 +46,7 @@ class LaporanRepository
                 MAX(nilai_akhir) as nilai_max,
                 MIN(nilai_akhir) as nilai_min,
                 SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-                SUM(CASE WHEN nilai_akhir < 70 THEN 1 ELSE 0 END) as tidak_lulus
+                SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus
             ')->first();
 
         return [
@@ -58,8 +58,6 @@ class LaporanRepository
             'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
         ];
     }
-
-        // Removed: getRekapNilai was dead code (0 callers)
 
     /**
      * Get detail nilai for a specific peserta in a sesi.
@@ -169,7 +167,7 @@ class LaporanRepository
                 MAX(nilai_akhir) as nilai_max,
                 MIN(nilai_akhir) as nilai_min,
                 SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-                SUM(CASE WHEN nilai_akhir < 70 THEN 1 ELSE 0 END) as tidak_lulus
+                SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus
             ')->first();
 
         return [
@@ -202,7 +200,9 @@ class LaporanRepository
             if ($filters['status'] === 'lulus') {
                 $query->where('nilai_akhir', '>=', 70);
             } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where('nilai_akhir', '<', 70);
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
             }
         }
 
@@ -388,11 +388,14 @@ class LaporanRepository
     {
         $distractorCounts = [];
         if ($pgSoalIds->isNotEmpty()) {
-            $pgJawaban = JawabanPeserta::whereIn('sesi_peserta_id', $sesiPesertaIds)
+            // Use DB aggregate instead of loading all rows into memory
+            $rows = JawabanPeserta::whereIn('sesi_peserta_id', $sesiPesertaIds)
                 ->whereIn('soal_id', $pgSoalIds)
+                ->whereNotNull('jawaban_pg')
                 ->select('soal_id', 'jawaban_pg')
-                ->get();
-            foreach ($pgJawaban as $j) {
+                ->cursor();
+
+            foreach ($rows as $j) {
                 $soalId = $j->soal_id;
                 $pg = $j->jawaban_pg;
                 if (is_array($pg)) {

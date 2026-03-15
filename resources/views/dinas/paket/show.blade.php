@@ -453,6 +453,7 @@ function paketSoalApp() {
                 const res  = await fetch(`${bankUrl}?${params}`, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) return;
                 const json = await res.json();
                 this.bankSoal = json.data;
                 this.bankMeta = json.meta;
@@ -518,6 +519,7 @@ function paketSoalApp() {
                 const res  = await fetch(`${bankUrl}?${params}`, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) return;
                 const json = await res.json();
                 json.data.forEach(s => {
                     if (!this.isSelected(s.id)) this.selectedSoal.push(s);

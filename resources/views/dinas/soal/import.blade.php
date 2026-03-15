@@ -452,6 +452,10 @@ function importSoal() {
             this.pollInterval = setInterval(() => this.checkStatus(), 2000);
         },
 
+        destroy() {
+            clearInterval(this.pollInterval);
+        },
+
         async checkStatus() {
             if (!this.jobId) return;
 
@@ -459,6 +463,7 @@ function importSoal() {
                 const response = await fetch(`{{ url('dinas/soal/import/status') }}/${this.jobId}`, {
                     headers: { 'Accept': 'application/json' }
                 });
+                if (!response.ok) return;
                 const data = await response.json();
 
                 this.jobStatus = data.status;

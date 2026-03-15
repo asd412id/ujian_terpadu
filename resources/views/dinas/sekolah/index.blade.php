@@ -145,6 +145,7 @@
 
         try {
             const res  = await fetch(statusUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!res.ok) return;
             const data = await res.json();
 
             if (data.status === 'selesai') {

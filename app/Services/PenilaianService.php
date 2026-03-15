@@ -163,15 +163,16 @@ class PenilaianService
         $total = $pasanganList->count();
         if ($total === 0) return 0;
 
-        // Build correct mapping: kiri (pasangan id) => kanan (pasangan id)
-        // Each pasangan row IS a correct pair, so correct answer is matching each item to itself
+        // Build correct mapping from pasangan records
+        // Each pasangan row represents one correct pair (kiri ↔ kanan)
+        // Frontend sends pairs as [kiri_pasangan_id, kanan_pasangan_id]
+        // A pair is correct when kiri and kanan come from the same pasangan record (kiri === kanan)
         $correctIds = $pasanganList->pluck('id')->flip();
 
         $benar = 0;
         foreach ($pasanganPilihan as $pair) {
             if (is_array($pair) && count($pair) === 2) {
                 [$kiri, $kanan] = $pair;
-                // A pair is correct if the student matched a kiri to its own kanan (same pasangan record)
                 if ($kiri === $kanan && $correctIds->has($kiri)) {
                     $benar++;
                 }

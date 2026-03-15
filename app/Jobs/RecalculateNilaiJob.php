@@ -20,16 +20,19 @@ class RecalculateNilaiJob implements ShouldQueue
 
     public int $timeout = 900; // 15 minutes max
 
+    protected string $cacheKey;
+
     public function __construct(
         protected array $filters = [],
         protected ?string $userId = null,
     ) {
         $this->onQueue('default');
+        $this->cacheKey = 'recalculate_progress_' . ($userId ?? uniqid());
     }
 
     public function handle(PenilaianService $penilaianService): void
     {
-        $cacheKey = 'recalculate_progress';
+        $cacheKey = $this->cacheKey;
 
         Cache::put($cacheKey, [
             'status'  => 'processing',

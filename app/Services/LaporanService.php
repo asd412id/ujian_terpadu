@@ -59,9 +59,13 @@ class LaporanService
     public function exportHasil(array $filters = []): array
     {
         $hasilData = [];
+        $maxRows = 10000;
 
-        $this->repository->chunkHasilForExport($filters, 500, function ($chunk) use (&$hasilData) {
+        $this->repository->chunkHasilForExport($filters, 500, function ($chunk) use (&$hasilData, $maxRows) {
             foreach ($chunk as $sp) {
+                if (count($hasilData) >= $maxRows) {
+                    return false;
+                }
                 $hasilData[] = [
                     'nama_peserta'   => $sp->peserta->nama ?? '-',
                     'nis'            => $sp->peserta->nis ?? '-',

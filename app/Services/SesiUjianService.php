@@ -59,42 +59,39 @@ class SesiUjianService
      */
     public function forceSubmitActivePeserta(SesiUjian $sesi): int
     {
-        $activePeserta = $sesi->sesiPeserta()
-            ->whereIn('status', ['login', 'mengerjakan'])
-            ->get();
-
-        if ($activePeserta->isEmpty()) {
-            return 0;
-        }
-
         $count = 0;
-        foreach ($activePeserta as $sp) {
-            $submitAt = now();
-            $durasiDetik = $sp->mulai_at
-                ? (int) $sp->mulai_at->diffInSeconds($submitAt, false)
-                : 0;
 
-            $sp->update([
-                'status'              => 'submit',
-                'submit_at'           => $submitAt,
-                'durasi_aktual_detik' => $durasiDetik,
-            ]);
+        $sesi->sesiPeserta()
+            ->whereIn('status', ['login', 'mengerjakan'])
+            ->chunkById(100, function ($chunk) use (&$count, $sesi) {
+                foreach ($chunk as $sp) {
+                    $submitAt = now();
+                    $durasiDetik = $sp->mulai_at
+                        ? (int) $sp->mulai_at->diffInSeconds($submitAt, false)
+                        : 0;
 
-            \App\Jobs\HitungNilaiJob::dispatch($sp->id, 'admin_force_submit');
+                    $sp->update([
+                        'status'              => 'submit',
+                        'submit_at'           => $submitAt,
+                        'durasi_aktual_detik' => $durasiDetik,
+                    ]);
 
-            $this->repository->logAktivitas([
-                'sesi_peserta_id' => $sp->id,
-                'tipe_event'      => 'submit_ujian',
-                'detail'          => [
-                    'reason'  => 'admin_force_submit',
-                    'durasi'  => $durasiDetik,
-                    'trigger' => 'sesi_status_selesai',
-                ],
-                'created_at'      => $submitAt,
-            ]);
+                    \App\Jobs\HitungNilaiJob::dispatch($sp->id, 'admin_force_submit');
 
-            $count++;
-        }
+                    $this->repository->logAktivitas([
+                        'sesi_peserta_id' => $sp->id,
+                        'tipe_event'      => 'submit_ujian',
+                        'detail'          => [
+                            'reason'  => 'admin_force_submit',
+                            'durasi'  => $durasiDetik,
+                            'trigger' => 'sesi_status_selesai',
+                        ],
+                        'created_at'      => $submitAt,
+                    ]);
+
+                    $count++;
+                }
+            });
 
         return $count;
     }
