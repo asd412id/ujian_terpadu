@@ -55,6 +55,8 @@ class JawabanService
         $isAlreadySubmitted = in_array($sesiPeserta->status, ['submit', 'dinilai']);
 
         $errors  = [];
+        $synced  = 0;
+        $skipped = 0;
         $maxRetries = 3;
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
@@ -175,6 +177,12 @@ class JawabanService
     {
         $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaketAny($token);
 
+        // Count server-side violations for anti-cheat enforcement
+        // Only count events that trigger recordViolation() on client: ganti_tab, fullscreen_exit
+        $violationCount = \App\Models\LogAktivitasUjian::where('sesi_peserta_id', $sesiPeserta->id)
+            ->whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
+            ->count();
+
         return [
             'status'            => $sesiPeserta->status,
             'sesi_status'       => $sesiPeserta->sesi->status ?? 'selesai',
@@ -191,6 +199,7 @@ class JawabanService
             'jumlah_salah'      => $sesiPeserta->jumlah_salah,
             'jumlah_kosong'     => $sesiPeserta->jumlah_kosong,
             'tampilkan_hasil'   => (bool) ($sesiPeserta->sesi->paket->tampilkan_hasil ?? false),
+            'violation_count'   => $violationCount,
         ];
     }
 

@@ -58,6 +58,7 @@ function ujianApp() {
         _cheatingQueue:        [],
         _cheatingFlushTimer:   null,
         _lastViolationAt:      0,
+        _memoryFallbackAnswers: {},
 
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
@@ -189,6 +190,24 @@ function ujianApp() {
                         setTimeout(() => { this.showDurasiToast = false; }, 8000);
                     }
                 }
+
+                // Server-side anti-cheat enforcement — sync violation count from server
+                // Prevents client-side tampering (resetting violationCount via DevTools)
+                if (data.violation_count !== undefined && data.violation_count > this.violationCount) {
+                    this.violationCount = data.violation_count;
+                    if (this.violationCount >= this.maxViolations && !this._forceSubmitted) {
+                        console.log('[StatusPoll] Server violation count exceeded, force submitting...');
+                        this._forceSubmitted = true;
+                        clearInterval(this._statusCheckInterval);
+                        this.violationMessage = 'Anda telah melakukan pelanggaran sebanyak ' + this.maxViolations + ' kali. Ujian akan otomatis dikumpulkan.';
+                        this.showViolationOverlay = true;
+                        setTimeout(() => {
+                            this.showViolationOverlay = false;
+                            this.doSubmit();
+                        }, 3000);
+                        return;
+                    }
+                }
             } catch (err) {
                 console.warn('[StatusPoll] Check failed:', err.message);
             }
@@ -223,11 +242,14 @@ function ujianApp() {
                 this.logCheating('klik_kanan', { target: e.target?.tagName });
             });
 
-            // 8. Beforeunload warning
+            // 8. Beforeunload warning + last-chance sync
             window.addEventListener('beforeunload', (e) => {
                 if (!this.isSubmitting) {
                     e.preventDefault();
                     e.returnValue = 'Ujian sedang berlangsung. Yakin ingin keluar?';
+
+                    // Last-chance sync via sendBeacon (fire-and-forget, works during page unload)
+                    this._beaconSync();
                 }
             });
 
@@ -375,10 +397,15 @@ function ujianApp() {
         async restoreState(sesiPesertaId) {
             const cfg = window.UJIAN_CONFIG;
 
-            // Muat jawaban dari IndexedDB
-            const localAnswers = await db.exam_answers
-                .where('sesiPesertaId').equals(sesiPesertaId)
-                .toArray();
+            // Muat jawaban dari IndexedDB (graceful fallback if IDB unavailable)
+            let localAnswers = [];
+            try {
+                localAnswers = await db.exam_answers
+                    .where('sesiPesertaId').equals(sesiPesertaId)
+                    .toArray();
+            } catch (e) {
+                console.warn('[Restore] IndexedDB read failed, using server data only:', e.message);
+            }
 
             // Seed from server data first (jawabanExisting), then overlay IndexedDB
             if (cfg.jawabanExisting?.length > 0) {
@@ -452,12 +479,16 @@ function ujianApp() {
             this.pendingSync = localAnswers.filter(a => !a.synced).length;
 
             // Muat state (posisi, tandai) — IndexedDB tandaiList takes priority if exists
-            const state = await db.exam_state.get(sesiPesertaId);
-            if (state) {
-                this.currentIndex = state.currentIndex ?? 0;
-                if (state.tandaiList?.length > 0) {
-                    this.tandaiList = state.tandaiList;
+            try {
+                const state = await db.exam_state.get(sesiPesertaId);
+                if (state) {
+                    this.currentIndex = state.currentIndex ?? 0;
+                    if (state.tandaiList?.length > 0) {
+                        this.tandaiList = state.tandaiList;
+                    }
                 }
+            } catch (e) {
+                console.warn('[Restore] IndexedDB state read failed:', e.message);
             }
         },
 
@@ -615,27 +646,35 @@ function ujianApp() {
             // 1. Simpan ke IndexedDB (immediate, offline-safe)
             this.isSaving = true;
 
-            const existing = await db.exam_answers
-                .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                .and(item => item.soalId === soalId)
-                .first();
+            try {
+                const existing = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .and(item => item.soalId === soalId)
+                    .first();
 
-            if (existing) {
-                await db.exam_answers.update(existing.id, {
-                    jawaban:         jawabanData,
-                    synced:          false,
-                    idempotencyKey,
-                    updatedAt:       Date.now(),
-                });
-            } else {
-                await db.exam_answers.add({
-                    sesiPesertaId: cfg.sesiPesertaId,
-                    soalId,
-                    jawaban:       jawabanData,
-                    synced:        false,
-                    idempotencyKey,
-                    updatedAt:     Date.now(),
-                });
+                if (existing) {
+                    await db.exam_answers.update(existing.id, {
+                        jawaban:         jawabanData,
+                        synced:          false,
+                        idempotencyKey,
+                        updatedAt:       Date.now(),
+                    });
+                } else {
+                    await db.exam_answers.add({
+                        sesiPesertaId: cfg.sesiPesertaId,
+                        soalId,
+                        jawaban:       jawabanData,
+                        synced:        false,
+                        idempotencyKey,
+                        updatedAt:     Date.now(),
+                    });
+                }
+            } catch (idbErr) {
+                // IndexedDB unavailable (private browsing, storage full, etc.)
+                // Fallback: keep in-memory and force immediate server sync
+                console.warn('[Save] IndexedDB write failed, using memory fallback:', idbErr.message);
+                this._memoryFallbackAnswers = this._memoryFallbackAnswers || {};
+                this._memoryFallbackAnswers[soalId] = { jawaban: jawabanData, idempotencyKey, updatedAt: Date.now() };
             }
 
             this.lastSaved  = true;
@@ -651,14 +690,18 @@ function ujianApp() {
         },
 
         async saveState() {
-            const cfg = window.UJIAN_CONFIG;
-            await db.exam_state.put({
-                sesiPesertaId: cfg.sesiPesertaId,
-                currentIndex:  this.currentIndex,
-                tandaiList:    this.tandaiList,
-                sesiToken:     cfg.sesiToken,
-                lastSyncAt:    Date.now(),
-            });
+            try {
+                const cfg = window.UJIAN_CONFIG;
+                await db.exam_state.put({
+                    sesiPesertaId: cfg.sesiPesertaId,
+                    currentIndex:  this.currentIndex,
+                    tandaiList:    this.tandaiList,
+                    sesiToken:     cfg.sesiToken,
+                    lastSyncAt:    Date.now(),
+                });
+            } catch (e) {
+                console.warn('[State] IndexedDB save failed:', e.message);
+            }
         },
 
         // ===== SYNC TO SERVER =====
@@ -693,12 +736,22 @@ function ujianApp() {
             this.isSyncing = true;
 
             const cfg     = window.UJIAN_CONFIG;
-            const pending = await db.exam_answers
-                .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                .and(item => !item.synced)
-                .toArray();
+            let pending;
+            try {
+                pending = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .and(item => !item.synced)
+                    .toArray();
+            } catch {
+                pending = [];
+            }
 
-            if (pending.length === 0) {
+            // Merge memory-fallback answers (from IDB failure), skip duplicates already in IDB
+            const memAnswers = this._memoryFallbackAnswers || {};
+            const memEntries = Object.entries(memAnswers);
+            const pendingSoalIds = new Set(pending.map(p => String(p.soalId)));
+
+            if (pending.length === 0 && memEntries.length === 0) {
                 this.isSyncing = false;
                 this.pendingSync = 0;
                 return;
@@ -711,6 +764,17 @@ function ujianApp() {
                 idempotency_key:   item.idempotencyKey,
                 client_timestamp:  item.updatedAt,
             }));
+
+            // Add memory-fallback answers (skip duplicates already in IDB pending)
+            memEntries.forEach(([soalId, item]) => {
+                if (pendingSoalIds.has(String(soalId))) return;
+                answers.push({
+                    soal_id:           soalId,
+                    jawaban:           this.formatJawabanForApi(item.jawaban),
+                    idempotency_key:   item.idempotencyKey,
+                    client_timestamp:  item.updatedAt,
+                });
+            });
 
             const controller = new AbortController();
             const syncTimeoutId = setTimeout(() => controller.abort(), 20000);
@@ -741,6 +805,9 @@ function ujianApp() {
                     await Promise.all(pending.map(item =>
                         db.exam_answers.update(item.id, { synced: true })
                     ));
+
+                    // Clear memory-fallback answers on successful sync
+                    this._memoryFallbackAnswers = {};
 
                     // Recalculate from IndexedDB (source of truth)
                     await this.recalcPendingSync();
@@ -807,6 +874,42 @@ function ujianApp() {
             }
         },
 
+        _beaconSync() {
+            // Fire-and-forget sync via sendBeacon — works even during page unload/close
+            // This is a last resort to push any unsent answers before the browser closes
+            try {
+                const cfg = window.UJIAN_CONFIG;
+                if (!cfg || !navigator.sendBeacon) return;
+
+                // Collect answers from in-memory state (this.answers) since IDB read is async
+                const allAnswers = [];
+                Object.entries(this.answers).forEach(([soalId, ans]) => {
+                    const formatted = this.formatJawabanForApi(ans);
+                    if (formatted !== null) {
+                        allAnswers.push({
+                            soal_id:          soalId,
+                            jawaban:          formatted,
+                            idempotency_key:  `beacon-${cfg.sesiPesertaId}-${soalId}`,
+                            client_timestamp: Date.now(),
+                        });
+                    }
+                });
+
+                if (allAnswers.length === 0) return;
+
+                const blob = new Blob([JSON.stringify({
+                    sesi_token:    cfg.sesiToken,
+                    answers:       allAnswers,
+                    soal_ditandai: this.tandaiList.length,
+                    tandai_list:   this.tandaiList,
+                })], { type: 'application/json' });
+
+                navigator.sendBeacon(cfg.syncUrl, blob);
+            } catch (e) {
+                // Silent — this is a best-effort last-chance sync
+            }
+        },
+
         formatJawabanForApi(jawaban) {
             if (jawaban.pg?.length > 0)                        return jawaban.pg;
             if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
@@ -857,7 +960,22 @@ function ujianApp() {
                         client_timestamp:  item.updatedAt,
                     })).filter(a => a.jawaban !== null);
                 } catch (e) {
-                    console.warn('[Submit] Could not read IndexedDB:', e.message);
+                    console.warn('[Submit] Could not read IndexedDB, using in-memory answers:', e.message);
+                }
+
+                // Fallback: if IDB failed or returned empty, gather from in-memory state
+                if (allAnswers.length === 0 && Object.keys(this.answers).length > 0) {
+                    Object.entries(this.answers).forEach(([soalId, ans]) => {
+                        const formatted = this.formatJawabanForApi(ans);
+                        if (formatted !== null) {
+                            allAnswers.push({
+                                soal_id:          soalId,
+                                jawaban:          formatted,
+                                idempotency_key:  `mem-${cfg.sesiPesertaId}-${soalId}-${Date.now()}`,
+                                client_timestamp: Date.now(),
+                            });
+                        }
+                    });
                 }
 
                 // Exit fullscreen before navigating
@@ -929,14 +1047,21 @@ function ujianApp() {
 
         async queueOfflineSubmit(cfg) {
             // Tag semua jawaban sebagai perlu submit + store token for selesai page sync
-            await db.exam_state.put({
-                sesiPesertaId:  cfg.sesiPesertaId,
-                currentIndex:   this.currentIndex,
-                tandaiList:     this.tandaiList,
-                pendingSubmit:  true,
-                sesiToken:      cfg.sesiToken,
-                lastSyncAt:     Date.now(),
-            });
+            try {
+                await db.exam_state.put({
+                    sesiPesertaId:  cfg.sesiPesertaId,
+                    currentIndex:   this.currentIndex,
+                    tandaiList:     this.tandaiList,
+                    pendingSubmit:  true,
+                    sesiToken:      cfg.sesiToken,
+                    lastSyncAt:     Date.now(),
+                });
+            } catch (e) {
+                console.warn('[Submit] Could not queue offline submit to IDB:', e.message);
+            }
+
+            // Also try sendBeacon as last-ditch effort
+            this._beaconSync();
         },
 
         // ===== ANTI-CHEAT: LOGGING =====
