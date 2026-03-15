@@ -179,6 +179,7 @@ export function richEditor({
                 Image, ImageUpload, ImageResize, ImageToolbar,
                 FontColor, FontSize,
                 Link, PasteFromOffice, AutoImage,
+                SpecialCharacters, SpecialCharactersMathematical, SpecialCharactersEssentials,
                 RemoveFormat,
                 Undo,
             ];
@@ -212,7 +213,7 @@ export function richEditor({
                 '|',
                 'fontSize', 'fontColor',
                 '|',
-                'link', 'uploadImage',
+                'link', 'uploadImage', 'specialCharacters',
                 '|',
                 'removeFormat',
             ];
