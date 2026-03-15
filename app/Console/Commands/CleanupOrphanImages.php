@@ -78,10 +78,15 @@ class CleanupOrphanImages extends Command
     /**
      * Extract all image paths referenced in soal pertanyaan & pembahasan fields.
      */
+    /**
+     * Extract all image paths referenced in soal pertanyaan, pembahasan,
+     * and opsi_jawaban teks fields (opsi PG, pernyataan B/S, kunci jawaban essay).
+     */
     private function getReferencedPaths(): array
     {
         $paths = [];
 
+        // Scan soal.pertanyaan and soal.pembahasan
         Soal::query()
             ->select(['pertanyaan', 'pembahasan'])
             ->whereNotNull('pertanyaan')
@@ -92,6 +97,20 @@ class CleanupOrphanImages extends Command
                         $paths,
                         $this->extractStoragePaths($soal->pertanyaan),
                         $this->extractStoragePaths($soal->pembahasan),
+                    );
+                }
+            });
+
+        // Scan opsi_jawaban.teks (opsi PG, pernyataan B/S, kunci jawaban essay)
+        \App\Models\OpsiJawaban::query()
+            ->select(['teks'])
+            ->whereNotNull('teks')
+            ->where('teks', 'like', '%<img%')
+            ->chunk(500, function ($opsiList) use (&$paths) {
+                foreach ($opsiList as $opsi) {
+                    $paths = array_merge(
+                        $paths,
+                        $this->extractStoragePaths($opsi->teks),
                     );
                 }
             });

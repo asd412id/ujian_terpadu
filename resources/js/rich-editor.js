@@ -5,6 +5,8 @@ import {
     Italic,
     Underline,
     Strikethrough,
+    Superscript,
+    Subscript,
     Heading,
     Paragraph,
     Alignment,
@@ -152,6 +154,7 @@ export function richEditor({
         init() {
             const fullPlugins = [
                 Essentials, Bold, Italic, Underline, Strikethrough,
+                Superscript, Subscript,
                 Heading, Paragraph, Alignment,
                 List, BlockQuote, Indent, IndentBlock,
                 Table, TableToolbar, TableColumnResize,
@@ -164,6 +167,7 @@ export function richEditor({
 
             const miniPlugins = [
                 Essentials, Bold, Italic, Underline,
+                Superscript, Subscript,
                 Paragraph,
                 Image, ImageUpload, ImageResize, ImageToolbar,
                 FontColor,
@@ -177,6 +181,7 @@ export function richEditor({
                 'heading',
                 '|',
                 'bold', 'italic', 'underline', 'strikethrough',
+                'superscript', 'subscript',
                 '|',
                 'fontColor', 'fontBackgroundColor',
                 '|',
@@ -193,6 +198,7 @@ export function richEditor({
                 'undo', 'redo',
                 '|',
                 'bold', 'italic', 'underline',
+                'superscript', 'subscript',
                 '|',
                 'fontColor',
                 '|',
