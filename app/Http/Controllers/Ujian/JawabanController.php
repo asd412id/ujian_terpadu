@@ -81,12 +81,12 @@ class JawabanController extends Controller
             abort_unless(strlen($token) === 64 && ctype_alnum($token), 404);
 
             $data = $request->validate([
-                'answers'            => 'present|array|max:200',
+                'answers'            => 'required|array|min:1|max:200',
                 'answers.*.soal_id'  => 'required|string',
                 'answers.*.jawaban'  => 'present',
             ]);
 
-            $finalAnswers = $data['answers'] ?? [];
+            $finalAnswers = $data['answers'];
 
             $result = $this->jawabanService->submitByToken($token, $finalAnswers);
 

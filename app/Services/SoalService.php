@@ -498,8 +498,13 @@ class SoalService
                 }
             }
 
-            if ($imported > 0) {
+            if ($imported > 0 && empty($errors)) {
                 DB::commit();
+            } elseif ($imported > 0 && !empty($errors)) {
+                DB::rollBack();
+                $imported = 0;
+                $skipped = count($rows);
+                array_unshift($errors, "Import dibatalkan: {$skipped} baris gagal, seluruh data di-rollback untuk konsistensi.");
             } else {
                 DB::rollBack();
             }

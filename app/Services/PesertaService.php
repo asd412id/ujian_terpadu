@@ -102,6 +102,7 @@ class PesertaService
     public function update(string $id, array $data): mixed
     {
         $peserta = $this->repository->findById($id);
+        abort_unless($peserta, 404, 'Peserta tidak ditemukan.');
 
         // Hash password if provided
         if (!empty($data['password_ujian'])) {
@@ -124,6 +125,7 @@ class PesertaService
     public function delete(string $id): bool
     {
         $peserta = $this->repository->findById($id);
+        abort_unless($peserta, 404, 'Peserta tidak ditemukan.');
         $peserta->load('sesiPeserta');
 
         // Prevent deletion if peserta has active sessions
@@ -221,6 +223,7 @@ class PesertaService
     public function generateToken(string $pesertaId): array
     {
         $peserta = $this->repository->findById($pesertaId);
+        abort_unless($peserta, 404, 'Peserta tidak ditemukan.');
 
         $plainPassword = Str::random(6);
         $this->repository->update($peserta, [
@@ -260,6 +263,7 @@ class PesertaService
     public function updateForSekolah(string $id, array $data, ?string $plainPassword = null): mixed
     {
         $peserta = $this->repository->findById($id);
+        abort_unless($peserta, 404, 'Peserta tidak ditemukan.');
 
         // Update username_ujian if NIS changed
         if (isset($data['nis']) && $data['nis'] !== $peserta->nis) {
