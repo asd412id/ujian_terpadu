@@ -265,6 +265,7 @@ export function richEditor({
                 laravelUpload: {
                     uploadUrl,
                 },
+                licenseKey: 'GPL',
                 language: 'id',
             };
 
