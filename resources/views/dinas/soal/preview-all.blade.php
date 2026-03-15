@@ -3,12 +3,6 @@
 @section('title', 'Preview Semua Soal')
 
 @push('head')
-<style>
-    .prose table { border-collapse: collapse; width: 100%; }
-    .prose table th, .prose table td { border: 1px solid #999; padding: 4px 8px; }
-    .prose table th { background: #f3f4f6; font-weight: bold; }
-    .prose p { margin-top: 0.25em; margin-bottom: 0.25em; }
-</style>
 @endpush
 
 @section('breadcrumb')
@@ -113,7 +107,7 @@
 
             <div class="p-5 space-y-4">
                 {{-- Pertanyaan --}}
-                <div class="prose prose-sm max-w-none text-gray-800 mathjax-process">
+                <div class="ck-content text-gray-800 mathjax-process">
                     @if($soal->pertanyaan === strip_tags($soal->pertanyaan))
                         {!! nl2br(e($soal->pertanyaan)) !!}
                     @else
@@ -136,7 +130,7 @@
                         <span class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold {{ $opsi->is_benar ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600' }}">{{ $opsi->label }}</span>
                         <div class="flex-1 min-w-0">
                             @if($opsi->teks)
-                            <span class="text-sm text-gray-800 mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
+                            <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
                             @endif
                             @if($opsi->gambar)
                             <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar opsi {{ $opsi->label }}" class="{{ $opsi->teks ? 'mt-1' : '' }} max-h-24 rounded border">
@@ -184,7 +178,7 @@
                     <div class="flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
                         <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ $opsi->label }}</span>
                         <div class="flex-1">
-                            <span class="text-sm text-gray-800 mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
+                            <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
                         </div>
                         @if($opsi->is_benar)
                         <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">BENAR</span>

@@ -20,8 +20,10 @@ import {
     ImageResize,
     ImageStyle,
     ImageToolbar,
+    ImageCaption,
     FontColor,
     FontBackgroundColor,
+    FontSize,
     Highlight,
     Undo,
     Link,
@@ -32,6 +34,10 @@ import {
     HorizontalLine,
     SpecialCharacters,
     SpecialCharactersMathematical,
+    SpecialCharactersEssentials,
+    Code,
+    RemoveFormat,
+    FindAndReplace,
     Plugin,
     FileRepository,
 } from 'ckeditor5';
@@ -154,14 +160,15 @@ export function richEditor({
         init() {
             const fullPlugins = [
                 Essentials, Bold, Italic, Underline, Strikethrough,
-                Superscript, Subscript,
+                Superscript, Subscript, Code,
                 Heading, Paragraph, Alignment,
                 List, BlockQuote, Indent, IndentBlock,
                 Table, TableToolbar, TableColumnResize,
-                Image, ImageUpload, ImageResize, ImageStyle, ImageToolbar,
-                FontColor, FontBackgroundColor,
+                Image, ImageUpload, ImageResize, ImageStyle, ImageToolbar, ImageCaption,
+                FontColor, FontBackgroundColor, FontSize,
                 Link, PasteFromOffice, AutoImage, HorizontalLine,
-                SpecialCharacters, SpecialCharactersMathematical,
+                SpecialCharacters, SpecialCharactersMathematical, SpecialCharactersEssentials,
+                RemoveFormat, FindAndReplace,
                 Undo,
             ];
 
@@ -170,8 +177,9 @@ export function richEditor({
                 Superscript, Subscript,
                 Paragraph,
                 Image, ImageUpload, ImageResize, ImageToolbar,
-                FontColor,
+                FontColor, FontSize,
                 Link, PasteFromOffice, AutoImage,
+                RemoveFormat,
                 Undo,
             ];
 
@@ -180,10 +188,10 @@ export function richEditor({
                 '|',
                 'heading',
                 '|',
-                'bold', 'italic', 'underline', 'strikethrough',
+                'bold', 'italic', 'underline', 'strikethrough', 'code',
                 'superscript', 'subscript',
                 '|',
-                'fontColor', 'fontBackgroundColor',
+                'fontSize', 'fontColor', 'fontBackgroundColor',
                 '|',
                 'alignment',
                 '|',
@@ -192,6 +200,8 @@ export function richEditor({
                 'blockQuote', 'insertTable', 'horizontalLine',
                 '|',
                 'link', 'uploadImage', 'specialCharacters',
+                '|',
+                'removeFormat', 'findAndReplace',
             ];
 
             const miniToolbar = [
@@ -200,9 +210,11 @@ export function richEditor({
                 'bold', 'italic', 'underline',
                 'superscript', 'subscript',
                 '|',
-                'fontColor',
+                'fontSize', 'fontColor',
                 '|',
                 'link', 'uploadImage',
+                '|',
+                'removeFormat',
             ];
 
             const plugins = minimal ? miniPlugins : fullPlugins;
@@ -232,13 +244,17 @@ export function richEditor({
                     contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'],
                 },
                 image: {
-                    toolbar: ['imageStyle:inline', 'imageStyle:block', '|', 'imageResize:50', 'imageResize:75', 'imageResize:original'],
+                    toolbar: ['imageStyle:inline', 'imageStyle:block', '|', 'toggleImageCaption', '|', 'imageResize:50', 'imageResize:75', 'imageResize:original'],
                     resizeUnit: '%',
                     resizeOptions: [
                         { name: 'imageResize:original', value: null, label: 'Ukuran asli' },
                         { name: 'imageResize:50', value: '50', label: '50%' },
                         { name: 'imageResize:75', value: '75', label: '75%' },
                     ],
+                },
+                fontSize: {
+                    options: ['tiny', 'small', 'default', 'big', 'huge'],
+                    supportAllValues: false,
                 },
                 fontColor: {
                     colors: [

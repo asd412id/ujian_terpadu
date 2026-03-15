@@ -3,12 +3,6 @@
 @section('title', 'Preview Soal')
 
 @push('head')
-<style>
-    .prose table { border-collapse: collapse; width: 100%; }
-    .prose table th, .prose table td { border: 1px solid #999; padding: 4px 8px; }
-    .prose table th { background: #f3f4f6; font-weight: bold; }
-    .prose p { margin-top: 0.25em; margin-bottom: 0.25em; }
-</style>
 @endpush
 
 @section('breadcrumb')
@@ -78,7 +72,7 @@
     {{-- Pertanyaan --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Pertanyaan</h2>
-        <div class="prose prose-sm max-w-none text-gray-800 mathjax-process">
+        <div class="ck-content text-gray-800 mathjax-process">
             @if($soal->pertanyaan === strip_tags($soal->pertanyaan))
                 {!! nl2br(e($soal->pertanyaan)) !!}
             @else
@@ -104,7 +98,7 @@
                 </span>
                 <div class="flex-1">
                     @if($opsi->teks)
-                    <p class="text-sm text-gray-800 mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</p>
+                    <p class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</p>
                     @endif
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar opsi {{ $opsi->label }}" class="{{ $opsi->teks ? 'mt-2' : '' }} max-h-32 rounded border">
@@ -162,7 +156,7 @@
             <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <span class="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ $opsi->label }}</span>
                 <div class="flex-1">
-                    <span class="text-sm text-gray-800">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
+                    <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar pernyataan" class="mt-1 max-h-24 rounded border">
                     @endif
@@ -183,12 +177,12 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Kunci Jawaban</h2>
         <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div class="text-sm text-gray-800 prose prose-sm max-w-none mathjax-process">{!! $soal->kunci_jawaban ?? '—' !!}</div>
+            <div class="text-sm text-gray-800 ck-content mathjax-process">{!! $soal->kunci_jawaban ?? '—' !!}</div>
         </div>
         @if($soal->pembahasan)
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-4 mb-2">Pembahasan / Panduan Penilaian</h2>
         <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div class="text-sm text-gray-800 prose prose-sm max-w-none mathjax-process">{!! $soal->pembahasan !!}</div>
+            <div class="text-sm text-gray-800 ck-content mathjax-process">{!! $soal->pembahasan !!}</div>
         </div>
         @endif
     </div>

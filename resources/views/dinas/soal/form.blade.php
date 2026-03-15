@@ -43,6 +43,9 @@
                         <input type="hidden" name="pertanyaan" x-ref="hiddenInput">
                     </div>
                     <p class="text-xs text-gray-400 mt-1">Paste gambar langsung dari clipboard (Ctrl+V). Mendukung LaTeX: tulis $x^2$ atau \(x^2\) untuk rumus matematika.</p>
+                    <div class="mt-2">
+                        @include('dinas.soal._panduan-rumus')
+                    </div>
                 </div>
             </div>
 
