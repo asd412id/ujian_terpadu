@@ -21,7 +21,7 @@
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
             chtml: { scale: 1.15 },
             options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea'],
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'code', 'pre'],
                 processHtmlClass: 'mathjax-process',
                 ignoreHtmlClass: 'ck-editor|ck-content|ck-editor__editable',
             }

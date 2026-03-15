@@ -89,67 +89,67 @@
                     <tbody class="divide-y divide-gray-100">
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Pecahan</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\frac{a}{b}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\frac{a}{b}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\frac{a}{b}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Pangkat</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">x^{2n}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">x^{2n}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(x^{2n}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Indeks bawah</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">a_{n+1}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">a_{n+1}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(a_{n+1}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Akar kuadrat</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\sqrt{x+1}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\sqrt{x+1}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\sqrt{x+1}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Akar pangkat n</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\sqrt[3]{27}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\sqrt[3]{27}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\sqrt[3]{27}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Pangkat & indeks</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">x_i^{2}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">x_i^{2}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(x_i^{2}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Perkalian titik</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">a \cdot b</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">a \cdot b</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(a \cdot b\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Kali silang</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">a \times b</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">a \times b</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(a \times b\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Bagi</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">a \div b</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">a \div b</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(a \div b\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Plus-minus</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\pm</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\pm</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\pm\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Tidak sama dengan</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\neq</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\neq</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\neq\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Kurang dari / sama</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\leq, \geq</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\leq, \geq</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\leq, \geq\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Tak hingga</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\infty</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\infty</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\infty\)</td>
                         </tr>
                     </tbody>
@@ -175,32 +175,32 @@
                     <tbody class="divide-y divide-gray-100">
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Trigonometri</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\sin(\theta), \cos(\alpha), \tan(x)</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\sin(\theta), \cos(\alpha), \tan(x)</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\sin(\theta), \cos(\alpha), \tan(x)\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Logaritma</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\log_{2}(8), \ln(e)</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\log_{2}(8), \ln(e)</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\log_{2}(8), \ln(e)\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Limit</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\lim_{x \to 0} \frac{\sin x}{x}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\lim_{x \to 0} \frac{\sin x}{x}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\lim_{x \to 0} \frac{\sin x}{x}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Sigma (jumlah)</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\sum_{i=1}^{n} i^2</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\sum_{i=1}^{n} i^2</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\sum_{i=1}^{n} i^2\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Integral</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\int_{0}^{1} x^2 \, dx</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\int_{0}^{1} x^2 \, dx</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\int_{0}^{1} x^2 \, dx\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Produk</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\prod_{k=1}^{n} k</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\prod_{k=1}^{n} k</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\prod_{k=1}^{n} k\)</td>
                         </tr>
                     </tbody>
@@ -226,32 +226,32 @@
                     <tbody class="divide-y divide-gray-100">
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Matriks</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600 text-[10px]">\begin{pmatrix} a & b \\ c & d \end{pmatrix}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600 text-[10px]">\begin{pmatrix} a & b \\ c & d \end{pmatrix}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\begin{pmatrix} a & b \\ c & d \end{pmatrix}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Matriks siku</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600 text-[10px]">\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600 text-[10px]">\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Vektor</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\vec{v}, \overrightarrow{AB}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\vec{v}, \overrightarrow{AB}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\vec{v}, \overrightarrow{AB}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Kurung auto-size</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\left(\frac{a}{b}\right)</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\left(\frac{a}{b}\right)</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\left(\frac{a}{b}\right)\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Kurung kurawal</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\left\{ x \mid x > 0 \right\}</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\left\{ x \mid x > 0 \right\}</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\left\{ x \mid x > 0 \right\}\)</td>
                         </tr>
                         <tr>
                             <td class="py-1.5 px-3 text-gray-600">Nilai mutlak</td>
-                            <td class="py-1.5 px-3 font-mono text-red-600">\left| x \right|</td>
+                            <td class="py-1.5 px-3"><code class="font-mono text-red-600">\left| x \right|</code></td>
                             <td class="py-1.5 px-3 mathjax-process">\(\left| x \right|\)</td>
                         </tr>
                     </tbody>
@@ -329,17 +329,17 @@
             <div class="bg-white rounded-lg border border-green-200 p-3 space-y-3">
                 <div>
                     <p class="font-medium text-gray-700 text-xs mb-1">Contoh 1 — Rumus inline:</p>
-                    <div class="bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">Tentukan nilai $x$ jika $2x + 3 = 7$</div>
+                    <code class="block bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">Tentukan nilai $x$ jika $2x + 3 = 7$</code>
                     <div class="mt-1 text-sm text-gray-800 mathjax-process border-l-2 border-green-300 pl-3">Tentukan nilai \(x\) jika \(2x + 3 = 7\)</div>
                 </div>
                 <div>
                     <p class="font-medium text-gray-700 text-xs mb-1">Contoh 2 — Rumus display:</p>
-                    <div class="bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">Hitunglah integral berikut: $$\int_{0}^{\pi} \sin(x) \, dx$$</div>
+                    <code class="block bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">Hitunglah integral berikut: $$\int_{0}^{\pi} \sin(x) \, dx$$</code>
                     <div class="mt-1 text-sm text-gray-800 mathjax-process border-l-2 border-green-300 pl-3">Hitunglah integral berikut: \[\int_{0}^{\pi} \sin(x) \, dx\]</div>
                 </div>
                 <div>
                     <p class="font-medium text-gray-700 text-xs mb-1">Contoh 3 — Campuran teks dan rumus:</p>
-                    <div class="bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">Diketahui $f(x) = x^2 - 4x + 3$. Tentukan nilai minimum dari $f(x)$ dan titik baliknya.</div>
+                    <code class="block bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">Diketahui $f(x) = x^2 - 4x + 3$. Tentukan nilai minimum dari $f(x)$ dan titik baliknya.</code>
                     <div class="mt-1 text-sm text-gray-800 mathjax-process border-l-2 border-green-300 pl-3">Diketahui \(f(x) = x^2 - 4x + 3\). Tentukan nilai minimum dari \(f(x)\) dan titik baliknya.</div>
                 </div>
             </div>
