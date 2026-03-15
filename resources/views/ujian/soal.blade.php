@@ -21,7 +21,7 @@
             options: {
                 skipHtmlTags: ['script','noscript','style','textarea'],
                 processHtmlClass: 'mathjax-process',
-                ignoreHtmlClass: 'tiptap-content|tiptap-content-mini|tiptap-toolbar|katex',
+                ignoreHtmlClass: 'ck-editor|ck-content|ck-editor__editable',
             }
         };
     </script>

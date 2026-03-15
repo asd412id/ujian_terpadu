@@ -119,172 +119,125 @@
 * { -webkit-tap-highlight-color: transparent; }
 
 /* ========================================
-   Tiptap Rich Text Editor Styles
+   CKEditor 5 Override Styles
    ======================================== */
 
-/* Editor wrapper */
-.tiptap-wrap {
-    @apply border border-gray-300 rounded-xl overflow-hidden bg-white
-           focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500
-           transition-all duration-150;
+/* Full editor wrapper */
+.ck-editor-wrap .ck.ck-editor {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+    transition: all 0.15s;
 }
-.tiptap-wrap-mini {
-    @apply border border-gray-300 rounded-lg overflow-hidden bg-white
-           focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500
-           transition-all duration-150;
+.ck-editor-wrap .ck.ck-editor:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
-
-/* Toolbar */
-.tiptap-toolbar {
-    @apply flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200;
-}
-.tiptap-toolbar button {
-    @apply inline-flex items-center justify-center w-7 h-7 rounded text-gray-500
-           hover:bg-gray-200 hover:text-gray-800 transition-colors duration-100
-           focus:outline-none;
-}
-.tiptap-toolbar button.is-active {
-    @apply bg-blue-100 text-blue-700;
-}
-.tiptap-toolbar .toolbar-sep {
-    @apply w-px h-5 bg-gray-300 mx-0.5;
+.ck-editor-wrap .ck.ck-editor__top .ck-sticky-panel .ck-toolbar {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 0;
 }
 
-/* Editor content area */
-.tiptap-content {
-    @apply px-4 py-3 text-sm text-gray-900;
+/* Full editor content area */
+.ck-editor-wrap .ck-editor__editable {
     min-height: 120px;
     max-height: 500px;
-    overflow-y: auto;
+    font-size: 0.875rem;
+    color: #111827;
+    padding: 0.75rem 1rem;
 }
-.tiptap-content-mini {
-    @apply px-3 py-2 text-sm text-gray-900;
+.ck-editor-wrap .ck-editor__editable:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+
+/* Mini editor wrapper */
+.ck-editor-wrap-mini .ck.ck-editor {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+    transition: all 0.15s;
+}
+.ck-editor-wrap-mini .ck.ck-editor:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+.ck-editor-wrap-mini .ck.ck-editor__top .ck-sticky-panel .ck-toolbar {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 0;
+}
+
+/* Mini editor content area */
+.ck-editor-wrap-mini .ck-editor__editable {
     min-height: 60px;
     max-height: 300px;
-    overflow-y: auto;
+    font-size: 0.875rem;
+    color: #111827;
+    padding: 0.5rem 0.75rem;
 }
-.tiptap-content:focus,
-.tiptap-content-mini:focus {
+.ck-editor-wrap-mini .ck-editor__editable:focus {
     outline: none;
+    box-shadow: none;
+    border-color: transparent;
 }
 
-/* Placeholder */
-.tiptap-content p.is-editor-empty:first-child::before,
-.tiptap-content-mini p.is-editor-empty:first-child::before {
-    content: attr(data-placeholder);
-    float: left;
-    color: #9ca3af;
-    pointer-events: none;
-    height: 0;
+/* Remove CKEditor default border on editable area (we handle it on wrapper) */
+.ck-editor-wrap .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused),
+.ck-editor-wrap-mini .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused) {
+    border: none;
+}
+.ck-editor-wrap .ck.ck-editor__main > .ck-editor__editable.ck-focused,
+.ck-editor-wrap-mini .ck.ck-editor__main > .ck-editor__editable.ck-focused {
+    border: none;
+    box-shadow: none;
 }
 
-/* Prose overrides inside tiptap */
-.tiptap-content p,
-.tiptap-content-mini p { margin: 0.25em 0; }
-.tiptap-content h2 { font-size: 1.25em; font-weight: 700; margin: 0.5em 0 0.25em; }
-.tiptap-content h3 { font-size: 1.1em; font-weight: 600; margin: 0.4em 0 0.2em; }
-.tiptap-content h4 { font-size: 1em; font-weight: 600; margin: 0.3em 0 0.2em; }
-.tiptap-content ul { list-style: disc; padding-left: 1.5em; margin: 0.25em 0; }
-.tiptap-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.25em 0; }
-.tiptap-content blockquote {
+/* Prose overrides inside CKEditor */
+.ck-editor__editable p { margin: 0.25em 0; }
+.ck-editor__editable h2 { font-size: 1.25em; font-weight: 700; margin: 0.5em 0 0.25em; }
+.ck-editor__editable h3 { font-size: 1.1em; font-weight: 600; margin: 0.4em 0 0.2em; }
+.ck-editor__editable h4 { font-size: 1em; font-weight: 600; margin: 0.3em 0 0.2em; }
+.ck-editor__editable ul { list-style: disc; padding-left: 1.5em; margin: 0.25em 0; }
+.ck-editor__editable ol { list-style: decimal; padding-left: 1.5em; margin: 0.25em 0; }
+.ck-editor__editable blockquote {
     border-left: 3px solid #d1d5db;
     padding-left: 0.75em;
     margin: 0.5em 0;
     color: #6b7280;
 }
 
+/* Images in editor */
+.ck-editor__editable img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.375rem;
+}
+
 /* Table in editor */
-.tiptap-content table {
+.ck-editor__editable table {
     border-collapse: collapse;
     width: 100%;
     margin: 0.5em 0;
 }
-.tiptap-content table td,
-.tiptap-content table th {
+.ck-editor__editable table td,
+.ck-editor__editable table th {
     border: 1px solid #d1d5db;
     padding: 4px 8px;
     min-width: 50px;
     vertical-align: top;
 }
-.tiptap-content table th {
+.ck-editor__editable table th {
     background: #f3f4f6;
     font-weight: 600;
-}
-.tiptap-content .selectedCell {
-    background: #dbeafe;
-}
-
-/* Images in editor */
-.tiptap-content .tiptap-image,
-.tiptap-content-mini .tiptap-image {
-    max-width: 100%;
-    height: auto;
-    border-radius: 0.375rem;
-    margin: 0.25em 0;
-    cursor: default;
-    display: block;
-}
-.tiptap-content img,
-.tiptap-content-mini img {
-    max-width: 100%;
-    height: auto;
-}
-.tiptap-content img.ProseMirror-selectednode,
-.tiptap-content-mini img.ProseMirror-selectednode {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-/* Color picker dropdown */
-.color-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 3px;
-    padding: 6px;
-}
-.color-swatch {
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    cursor: pointer;
-    border: 1px solid rgba(0,0,0,0.1);
-    transition: transform 0.1s;
-}
-.color-swatch:hover {
-    transform: scale(1.2);
-}
-
-/* Math formula nodes (Tiptap + KaTeX) */
-.tiptap-content .Tiptap-mathematics-editor,
-.tiptap-content-mini .Tiptap-mathematics-editor {
-    background: #f0f4ff;
-    border: 1px solid #c7d2fe;
-    border-radius: 4px;
-    padding: 1px 4px;
-    cursor: pointer;
-    font-family: 'KaTeX_Main', 'Times New Roman', serif;
-}
-.tiptap-content .Tiptap-mathematics-editor.ProseMirror-selectednode,
-.tiptap-content-mini .Tiptap-mathematics-editor.ProseMirror-selectednode {
-    outline: 2px solid #3b82f6;
-    outline-offset: 1px;
-    background: #dbeafe;
-}
-.tiptap-content .Tiptap-mathematics-editor--editing,
-.tiptap-content-mini .Tiptap-mathematics-editor--editing {
-    background: #fffbeb;
-    border-color: #fbbf24;
-}
-.tiptap-content .Tiptap-mathematics-render,
-.tiptap-content-mini .Tiptap-mathematics-render {
-    display: inline;
-}
-.tiptap-content .Tiptap-mathematics-editor--display,
-.tiptap-content-mini .Tiptap-mathematics-editor--display {
-    display: block;
-    text-align: center;
-    margin: 0.5em 0;
-    padding: 4px 8px;
 }
 
 /* Print styles for kartu login */

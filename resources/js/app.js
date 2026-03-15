@@ -2,14 +2,14 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import Persist from '@alpinejs/persist';
 import { ujianApp } from './ujian';
-import { tiptapEditor } from './tiptap-editor';
+import { richEditor } from './rich-editor';
 
 // Register Alpine plugins
 Alpine.plugin(Persist);
 
 // Register Alpine components
 Alpine.data('ujianApp', ujianApp);
-Alpine.data('tiptapEditor', tiptapEditor);
+Alpine.data('richEditor', richEditor);
 
 // Global Alpine Store: Sidebar
 Alpine.store('sidebar', {

@@ -30,20 +30,19 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Pertanyaan <span class="text-red-500">*</span>
                     </label>
-                    <div x-data="tiptapEditor({
+                    <div x-data="richEditor({
                         name: 'pertanyaan',
                         content: @js(old('pertanyaan', $soal->pertanyaan ?? '')),
                         placeholder: 'Tuliskan pertanyaan di sini... (Ctrl+V untuk paste gambar)',
                         uploadUrl: '{{ route('dinas.soal.upload-image') }}',
                         minimal: false
                     })">
-                        <div class="tiptap-wrap">
-                            @include('dinas.soal._tiptap-toolbar')
-                            <div x-ref="editorEl" class="tiptap-content"></div>
+                        <div class="ck-editor-wrap">
+                            <div x-ref="editorEl"></div>
                         </div>
                         <input type="hidden" name="pertanyaan" x-ref="hiddenInput">
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Paste gambar langsung dari clipboard (Ctrl+V). Mendukung LaTeX (gunakan \(...\) untuk inline math).</p>
+                    <p class="text-xs text-gray-400 mt-1">Paste gambar langsung dari clipboard (Ctrl+V). Mendukung LaTeX: tulis $x^2$ atau \(x^2\) untuk rumus matematika.</p>
                 </div>
             </div>
 
@@ -73,16 +72,15 @@
                         <span class="flex-shrink-0 mt-2 w-6 h-6 bg-gray-100 rounded-full text-xs font-bold text-gray-600 flex items-center justify-center"
                               x-text="String.fromCharCode(65 + idx)"></span>
                         {{-- Rich text editor for opsi --}}
-                        <div class="flex-1" x-data="tiptapEditor({
+                        <div class="flex-1" x-data="richEditor({
                             name: `opsi[${idx}][teks]`,
                             content: opsi.teks || '',
                             placeholder: `Opsi ${String.fromCharCode(65 + idx)}... (Ctrl+V untuk paste gambar)`,
                             uploadUrl: '{{ route('dinas.soal.upload-image') }}',
                             minimal: true
                         })">
-                            <div class="tiptap-wrap-mini">
-                                @include('dinas.soal._tiptap-toolbar-mini')
-                                <div x-ref="editorEl" class="tiptap-content-mini"></div>
+                            <div class="ck-editor-wrap-mini">
+                                <div x-ref="editorEl"></div>
                             </div>
                             <input type="hidden" :name="`opsi[${idx}][teks]`" x-ref="hiddenInput">
                         </div>
@@ -215,16 +213,15 @@
                               x-text="idx + 1"></span>
                         <div class="flex-1 space-y-2">
                             {{-- Rich text editor for pernyataan B/S --}}
-                            <div x-data="tiptapEditor({
+                            <div x-data="richEditor({
                                 name: `pernyataan_bs[${idx}][teks]`,
                                 content: item.teks || '',
                                 placeholder: `Pernyataan ke-${idx + 1}... (Ctrl+V untuk paste gambar)`,
                                 uploadUrl: '{{ route('dinas.soal.upload-image') }}',
                                 minimal: true
                             })">
-                                <div class="tiptap-wrap-mini">
-                                    @include('dinas.soal._tiptap-toolbar-mini')
-                                    <div x-ref="editorEl" class="tiptap-content-mini"></div>
+                                <div class="ck-editor-wrap-mini">
+                                    <div x-ref="editorEl"></div>
                                 </div>
                                 <input type="hidden" :name="`pernyataan_bs[${idx}][teks]`" x-ref="hiddenInput">
                             </div>
@@ -269,32 +266,30 @@
             <div class="card space-y-4" x-show="jenis === 'essay'" x-transition>
                 <div>
                     <h2 class="font-semibold text-gray-900 mb-3">Kunci Jawaban</h2>
-                    <div x-data="tiptapEditor({
+                    <div x-data="richEditor({
                         name: jenis === 'essay' ? 'kunci_jawaban' : '',
                         content: @js(old('kunci_jawaban', $soal->kunci_jawaban ?? '')),
                         placeholder: 'Jawaban yang diharapkan...',
                         uploadUrl: '{{ route('dinas.soal.upload-image') }}',
                         minimal: false
                     })">
-                        <div class="tiptap-wrap">
-                            @include('dinas.soal._tiptap-toolbar')
-                            <div x-ref="editorEl" class="tiptap-content"></div>
+                        <div class="ck-editor-wrap">
+                            <div x-ref="editorEl"></div>
                         </div>
                         <input type="hidden" :name="jenis === 'essay' ? 'kunci_jawaban' : ''" x-ref="hiddenInput">
                     </div>
                 </div>
                 <div>
                     <h2 class="font-semibold text-gray-900 mb-3">Panduan Penilaian (Opsional)</h2>
-                    <div x-data="tiptapEditor({
+                    <div x-data="richEditor({
                         name: 'pembahasan',
                         content: @js(old('pembahasan', $soal->pembahasan ?? '')),
                         placeholder: 'Tuliskan panduan atau rubrik penilaian...',
                         uploadUrl: '{{ route('dinas.soal.upload-image') }}',
                         minimal: false
                     })">
-                        <div class="tiptap-wrap">
-                            @include('dinas.soal._tiptap-toolbar')
-                            <div x-ref="editorEl" class="tiptap-content"></div>
+                        <div class="ck-editor-wrap">
+                            <div x-ref="editorEl"></div>
                         </div>
                         <input type="hidden" name="pembahasan" x-ref="hiddenInput">
                     </div>
