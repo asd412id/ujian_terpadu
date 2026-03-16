@@ -31,6 +31,7 @@ class SoalRepository
             ->when($tipe, fn ($q) => $q->where('tipe_soal', $tipe))
             ->when($kesulitan, fn ($q) => $q->where('tingkat_kesulitan', $kesulitan))
             ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
@@ -158,7 +159,7 @@ class SoalRepository
             $query->where('kategori_id', $filters['kategori']);
         }
 
-        $query->orderBy('kategori_id')->orderBy('created_at');
+        $query->orderBy('kategori_id')->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')->orderBy('created_at');
 
         if (!empty($filters['all'])) {
             return ['type' => 'all', 'data' => $query->get()];

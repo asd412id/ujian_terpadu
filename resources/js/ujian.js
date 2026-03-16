@@ -20,12 +20,12 @@ function ujianApp() {
         isSubmitting:    false,
         showNavigator:   false,
         showSubmitModal: false,
-        showSyncToast:   false,
 
         // Jawaban & status
         answers:         {}, // { soalId: { pg: [], teks: '', pasangan: {}, benarSalah: {}, terjawab: false } }
         tandaiList:      [], // [soalId, ...]
         pendingSync:     0,
+        syncedSoalIds:   new Set(),
 
         // Sync control
         isSyncing:       false,
@@ -55,9 +55,13 @@ function ujianApp() {
         violationMessage:      '',
         violationType:         '',
         isFullscreen:          false,
+        isMobile:              /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
         _cheatingQueue:        [],
         _cheatingFlushTimer:   null,
         _lastViolationAt:      0,
+        _orientationChanging:  false,
+        _resizeDebounceTimer:  null,
+        antiCurangDisabled:    false,
         _memoryFallbackAnswers: {},
 
         get soalTerjawab() {
@@ -96,8 +100,21 @@ function ujianApp() {
             // Pre-cache semua gambar soal + opsi
             this.preCacheImages(cfg.soalList);
 
-            // Init anti-cheat system
-            this.initAntiCheat();
+            // Init anti-cheat system (only if enabled in paket settings)
+            if (cfg.antiCurang !== false) {
+                this.initAntiCheat();
+            } else {
+                this.antiCurangDisabled = true;
+            }
+
+            // Always warn on page unload (UX protection, not anti-cheat)
+            window.addEventListener('beforeunload', (e) => {
+                if (!this.isSubmitting) {
+                    e.preventDefault();
+                    e.returnValue = 'Ujian sedang berlangsung. Yakin ingin keluar?';
+                    this._beaconSync();
+                }
+            });
         },
 
         // ===== SESI STATUS POLLING =====
@@ -215,15 +232,19 @@ function ujianApp() {
 
         // ===== ANTI-CHEAT SYSTEM =====
         initAntiCheat() {
-            // 1. Request fullscreen on init
-            this.requestFullscreen();
+            // 1. Request fullscreen on init (desktop only — mobile browsers have limited/no Fullscreen API)
+            if (!this.isMobile) {
+                this.requestFullscreen();
+            }
 
             // 2. Track fullscreen state
             this.isFullscreen = !!document.fullscreenElement;
 
-            // 3. Fullscreen change listener
-            document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
-            document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
+            // 3. Fullscreen change listener (desktop only)
+            if (!this.isMobile) {
+                document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
+                document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
+            }
 
             // 4. Window blur detection
             window.addEventListener('blur', () => this.handleWindowBlur());
@@ -242,27 +263,30 @@ function ujianApp() {
                 this.logCheating('klik_kanan', { target: e.target?.tagName });
             });
 
-            // 8. Beforeunload warning + last-chance sync
-            window.addEventListener('beforeunload', (e) => {
-                if (!this.isSubmitting) {
-                    e.preventDefault();
-                    e.returnValue = 'Ujian sedang berlangsung. Yakin ingin keluar?';
-
-                    // Last-chance sync via sendBeacon (fire-and-forget, works during page unload)
-                    this._beaconSync();
-                }
-            });
-
-            // 9. Print screen detection
+            // 8. Print screen detection
             document.addEventListener('keyup', (e) => {
                 if (e.key === 'PrintScreen') {
                     this.logCheating('screenshot_attempt', { key: 'PrintScreen' });
                 }
             });
 
-            // 10. Resize fallback — detect fullscreen exit that bypasses Fullscreen API (e.g. F11/ESC)
-            this._lastInnerHeight = window.innerHeight;
-            window.addEventListener('resize', () => this.handleResizeFullscreenCheck());
+            // 9. Resize fallback — detect fullscreen exit (desktop only)
+            if (!this.isMobile) {
+                this._lastInnerHeight = window.innerHeight;
+                window.addEventListener('resize', () => this.handleResizeFullscreenCheck());
+            }
+
+            // 10. Mobile: track orientation changes to suppress false positives
+            if (this.isMobile) {
+                window.addEventListener('orientationchange', () => {
+                    this._orientationChanging = true;
+                    // Give browser time to complete orientation transition + layout reflow
+                    clearTimeout(this._resizeDebounceTimer);
+                    this._resizeDebounceTimer = setTimeout(() => {
+                        this._orientationChanging = false;
+                    }, 2000);
+                });
+            }
         },
 
         handleResizeFullscreenCheck() {
@@ -554,6 +578,14 @@ function ujianApp() {
             return this.answers[soalId]?.terjawab ?? false;
         },
 
+        isSynced(soalId) {
+            return this.syncedSoalIds.has(soalId);
+        },
+
+        isPendingSync(soalId) {
+            return this.isAnswered(soalId) && !this.syncedSoalIds.has(soalId);
+        },
+
         selectOpsi(soalId, label, tipe) {
             const ans = this.getAnswer(soalId);
 
@@ -651,6 +683,8 @@ function ujianApp() {
                     .where('sesiPesertaId').equals(cfg.sesiPesertaId)
                     .and(item => item.soalId === soalId)
                     .first();
+
+                this.syncedSoalIds.delete(soalId);
 
                 if (existing) {
                     await db.exam_answers.update(existing.id, {
@@ -813,11 +847,9 @@ function ujianApp() {
                     await this.recalcPendingSync();
                     this._syncRetries = 0;
 
-                    // Show toast jika ada sync
-                    if (data.synced > 0) {
-                        this.showSyncToast = true;
-                        setTimeout(() => { this.showSyncToast = false; }, 3000);
-                    }
+                    // Track synced soal IDs for navigator indicator
+                    pending.forEach(item => this.syncedSoalIds.add(item.soalId));
+                    memEntries.forEach(([soalId]) => this.syncedSoalIds.add(soalId));
                 } else if (res.status === 422) {
                     // Validation error — retry once in case of transient issue
                     let errMsg = '';
@@ -1067,6 +1099,11 @@ function ujianApp() {
         // ===== ANTI-CHEAT: LOGGING =====
         onVisibilityChange() {
             if (document.hidden) {
+                // Suppress false positive during orientation change on mobile
+                if (this.isMobile && this._orientationChanging) {
+                    this.logCheating('ganti_tab', { suppressed: true, reason: 'orientation_change' });
+                    return;
+                }
                 this.logCheating('ganti_tab');
                 this.recordViolation('ganti_tab', 'Anda berpindah tab atau meminimalkan browser. Tindakan ini tercatat sebagai pelanggaran.');
             }

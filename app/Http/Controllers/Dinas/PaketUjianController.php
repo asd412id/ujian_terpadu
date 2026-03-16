@@ -41,11 +41,17 @@ class PaketUjianController extends Controller
             'acak_opsi'        => 'boolean',
             'tampilkan_hasil'  => 'boolean',
             'boleh_kembali'    => 'boolean',
+            'anti_curang'      => 'boolean',
             'tanggal_mulai'    => 'nullable|date',
             'tanggal_selesai'  => 'nullable|date|after_or_equal:tanggal_mulai',
             'sekolah_id'       => 'nullable|exists:sekolah,id',
             'max_peserta'      => 'nullable|integer|min:1',
         ]);
+
+        // Ensure unchecked checkboxes default to false
+        foreach (['acak_soal', 'acak_opsi', 'tampilkan_hasil', 'boleh_kembali', 'anti_curang'] as $bool) {
+            $data[$bool] = $data[$bool] ?? false;
+        }
 
         $paket = $this->paketUjianService->createPaket(
             $data,
@@ -113,11 +119,17 @@ class PaketUjianController extends Controller
             'acak_opsi'       => 'boolean',
             'tampilkan_hasil' => 'boolean',
             'boleh_kembali'   => 'boolean',
+            'anti_curang'     => 'boolean',
             'tanggal_mulai'   => 'nullable|date',
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
             'sekolah_id'      => 'nullable|exists:sekolah,id',
             'max_peserta'     => 'nullable|integer|min:1',
         ]);
+
+        // Ensure unchecked checkboxes default to false
+        foreach (['acak_soal', 'acak_opsi', 'tampilkan_hasil', 'boleh_kembali', 'anti_curang'] as $bool) {
+            $data[$bool] = $data[$bool] ?? false;
+        }
 
         $this->paketUjianService->updatePaket($paket, $data);
 

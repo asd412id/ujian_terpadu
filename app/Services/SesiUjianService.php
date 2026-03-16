@@ -97,6 +97,60 @@ class SesiUjianService
     }
 
     /**
+     * Reset sesi peserta agar bisa mengulang ujian.
+     * Menghapus jawaban, log aktivitas, dan mereset status ke 'terdaftar'.
+     */
+    public function resetSesiPeserta(\App\Models\SesiPeserta $sp): void
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($sp) {
+            // 1. Hapus jawaban peserta
+            $sp->jawaban()->delete();
+
+            // 2. Hapus log aktivitas
+            $sp->logAktivitas()->delete();
+
+            // 3. Reset sesi peserta fields
+            $sp->update([
+                'status'              => 'terdaftar',
+                'token_ujian'         => null,
+                'urutan_soal'         => null,
+                'urutan_opsi'         => null,
+                'ip_address'          => null,
+                'browser_info'        => null,
+                'device_type'         => null,
+                'mulai_at'            => null,
+                'submit_at'           => null,
+                'durasi_aktual_detik' => null,
+                'soal_terjawab'       => 0,
+                'soal_ditandai'       => 0,
+                'nilai_akhir'         => null,
+                'nilai_benar'         => null,
+                'jumlah_benar'        => null,
+                'jumlah_salah'        => null,
+                'jumlah_kosong'       => null,
+            ]);
+
+            // 4. Clear cache soal jika ada
+            $paketId = $sp->sesi?->paket_id;
+            if ($paketId) {
+                \Illuminate\Support\Facades\Cache::forget("paket_soal_{$paketId}_sp_{$sp->id}");
+            }
+
+            // 5. Log aktivitas reset
+            $this->repository->logAktivitas([
+                'sesi_peserta_id' => $sp->id,
+                'tipe_event'      => 'reset_ujian',
+                'detail'          => [
+                    'reason'     => 'admin_reset',
+                    'reset_by'   => auth()->id(),
+                    'reset_at'   => now()->toISOString(),
+                ],
+                'created_at'      => now(),
+            ]);
+        });
+    }
+
+    /**
      * Count active peserta (login + mengerjakan) for a sesi.
      */
     public function countActivePeserta(SesiUjian $sesi): int

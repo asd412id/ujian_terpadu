@@ -192,7 +192,7 @@ class UjianService
         $labels = range('A', 'Z');
 
         $soalQuery = $paket->soal()
-            ->with(['opsiJawaban', 'pasangan', 'kategori'])
+            ->with(['opsiJawaban', 'pasangan', 'kategori', 'narasi'])
             ->get();
 
         // Use saved order for consistency (offline support)
@@ -218,7 +218,11 @@ class UjianService
                 return $soal;
             });
         } else {
-            $soalList = $paket->acak_soal ? $soalQuery->shuffle() : $soalQuery;
+            if ($paket->acak_soal) {
+                $soalList = $this->groupAwareShuffle($soalQuery);
+            } else {
+                $soalList = $soalQuery;
+            }
 
             // Shuffle options per soal if setting is active
             if ($paket->acak_opsi) {
@@ -241,6 +245,52 @@ class UjianService
         }
 
         return $soalList->toArray();
+    }
+
+    /**
+     * Group-aware shuffle: narasi groups stay together (internal order preserved),
+     * but group positions among other soal are randomized.
+     * Standalone soal (narasi_id = null) are each treated as individual groups.
+     */
+    private function groupAwareShuffle($soalCollection): \Illuminate\Support\Collection
+    {
+        $groups = [];
+        $standaloneIndex = 0;
+
+        foreach ($soalCollection as $soal) {
+            if ($soal->narasi_id) {
+                $key = 'narasi_' . $soal->narasi_id;
+                if (!isset($groups[$key])) {
+                    $groups[$key] = collect();
+                }
+                $groups[$key]->push($soal);
+            } else {
+                // Each standalone soal is its own group
+                $groups['standalone_' . $standaloneIndex] = collect([$soal]);
+                $standaloneIndex++;
+            }
+        }
+
+        // Sort soal within each narasi group by urutan_dalam_narasi
+        foreach ($groups as $key => $group) {
+            if (str_starts_with($key, 'narasi_')) {
+                $groups[$key] = $group->sortBy('urutan_dalam_narasi')->values();
+            }
+        }
+
+        // Shuffle group positions
+        $groupKeys = array_keys($groups);
+        shuffle($groupKeys);
+
+        // Flatten groups back into single collection
+        $result = collect();
+        foreach ($groupKeys as $key) {
+            foreach ($groups[$key] as $soal) {
+                $result->push($soal);
+            }
+        }
+
+        return $result;
     }
 
     /**

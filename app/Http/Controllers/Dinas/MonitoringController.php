@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sekolah;
+use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
 use App\Services\MonitoringService;
+use App\Services\SesiUjianService;
 use Illuminate\Http\Request;
 
 class MonitoringController extends Controller
 {
     public function __construct(
-        protected MonitoringService $monitoringService
+        protected MonitoringService $monitoringService,
+        protected SesiUjianService $sesiUjianService,
     ) {}
 
     public function index()
@@ -82,5 +85,21 @@ class MonitoringController extends Controller
         $data = $this->monitoringService->getSesiStats($sesi->id);
 
         return response()->json($data);
+    }
+
+    public function resetPesertaUjian(SesiUjian $sesi, SesiPeserta $sesiPeserta)
+    {
+        abort_unless($sesiPeserta->sesi_id === $sesi->id, 403, 'Peserta bukan bagian dari sesi ini.');
+
+        // Hanya bisa reset peserta yang sudah submit/dinilai atau sedang mengerjakan
+        abort_unless(
+            in_array($sesiPeserta->status, ['submit', 'dinilai', 'mengerjakan', 'login']),
+            422,
+            'Peserta dengan status "' . $sesiPeserta->status . '" tidak dapat direset.'
+        );
+
+        $this->sesiUjianService->resetSesiPeserta($sesiPeserta);
+
+        return back()->with('success', 'Ujian peserta "' . ($sesiPeserta->peserta?->nama ?? '') . '" berhasil direset. Peserta dapat mengulang ujian.');
     }
 }

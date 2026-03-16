@@ -15,6 +15,7 @@ class Soal extends Model
 
     protected $fillable = [
         'kategori_id', 'sekolah_id', 'created_by',
+        'narasi_id', 'urutan_dalam_narasi', 'nomor_urut_import',
         'tipe_soal', 'pertanyaan', 'gambar_soal', 'posisi_gambar',
         'tingkat_kesulitan', 'bobot', 'pembahasan', 'sumber',
         'tahun_soal', 'is_active', 'is_verified', 'tags',
@@ -26,6 +27,11 @@ class Soal extends Model
         'bobot'        => 'decimal:2',
         'tags'         => 'array',
     ];
+
+    public function narasi()
+    {
+        return $this->belongsTo(NarasiSoal::class, 'narasi_id');
+    }
 
     public function kategori()
     {

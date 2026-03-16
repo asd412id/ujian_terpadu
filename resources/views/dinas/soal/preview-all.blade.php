@@ -106,6 +106,17 @@
             </div>
 
             <div class="p-5 space-y-4">
+                {{-- Narasi --}}
+                @if($soal->narasi)
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-2">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span class="text-xs font-semibold text-indigo-700">{{ $soal->narasi->judul }}</span>
+                    </div>
+                    <div class="prose prose-sm max-w-none text-gray-700">{!! $soal->narasi->konten !!}</div>
+                </div>
+                @endif
+
                 {{-- Pertanyaan --}}
                 <div class="ck-content text-gray-800 mathjax-process">
                     @if($soal->pertanyaan === strip_tags($soal->pertanyaan))

@@ -17,7 +17,7 @@ class PaketUjian extends Model
         'sekolah_id', 'created_by', 'nama', 'kode',
         'jenis_ujian', 'jenjang', 'deskripsi', 'durasi_menit',
         'jumlah_soal', 'acak_soal', 'acak_opsi',
-        'tampilkan_hasil', 'boleh_kembali', 'max_peserta',
+        'tampilkan_hasil', 'boleh_kembali', 'anti_curang', 'max_peserta',
         'tanggal_mulai', 'tanggal_selesai', 'status',
     ];
 
@@ -26,6 +26,7 @@ class PaketUjian extends Model
         'acak_opsi'       => 'boolean',
         'tampilkan_hasil' => 'boolean',
         'boleh_kembali'   => 'boolean',
+        'anti_curang'     => 'boolean',
         'tanggal_mulai'   => 'datetime',
         'tanggal_selesai' => 'datetime',
     ];

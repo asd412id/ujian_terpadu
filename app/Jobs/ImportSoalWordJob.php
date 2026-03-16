@@ -126,9 +126,40 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             }
 
             $sections   = $phpWord->getSections();
-            $soalBlocks = $this->parseWordSections($sections);
+            $parseResult = $this->parseWordSections($sections);
+            $soalBlocks = $parseResult['blocks'];
+            $narasiList = $parseResult['narasi_list'];
 
             $this->importJob->update(['total_rows' => count($soalBlocks)]);
+
+            // Create NarasiSoal records for each detected narasi block
+            $narasiIdMap = []; // index => narasi_soal id
+            if (!empty($narasiList)) {
+                $kategoriId = $this->importJob->meta['kategori_soal_id'] ?? null;
+                foreach ($narasiList as $idx => $narasiData) {
+                    $narasi = \App\Models\NarasiSoal::create([
+                        'kategori_id' => $kategoriId,
+                        'sekolah_id'  => $this->importJob->sekolah_id,
+                        'created_by'  => $this->importJob->created_by,
+                        'judul'       => $narasiData['judul'],
+                        'konten'      => $narasiData['konten'],
+                        'is_active'   => true,
+                    ]);
+                    $narasiIdMap[$idx] = $narasi->id;
+                }
+            }
+
+            // Compute urutan_dalam_narasi for each block in its narasi group
+            $narasiOrderCounters = [];
+            foreach ($soalBlocks as &$blk) {
+                $ni = $blk['narasi_index'] ?? null;
+                if ($ni !== null) {
+                    if (!isset($narasiOrderCounters[$ni])) $narasiOrderCounters[$ni] = 0;
+                    $narasiOrderCounters[$ni]++;
+                    $blk['_urutan_narasi'] = $narasiOrderCounters[$ni];
+                }
+            }
+            unset($blk);
 
             $errors  = [];
             $success = 0;
@@ -140,14 +171,14 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 $chunkSuccess = 0;
                 $chunkErrors = [];
 
-                DB::transaction(function () use ($chunk, &$chunkErrors, &$chunkSuccess) {
+                DB::transaction(function () use ($chunk, &$chunkErrors, &$chunkSuccess, $narasiIdMap) {
                     $soalBatch     = [];
                     $opsiBatch     = [];
                     $pasanganBatch = [];
 
                     foreach ($chunk as $index => $block) {
                         try {
-                            $result = $this->processBlock($block);
+                            $result = $this->processBlock($block, $narasiIdMap);
                             $soalBatch[] = $result['soal'];
                             if (!empty($result['opsi'])) {
                                 array_push($opsiBatch, ...$result['opsi']);
@@ -248,6 +279,13 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $pendingListItems = [];  // accumulated list items (bullet/decimal-content) for HTML list wrapping
         $soalNumId = null;       // num_id of the decimal numbering used for soal numbers (auto-detected)
 
+        // Narasi tracking
+        $narasiList = [];        // [{judul, konten}] — collected narasi blocks
+        $inNarasi = false;       // true while inside [NARASI]...[/NARASI]
+        $currentNarasiContent = '';
+        $currentNarasiIndex = null; // index into $narasiList for soal association
+        $soalIndex = 0;          // global import order counter
+
         foreach ($sections as $section) {
             foreach ($section->getElements() as $element) {
                 $result = $this->extractElementContent($element);
@@ -259,6 +297,43 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 $isTable = $result['is_table'] ?? false;
                 $listInfo = $result['list_info'] ?? null;
                 $alignment = $result['alignment'] ?? null;
+
+                // --- Narasi tag detection ---
+                $plainText = trim($text);
+                if (preg_match('/^\[NARASI\]\s*$/i', $plainText)) {
+                    $inNarasi = true;
+                    $currentNarasiContent = '';
+                    continue;
+                }
+                if (preg_match('/^\[\/NARASI\]\s*$/i', $plainText)) {
+                    if ($inNarasi && !empty(trim($currentNarasiContent))) {
+                        $narasiList[] = [
+                            'judul'  => 'Narasi ' . (count($narasiList) + 1),
+                            'konten' => trim($currentNarasiContent),
+                        ];
+                        $currentNarasiIndex = count($narasiList) - 1;
+                    }
+                    $inNarasi = false;
+                    $currentNarasiContent = '';
+                    continue;
+                }
+                // Also handle inline: [NARASI] content text [/NARASI]
+                if (preg_match('/^\[NARASI\]\s*(.+?)\s*\[\/NARASI\]\s*$/is', $plainText, $nm)) {
+                    $narasiList[] = [
+                        'judul'  => 'Narasi ' . (count($narasiList) + 1),
+                        'konten' => trim(!empty($html) ? preg_replace('/\[NARASI\]\s*/i', '', preg_replace('/\s*\[\/NARASI\]/i', '', $html)) : e($nm[1])),
+                    ];
+                    $currentNarasiIndex = count($narasiList) - 1;
+                    continue;
+                }
+                if ($inNarasi) {
+                    // Accumulate narasi content as HTML
+                    $contentToAdd = !empty($html) ? $html : e($text);
+                    if (!empty($contentToAdd)) {
+                        $currentNarasiContent .= '<p>' . $contentToAdd . '</p>';
+                    }
+                    continue;
+                }
 
                 // --- List numbering reconstruction ---
                 // PHPWord strips numbering prefixes (1., A., bullets) from ListItem elements.
@@ -463,7 +538,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         'pernyataan_bs'   => [],
                         'tingkat'         => $tingkat,
                         'bobot'           => $bobot,
+                        'narasi_index'    => $currentNarasiIndex,
+                        'nomor_urut_import' => $soalIndex,
                     ];
+                    $soalIndex++;
 
                     // Reset non-soal list counters (options, benar/salah) per new soal
                     // Keep soal counter intact
@@ -666,6 +744,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
+        // Reset narasi association when a standalone soal (no narasi tag before it) is encountered
+        // This happens when soal don't have a preceding [NARASI] block.
+        // The $currentNarasiIndex persists until a new [NARASI]...[/NARASI] block or end of file.
+
         if ($current) $blocks[] = $current;
 
         // Auto-detect jenis for blocks without tags
@@ -675,7 +757,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
-        return $blocks;
+        return ['blocks' => $blocks, 'narasi_list' => $narasiList];
     }
 
     /**
@@ -1123,7 +1205,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         return $name;
     }
 
-    private function processBlock(array $block): array
+    private function processBlock(array $block, array $narasiIdMap = []): array
     {
         if (empty($block['pertanyaan'])) {
             throw new \Exception('Pertanyaan tidak ditemukan');
@@ -1133,19 +1215,31 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
         $now = now();
         $soalId = Str::orderedUuid()->toString();
 
+        // Resolve narasi_id from block's narasi_index
+        $narasiId = null;
+        $urutanDalamNarasi = 0;
+        if (isset($block['narasi_index']) && $block['narasi_index'] !== null && isset($narasiIdMap[$block['narasi_index']])) {
+            $narasiId = $narasiIdMap[$block['narasi_index']];
+            // Count how many previous blocks share same narasi_index to determine order
+            $urutanDalamNarasi = ($block['_urutan_narasi'] ?? 1);
+        }
+
         $soalData = [
-            'id'                => $soalId,
-            'kategori_id'       => $kategoriId,
-            'sekolah_id'        => $this->importJob->sekolah_id,
-            'created_by'        => $this->importJob->created_by,
-            'tipe_soal'         => $block['jenis'],
-            'pertanyaan'        => $block['pertanyaan'],
-            'gambar_soal'       => $block['gambar_soal'],
-            'posisi_gambar'     => $block['gambar_soal'] ? 'bawah' : null,
-            'tingkat_kesulitan' => $block['tingkat'] ?? 'sedang',
-            'bobot'             => $block['bobot'] ?? 1.0,
-            'created_at'        => $now,
-            'updated_at'        => $now,
+            'id'                  => $soalId,
+            'kategori_id'        => $kategoriId,
+            'sekolah_id'         => $this->importJob->sekolah_id,
+            'created_by'         => $this->importJob->created_by,
+            'tipe_soal'          => $block['jenis'],
+            'pertanyaan'         => $block['pertanyaan'],
+            'gambar_soal'        => $block['gambar_soal'],
+            'posisi_gambar'      => $block['gambar_soal'] ? 'bawah' : null,
+            'tingkat_kesulitan'  => $block['tingkat'] ?? 'sedang',
+            'bobot'              => $block['bobot'] ?? 1.0,
+            'narasi_id'          => $narasiId,
+            'urutan_dalam_narasi'  => $urutanDalamNarasi,
+            'nomor_urut_import'  => $block['nomor_urut_import'] ?? null,
+            'created_at'         => $now,
+            'updated_at'         => $now,
         ];
 
         $result = ['soal' => $soalData, 'opsi' => [], 'pasangan' => []];

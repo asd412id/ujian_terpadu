@@ -39,22 +39,25 @@ class SoalController extends Controller
     public function create()
     {
         $kategoris = $this->soalService->getActiveKategori();
-        return view('dinas.soal.form', compact('kategoris'));
+        $narasis = [];
+        return view('dinas.soal.form', compact('kategoris', 'narasis'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'kategori_soal_id'  => 'required|exists:kategori_soal,id',
-            'jenis_soal'        => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,benar_salah,menjodohkan,isian,essay',
-            'pertanyaan'        => 'required|string',
-            'gambar_pertanyaan' => 'nullable|image|max:5120',
-            'posisi_gambar'     => 'nullable|in:atas,bawah,kiri,kanan',
-            'tingkat_kesulitan' => 'required|in:mudah,sedang,sulit',
-            'bobot'             => 'required|numeric|min:0|max:100',
-            'pembahasan'        => 'nullable|string',
-            'sumber'            => 'nullable|string|max:200',
-            'tahun_soal'        => 'nullable|integer|min:2000|max:2099',
+            'kategori_soal_id'     => 'required|exists:kategori_soal,id',
+            'jenis_soal'           => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,benar_salah,menjodohkan,isian,essay',
+            'pertanyaan'           => 'required|string',
+            'gambar_pertanyaan'    => 'nullable|image|max:5120',
+            'posisi_gambar'        => 'nullable|in:atas,bawah,kiri,kanan',
+            'tingkat_kesulitan'    => 'required|in:mudah,sedang,sulit',
+            'bobot'                => 'required|numeric|min:0|max:100',
+            'pembahasan'           => 'nullable|string',
+            'sumber'               => 'nullable|string|max:200',
+            'tahun_soal'           => 'nullable|integer|min:2000|max:2099',
+            'narasi_id'            => 'nullable|exists:narasi_soal,id',
+            'urutan_dalam_narasi'  => 'nullable|integer|min:1',
         ]);
 
         $this->soalService->createSoal($validated, $request);
@@ -67,20 +70,25 @@ class SoalController extends Controller
     {
         $soal->load(['opsiJawaban', 'pasangan']);
         $kategoris = $this->soalService->getActiveKategori();
-        return view('dinas.soal.form', compact('soal', 'kategoris'));
+        $narasis = $soal->kategori_id
+            ? \App\Models\NarasiSoal::where('kategori_id', $soal->kategori_id)->where('is_active', true)->orderBy('judul')->get(['id', 'judul', 'kategori_id'])
+            : collect([]);
+        return view('dinas.soal.form', compact('soal', 'kategoris', 'narasis'));
     }
 
     public function update(Request $request, Soal $soal)
     {
         $validated = $request->validate([
-            'kategori_soal_id'  => 'required|exists:kategori_soal,id',
-            'jenis_soal'        => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,benar_salah,menjodohkan,isian,essay',
-            'pertanyaan'        => 'required|string',
-            'gambar_pertanyaan' => 'nullable|image|max:5120',
-            'posisi_gambar'     => 'nullable|in:atas,bawah,kiri,kanan',
-            'tingkat_kesulitan' => 'required|in:mudah,sedang,sulit',
-            'bobot'             => 'required|numeric|min:0|max:100',
-            'pembahasan'        => 'nullable|string',
+            'kategori_soal_id'     => 'required|exists:kategori_soal,id',
+            'jenis_soal'           => 'required|in:pilihan_ganda,pilihan_ganda_kompleks,benar_salah,menjodohkan,isian,essay',
+            'pertanyaan'           => 'required|string',
+            'gambar_pertanyaan'    => 'nullable|image|max:5120',
+            'posisi_gambar'        => 'nullable|in:atas,bawah,kiri,kanan',
+            'tingkat_kesulitan'    => 'required|in:mudah,sedang,sulit',
+            'bobot'                => 'required|numeric|min:0|max:100',
+            'pembahasan'           => 'nullable|string',
+            'narasi_id'            => 'nullable|exists:narasi_soal,id',
+            'urutan_dalam_narasi'  => 'nullable|integer|min:1',
         ]);
 
         $this->soalService->updateSoal($soal, $validated, $request);
@@ -168,8 +176,9 @@ class SoalController extends Controller
     {
         $kategori = $this->soalService->getActiveKategori();
 
-        $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori'])
+        $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori', 'narasi'])
             ->orderBy('kategori_id')
+            ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
             ->orderBy('id');
 
         if ($request->filled('kategori')) {
@@ -407,6 +416,35 @@ class SoalController extends Controller
         $section->addText('    4) Air merupakan pelarut universal (BENAR)', $normalStyle);
         $section->addTextBreak(2);
 
+        // ── Narasi / Teks Bacaan ──
+        $narasiHeading = ['bold' => true, 'size' => 12, 'color' => '7c3aed'];
+        $section->addText('SOAL BERNARASI (TEKS BACAAN)', $narasiHeading);
+        $section->addText('Gunakan tag [NARASI] ... [/NARASI] untuk menandai teks bacaan yang dipakai bersama oleh beberapa soal.', $italicStyle);
+        $section->addTextBreak(0);
+        $section->addText('[NARASI]', $boldStyle);
+        $section->addText('Bacalah teks berikut!', $normalStyle);
+        $section->addTextBreak(0);
+        $section->addText('Indonesia adalah negara kepulauan terbesar di dunia yang terletak di Asia Tenggara. Indonesia memiliki lebih dari 17.000 pulau dengan keberagaman budaya, bahasa, dan adat istiadat yang sangat kaya. Semboyan negara Indonesia adalah "Bhinneka Tunggal Ika" yang berarti berbeda-beda tetapi tetap satu.', $normalStyle);
+        $section->addText('[/NARASI]', $boldStyle);
+        $section->addTextBreak(0);
+        $section->addText('8. Berapa jumlah pulau di Indonesia menurut teks di atas?', $boldStyle);
+        $section->addText('    a. 13.000', $normalStyle);
+        $section->addText('    b. 15.000', $normalStyle);
+        $section->addText('    c. 17.000', $normalStyle);
+        $section->addText('    d. 19.000', $normalStyle);
+        $section->addText('    Jawaban: C', $normalStyle);
+        $section->addTextBreak(1);
+        $section->addText('9. Apa arti semboyan "Bhinneka Tunggal Ika"?', $boldStyle);
+        $section->addText('    a. Satu untuk semua', $normalStyle);
+        $section->addText('    b. Berbeda-beda tetapi tetap satu', $normalStyle);
+        $section->addText('    c. Bersatu kita teguh', $normalStyle);
+        $section->addText('    d. Merdeka atau mati', $normalStyle);
+        $section->addText('    Jawaban: B', $normalStyle);
+        $section->addTextBreak(1);
+        $section->addText('10. [ESSAY] Jelaskan mengapa keberagaman budaya di Indonesia sangat kaya berdasarkan teks!', $boldStyle);
+        $section->addText('    Jawaban:', $normalStyle);
+        $section->addTextBreak(2);
+
         // ── Notes ──
         $section->addText('CATATAN PENTING:', $boldStyle);
         $section->addListItem('Tandai jenis soal dengan tag [PG_KOMPLEKS], [MENJODOHKAN], [ISIAN], [ESSAY], atau [BENAR_SALAH] setelah nomor soal.', 0, $normalStyle);
@@ -426,6 +464,12 @@ class SoalController extends Controller
         $section->addListItem('Untuk opsi bergambar, tambahkan setelah teks opsi: a. Teks opsi | gambar: namafile.png', 0, $normalStyle);
         $section->addListItem('Jika menggunakan referensi nama file, masukkan file gambar ke folder "gambar/" lalu ZIP bersama file .docx ini.', 0, $normalStyle);
         $section->addListItem('Upload file .docx langsung (tanpa gambar) atau .zip (dengan gambar).', 0, $normalStyle);
+        $section->addTextBreak(1);
+        $section->addText('NARASI / TEKS BACAAN:', $boldStyle);
+        $section->addListItem('Gunakan tag [NARASI] dan [/NARASI] untuk menandai awal dan akhir teks bacaan.', 0, $normalStyle);
+        $section->addListItem('Semua soal setelah tag [/NARASI] sampai tag [NARASI] berikutnya akan dikaitkan dengan narasi tersebut.', 0, $normalStyle);
+        $section->addListItem('Soal bernarasi akan ditampilkan bersama teks bacaannya saat ujian berlangsung.', 0, $normalStyle);
+        $section->addListItem('Saat pengacakan soal, soal dalam satu narasi tetap berurutan (hanya posisi grup yang diacak).', 0, $normalStyle);
 
         $fileName = 'template_import_soal.docx';
 
@@ -465,6 +509,7 @@ class SoalController extends Controller
         $section->addListItem('Tag jenis: [PG_KOMPLEKS], [MENJODOHKAN], [ISIAN], [ESSAY], [BENAR_SALAH]', 0, $normalStyle);
         $section->addListItem('Tag tingkat: [tingkat: mudah], [tingkat: sedang], [tingkat: sulit] — default: sedang', 0, $normalStyle);
         $section->addListItem('Tag bobot: [bobot: 2] — default: 1. Bisa di baris soal atau baris terpisah.', 0, $normalStyle);
+        $section->addListItem('Narasi: [NARASI]...[/NARASI] untuk teks bacaan. Soal setelahnya otomatis terkait.', 0, $normalStyle);
         $section->addTextBreak(1);
 
         // PG with image options
@@ -527,6 +572,28 @@ class SoalController extends Controller
         $section->addText('2) Es memiliki massa jenis lebih besar dari air (SALAH)', $normalStyle);
         $section->addText('3) H2O adalah rumus kimia garam dapur (SALAH)', $normalStyle);
         $section->addText('4) Air merupakan pelarut universal (BENAR)', $normalStyle);
+
+        $section->addTextBreak(2);
+
+        // Narasi
+        $narasiColor = ['bold' => true, 'size' => 14, 'color' => '7c3aed'];
+        $section->addText('CONTOH SOAL BERNARASI (TEKS BACAAN)', $narasiColor, ['alignment' => Jc::LEFT]);
+        $section->addTextBreak(0);
+        $section->addText('Gunakan [NARASI]...[/NARASI] untuk teks bacaan bersama.', $grayStyle);
+        $section->addTextBreak(1);
+        $section->addText('[NARASI]', $boldStyle);
+        $section->addText('Indonesia adalah negara kepulauan terbesar di dunia. Indonesia memiliki lebih dari 17.000 pulau dengan keberagaman budaya yang sangat kaya.', $normalStyle);
+        $section->addText('[/NARASI]', $boldStyle);
+        $section->addTextBreak(0);
+        $section->addText('7. Berapa jumlah pulau di Indonesia menurut teks di atas?', $boldStyle);
+        $section->addText('a. 13.000', $normalStyle);
+        $section->addText('b. 17.000', $normalStyle);
+        $section->addText('c. 19.000', $normalStyle);
+        $section->addText('d. 21.000', $normalStyle);
+        $section->addText('Jawaban: B', $normalStyle);
+        $section->addTextBreak(1);
+        $section->addText('8. [ESSAY] Jelaskan mengapa Indonesia disebut negara kepulauan terbesar!', $boldStyle);
+        $section->addText('Jawaban:', $normalStyle);
 
         $section->addTextBreak(2);
         $section->addText('STRUKTUR ZIP:', $boldStyle);

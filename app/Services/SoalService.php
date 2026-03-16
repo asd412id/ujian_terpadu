@@ -74,6 +74,8 @@ class SoalService
                 'pembahasan'        => $this->normalizeEditorContent($validated['pembahasan'] ?? null),
                 'sumber'            => $validated['sumber'] ?? null,
                 'tahun_soal'        => $validated['tahun_soal'] ?? null,
+                'narasi_id'             => $validated['narasi_id'] ?? null,
+                'urutan_dalam_narasi'   => !empty($validated['narasi_id']) ? ($validated['urutan_dalam_narasi'] ?? 1) : 0,
             ];
 
             if ($request->hasFile('gambar_pertanyaan')) {
@@ -119,6 +121,8 @@ class SoalService
                 'tingkat_kesulitan' => $validated['tingkat_kesulitan'],
                 'bobot'             => $validated['bobot'],
                 'pembahasan'        => $this->normalizeEditorContent($validated['pembahasan'] ?? null),
+                'narasi_id'             => $validated['narasi_id'] ?? null,
+                'urutan_dalam_narasi'   => !empty($validated['narasi_id']) ? ($validated['urutan_dalam_narasi'] ?? 1) : 0,
             ];
 
             if ($request->hasFile('gambar_pertanyaan')) {

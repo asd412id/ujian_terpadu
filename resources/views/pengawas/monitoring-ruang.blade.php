@@ -96,7 +96,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($pesertaPaginated as $sp)
-                    <tr class="hover:bg-gray-50" x-data="{ live: pesertaLive['{{ $sp->id }}'] ?? null }">
+                    <tr class="hover:bg-gray-50" x-data="{ get live() { return pesertaLive['{{ $sp->id }}'] ?? null } }">
                         <td class="px-5 py-3">
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama_lengkap ?? $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->kelas ?? '' }}</p>

@@ -114,6 +114,14 @@
     .timer-urgent {
         @apply text-red-600 animate-pulse;
     }
+
+    /* Safe area for notched phones (iPhone X+, etc.) */
+    .safe-area-top {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+    .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
 }
 
 /* Smooth transitions */

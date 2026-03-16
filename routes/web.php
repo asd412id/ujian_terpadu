@@ -100,6 +100,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/monitoring/sekolah-all/api', [MonitoringController::class, 'apiSekolahAll'])->name('monitoring.sekolah.api');
     Route::get('/monitoring/sesi/{sesi}', [MonitoringController::class, 'sesi'])->name('monitoring.sesi');
     Route::get('/monitoring/sesi/{sesi}/api', [MonitoringController::class, 'apiSesi'])->name('monitoring.sesi.api');
+    Route::post('/monitoring/sesi/{sesi}/reset-peserta/{sesiPeserta}', [MonitoringController::class, 'resetPesertaUjian'])->name('monitoring.sesi.reset-peserta');
 
     // Laporan
     Route::get('/laporan', [DinasLaporanController::class, 'index'])->name('laporan');
@@ -128,6 +129,10 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/soal/preview-all', [\App\Http\Controllers\Dinas\SoalController::class, 'previewAll'])->name('soal.preview-all');
     Route::post('/soal/upload-image', [\App\Http\Controllers\Dinas\SoalController::class, 'uploadImage'])->name('soal.upload-image');
     Route::resource('soal', \App\Http\Controllers\Dinas\SoalController::class)->names('soal');
+
+    // Narasi Soal
+    Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
+    Route::resource('narasi', \App\Http\Controllers\Dinas\NarasiSoalController::class)->names('narasi');
 
     // Kategori Soal
     Route::resource('kategori', \App\Http\Controllers\Dinas\KategoriSoalController::class)->names('kategori');

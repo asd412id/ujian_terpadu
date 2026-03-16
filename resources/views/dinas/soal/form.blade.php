@@ -325,6 +325,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Kategori Soal</label>
                     <select name="kategori_soal_id"
+                            x-on:change="selectedKategoriId = $event.target.value; fetchNarasi()"
                             class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">— Tanpa Kategori —</option>
                         @foreach($kategoris as $kat)
@@ -333,6 +334,26 @@
                         </option>
                         @endforeach
                     </select>
+                </div>
+
+                {{-- Narasi (Passage) --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Narasi / Teks Bacaan</label>
+                    <select name="narasi_id" x-model="selectedNarasiId"
+                            class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">— Tanpa Narasi —</option>
+                        <template x-for="n in narasiList" :key="n.id">
+                            <option :value="n.id" x-text="n.judul" :selected="n.id === selectedNarasiId"></option>
+                        </template>
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Soal bernarasi akan menampilkan teks bacaan bersama.</p>
+                </div>
+
+                <div x-show="selectedNarasiId">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Urutan dalam Narasi</label>
+                    <input type="number" name="urutan_dalam_narasi" min="1"
+                           value="{{ old('urutan_dalam_narasi', $soal->urutan_dalam_narasi ?? 1) }}"
+                           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div>
@@ -370,16 +391,6 @@
                             @endforeach
                         </select>
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Acak Opsi</label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="acak_opsi" value="1"
-                               {{ old('acak_opsi', $soal->acak_opsi ?? true) ? 'checked' : '' }}
-                               class="w-4 h-4 rounded border-gray-300 text-blue-600">
-                        <span class="text-sm text-gray-600">Urutan opsi diacak saat ujian</span>
-                    </label>
                 </div>
             </div>
 
@@ -425,7 +436,22 @@ function soalForm() {
         pasanganList: @json($pasanganListData),
         pernyataanBsList: @json($pernyataanBsData),
 
-        init() {},
+        selectedKategoriId: '{{ old('kategori_soal_id', $soal->kategori_id ?? '') }}',
+        selectedNarasiId: '{{ old('narasi_id', $soal->narasi_id ?? '') }}',
+        narasiList: @json($narasis ?? []),
+
+        init() {
+            if (this.selectedKategoriId) this.fetchNarasi();
+        },
+
+        async fetchNarasi() {
+            if (!this.selectedKategoriId) { this.narasiList = []; this.selectedNarasiId = ''; return; }
+            try {
+                const res = await fetch(`{{ route('dinas.narasi.api.by-kategori') }}?kategori_id=${this.selectedKategoriId}`);
+                this.narasiList = await res.json();
+                if (!this.narasiList.find(n => n.id === this.selectedNarasiId)) this.selectedNarasiId = '';
+            } catch (e) { this.narasiList = []; }
+        },
 
         addOpsi() {
             if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false });
