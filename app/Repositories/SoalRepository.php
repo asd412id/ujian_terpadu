@@ -23,7 +23,9 @@ class SoalRepository
         ?string $tipe = null,
         ?string $kesulitan = null,
         ?string $search = null,
-        int $perPage = 20
+        int $perPage = 20,
+        ?string $createdBy = null,
+        ?bool $isVerified = null
     ): LengthAwarePaginator {
         return $this->model
             ->with(['kategori', 'sekolah', 'pembuat'])
@@ -31,6 +33,8 @@ class SoalRepository
             ->when($tipe, fn ($q) => $q->where('tipe_soal', $tipe))
             ->when($kesulitan, fn ($q) => $q->where('tingkat_kesulitan', $kesulitan))
             ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->when($createdBy, fn ($q) => $q->where('created_by', $createdBy))
+            ->when($isVerified !== null, fn ($q) => $q->where('is_verified', $isVerified))
             ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
             ->latest()
             ->paginate($perPage)

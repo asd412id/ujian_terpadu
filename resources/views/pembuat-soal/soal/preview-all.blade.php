@@ -6,7 +6,7 @@
 @endpush
 
 @section('breadcrumb')
-    <a href="{{ route('dinas.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
+    <a href="{{ route('pembuat-soal.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -23,7 +23,7 @@
             <p class="text-sm text-gray-500 mt-1">{{ $soalList->count() }} soal ditampilkan</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('dinas.soal.index') }}"
+            <a href="{{ route('pembuat-soal.soal.index') }}"
                class="btn-secondary inline-flex items-center gap-2 text-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -34,7 +34,7 @@
     </div>
 
     {{-- Filter Kategori --}}
-    <form method="GET" action="{{ route('dinas.soal.preview-all') }}"
+    <form method="GET" action="{{ route('pembuat-soal.soal.preview-all') }}"
           class="card flex flex-col sm:flex-row gap-3 p-4">
         <select name="kategori"
                 class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -47,7 +47,7 @@
             @endforeach
         </select>
         @if(request('kategori'))
-        <a href="{{ route('dinas.soal.preview-all') }}" class="btn-secondary text-center text-sm">Reset</a>
+        <a href="{{ route('pembuat-soal.soal.preview-all') }}" class="btn-secondary text-center text-sm">Reset</a>
         @endif
     </form>
 
@@ -97,11 +97,16 @@
                             [$tLabel, $tColor] = $tipeLabel[$soal->tipe_soal] ?? [$soal->tipe_soal, 'gray'];
                         @endphp
                         <span class="text-xs font-semibold bg-{{ $tColor }}-100 text-{{ $tColor }}-700 px-2 py-0.5 rounded-full">{{ $tLabel }}</span>
+                        @if($soal->is_verified)
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Terverifikasi</span>
+                        @else
+                        <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Belum Verifikasi</span>
+                        @endif
                         <span class="text-xs text-gray-500">{{ $soal->kategori->nama ?? '—' }}</span>
                         <span class="text-xs text-gray-400">· {{ ucfirst($soal->tingkat_kesulitan ?? 'sedang') }} · Bobot {{ $soal->bobot }}</span>
                     </div>
                 </div>
-                <a href="{{ route('dinas.soal.edit', $soal->id) }}"
+                <a href="{{ route('pembuat-soal.soal.edit', $soal->id) }}"
                    class="text-xs text-blue-600 hover:text-blue-800 font-medium flex-shrink-0">Edit</a>
             </div>
 

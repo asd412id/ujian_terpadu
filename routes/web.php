@@ -219,6 +219,31 @@ Route::prefix('pengawas')->name('pengawas.')->middleware(['auth', 'role:pengawas
 });
 
 // =============================================================
+// PEMBUAT SOAL
+// =============================================================
+Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:pembuat_soal,super_admin,admin_dinas'])->group(function () {
+    Route::get('/dashboard', [\App\Http\Controllers\PembuatSoal\DashboardController::class, 'index'])->name('dashboard');
+
+    // Bank Soal (CRUD, scoped to own)
+    Route::get('/soal/import', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'showImport'])->name('soal.import');
+    Route::post('/soal/import/word', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'importWord'])->name('soal.import.word');
+    Route::post('/soal/import/zip', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'importZip'])->name('soal.import.zip');
+    Route::get('/soal/import/status/{job}', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'importStatus'])->name('soal.import.status');
+    Route::get('/soal/import/template/word', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'templateWord'])->name('soal.import.template.word');
+    Route::get('/soal/import/template/zip', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'templateZip'])->name('soal.import.template.zip');
+    Route::get('/soal/preview-all', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'previewAll'])->name('soal.preview-all');
+    Route::post('/soal/upload-image', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'uploadImage'])->name('soal.upload-image');
+    Route::resource('soal', \App\Http\Controllers\PembuatSoal\SoalController::class)->names('soal');
+
+    // Narasi Soal (CRUD, scoped to own)
+    Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
+    Route::resource('narasi', \App\Http\Controllers\PembuatSoal\NarasiSoalController::class)->names('narasi');
+
+    // Kategori Soal (read-only)
+    Route::get('/kategori', [\App\Http\Controllers\PembuatSoal\KategoriController::class, 'index'])->name('kategori.index');
+});
+
+// =============================================================
 // PWA
 // =============================================================
 Route::get('/manifest.json', fn () => response()->file(public_path('manifest.json'), ['Content-Type' => 'application/manifest+json']))->name('pwa.manifest');

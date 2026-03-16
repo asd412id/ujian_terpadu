@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Bank Soal')
+@section('title', 'Bank Soal Saya')
 
 @push('head')
 @endpush
@@ -14,47 +14,10 @@
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 class="text-xl font-bold text-gray-900">Bank Soal</h1>
+        <h1 class="text-xl font-bold text-gray-900">Bank Soal Saya</h1>
         <div class="flex items-center gap-2">
             @if($soal->total() > 0)
-            <div x-data="{ openDel: false }" class="relative">
-                <button @click="openDel = !openDel" type="button"
-                        class="btn-danger-outline inline-flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    Hapus Soal
-                    <svg class="w-3 h-3 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-                <div x-show="openDel" x-cloak @click.outside="openDel = false" x-transition
-                     class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 py-2">
-                    {{-- Hapus semua --}}
-                    <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
-                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Soal',message:'Yakin ingin menghapus SEMUA soal? Tindakan ini tidak dapat dibatalkan.',confirmText:'Ya, Hapus Semua',danger:true})) { openDel=false; $el.submit() }">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold">
-                            Hapus Semua Soal
-                        </button>
-                    </form>
-                    <div class="border-t border-gray-100 my-1"></div>
-                    <p class="px-4 py-1 text-xs text-gray-400 uppercase tracking-wider">Per Kategori</p>
-                    @foreach($kategori as $kat)
-                    <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
-                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal Kategori',message:'Yakin ingin menghapus semua soal kategori &quot;{{ e($kat->nama) }}&quot;?',confirmText:'Ya, Hapus',danger:true})) { openDel=false; $el.submit() }">
-                        @csrf @method('DELETE')
-                        <input type="hidden" name="kategori" value="{{ $kat->id }}">
-                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors">
-                            {{ $kat->nama }}
-                        </button>
-                    </form>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-            @if($soal->total() > 0)
-            <a href="{{ route('dinas.soal.preview-all', request()->only('kategori')) }}"
+            <a href="{{ route('pembuat-soal.soal.preview-all', request()->only('kategori')) }}"
                class="btn-secondary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -63,14 +26,14 @@
                 Preview Semua
             </a>
             @endif
-            <a href="{{ route('dinas.soal.import') }}"
+            <a href="{{ route('pembuat-soal.soal.import') }}"
                class="btn-secondary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                 </svg>
                 Import Soal
             </a>
-            <a href="{{ route('dinas.soal.create') }}"
+            <a href="{{ route('pembuat-soal.soal.create') }}"
                class="btn-primary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -81,7 +44,7 @@
     </div>
 
     {{-- Filter --}}
-    <form method="GET" action="{{ route('dinas.soal.index') }}"
+    <form method="GET" action="{{ route('pembuat-soal.soal.index') }}"
           class="card flex flex-col sm:flex-row gap-3 p-4">
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari soal..."
                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -116,7 +79,7 @@
             Cari
         </button>
         @if(request()->hasAny(['search', 'kategori', 'tipe', 'kesulitan']))
-        <a href="{{ route('dinas.soal.index') }}"
+        <a href="{{ route('pembuat-soal.soal.index') }}"
            class="btn-secondary text-center">
             Reset
         </a>
@@ -141,7 +104,7 @@
                         <th class="px-5 py-3 text-left hidden lg:table-cell">Kategori</th>
                         <th class="px-5 py-3 text-center hidden sm:table-cell">Jenis</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Tingkat</th>
-                        <th class="px-5 py-3 text-center hidden md:table-cell">Bobot</th>
+                        <th class="px-5 py-3 text-center hidden md:table-cell">Status</th>
                         <th class="px-5 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -186,19 +149,29 @@
                             </span>
                         </td>
                         <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ ucfirst($item->tingkat_kesulitan ?? '—') }}</td>
-                        <td class="px-5 py-3 text-center hidden md:table-cell font-medium text-gray-900">{{ $item->bobot }}</td>
+                        <td class="px-5 py-3 text-center hidden md:table-cell">
+                            @if($item->is_verified)
+                                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Terverifikasi</span>
+                            @else
+                                <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Menunggu</span>
+                            @endif
+                        </td>
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('dinas.soal.show', $item->id) }}"
+                                <a href="{{ route('pembuat-soal.soal.show', $item->id) }}"
                                    class="text-gray-500 hover:text-gray-700 text-xs font-medium"
                                    @click.prevent="openPreview('{{ $item->id }}')">Preview</a>
-                                <a href="{{ route('dinas.soal.edit', $item->id) }}"
+                                <a href="{{ route('pembuat-soal.soal.edit', $item->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
-                                <form action="{{ route('dinas.soal.destroy', $item->id) }}" method="POST"
+                                @if(!$item->is_verified)
+                                <form action="{{ route('pembuat-soal.soal.destroy', $item->id) }}" method="POST"
                                       x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal',message:'Hapus soal ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                                 </form>
+                                @else
+                                <span class="text-gray-300 text-xs cursor-not-allowed" title="Soal terverifikasi tidak dapat dihapus">Hapus</span>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -208,7 +181,7 @@
                             <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
-                            Belum ada soal. <a href="{{ route('dinas.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
+                            Belum ada soal. <a href="{{ route('pembuat-soal.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
                         </td>
                     </tr>
                     @endforelse
@@ -242,7 +215,7 @@
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <h2 class="text-lg font-bold text-gray-900">Preview Soal</h2>
                 <div class="flex items-center gap-2">
-                    <a :href="`{{ url('dinas/soal') }}/${previewData?.id}/edit`"
+                    <a :href="`{{ url('pembuat-soal/soal') }}/${previewData?.id}/edit`"
                        class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
                        x-show="previewData">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -426,14 +399,13 @@ function soalIndex() {
             this.previewLoading = true;
             this.previewData = null;
 
-            fetch(`{{ url('dinas/soal') }}/${id}`, {
+            fetch(`{{ url('pembuat-soal/soal') }}/${id}`, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
             .then(data => {
                 this.previewData = data;
                 this.previewLoading = false;
-                // Re-typeset MathJax after Alpine renders the preview content
                 this.$nextTick(() => {
                     if (window.MathJax && window.MathJax.typesetPromise) {
                         window.MathJax.typesetPromise();

@@ -37,6 +37,7 @@
             <option value="admin_dinas" {{ request('role') === 'admin_dinas' ? 'selected' : '' }}>Admin Dinas</option>
             <option value="admin_sekolah" {{ request('role') === 'admin_sekolah' ? 'selected' : '' }}>Admin Sekolah</option>
             <option value="pengawas" {{ request('role') === 'pengawas' ? 'selected' : '' }}>Pengawas</option>
+            <option value="pembuat_soal" {{ request('role') === 'pembuat_soal' ? 'selected' : '' }}>Pembuat Soal</option>
         </select>
         <select name="status"
                 class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -80,7 +81,7 @@
                         <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $user->email }}</td>
                         <td class="px-5 py-3 text-center hidden md:table-cell">
                             @php
-                                $roleColors = ['admin_dinas' => 'blue', 'admin_sekolah' => 'green', 'pengawas' => 'amber', 'super_admin' => 'purple'];
+                                $roleColors = ['admin_dinas' => 'blue', 'admin_sekolah' => 'green', 'pengawas' => 'amber', 'super_admin' => 'purple', 'pembuat_soal' => 'teal'];
                                 $color = $roleColors[$user->role] ?? 'gray';
                             @endphp
                             <span class="text-xs font-semibold bg-{{ $color }}-100 text-{{ $color }}-700 px-2 py-0.5 rounded-full">

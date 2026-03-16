@@ -36,6 +36,7 @@ class User extends Authenticatable
     const ROLE_ADMIN_DINAS   = 'admin_dinas';
     const ROLE_ADMIN_SEKOLAH = 'admin_sekolah';
     const ROLE_PENGAWAS      = 'pengawas';
+    const ROLE_PEMBUAT_SOAL  = 'pembuat_soal';
 
     public function sekolah()
     {
@@ -46,6 +47,7 @@ class User extends Authenticatable
     public function isAdminDinas(): bool   { return $this->role === self::ROLE_ADMIN_DINAS; }
     public function isAdminSekolah(): bool { return $this->role === self::ROLE_ADMIN_SEKOLAH; }
     public function isPengawas(): bool     { return $this->role === self::ROLE_PENGAWAS; }
+    public function isPembuatSoal(): bool  { return $this->role === self::ROLE_PEMBUAT_SOAL; }
 
     public function isDinas(): bool
     {
@@ -59,6 +61,7 @@ class User extends Authenticatable
             self::ROLE_ADMIN_DINAS   => 'dinas.dashboard',
             self::ROLE_ADMIN_SEKOLAH => 'sekolah.dashboard',
             self::ROLE_PENGAWAS      => 'pengawas.dashboard',
+            self::ROLE_PEMBUAT_SOAL  => 'pembuat-soal.dashboard',
             default                  => 'login',
         };
     }

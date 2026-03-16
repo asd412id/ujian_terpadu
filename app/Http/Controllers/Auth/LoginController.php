@@ -28,7 +28,7 @@ class LoginController extends Controller
         $request->validate([
             'email'    => 'required|string',
             'password' => 'required|string',
-            'role'     => 'nullable|string|in:super_admin,admin_dinas,admin_sekolah,pengawas',
+            'role'     => 'nullable|string|in:super_admin,admin_dinas,admin_sekolah,pengawas,pembuat_soal',
         ]);
 
         $result = $this->authService->loginUser([

@@ -37,9 +37,11 @@ class SoalService
         ?string $tipe = null,
         ?string $kesulitan = null,
         ?string $search = null,
-        int $perPage = 20
+        int $perPage = 20,
+        ?string $createdBy = null,
+        ?bool $isVerified = null
     ): mixed {
-        return $this->repository->getFilteredSoal($kategoriId, $tipe, $kesulitan, $search, $perPage);
+        return $this->repository->getFilteredSoal($kategoriId, $tipe, $kesulitan, $search, $perPage, $createdBy, $isVerified);
     }
 
     /**
@@ -87,6 +89,11 @@ class SoalService
             $user = Auth::user();
             $data['created_by'] = $user->id;
             $data['sekolah_id'] = $user->sekolah_id;
+
+            // Pembuat soal: verifikasi sesuai config
+            if ($user->isPembuatSoal() && config('ujian.pembuat_soal.require_verification', true)) {
+                $data['is_verified'] = false;
+            }
 
             $soal = $this->repository->create($data);
 
@@ -136,6 +143,11 @@ class SoalService
                     Storage::disk('public')->delete($soal->gambar_soal);
                 }
                 $data['gambar_soal'] = null;
+            }
+
+            // Reset verification if edited by pembuat soal
+            if (Auth::check() && Auth::user()->isPembuatSoal() && $soal->is_verified) {
+                $data['is_verified'] = false;
             }
 
             $this->repository->update($soal, $data);

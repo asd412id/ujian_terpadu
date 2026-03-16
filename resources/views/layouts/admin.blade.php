@@ -37,6 +37,13 @@
                     $navItems = [
                         ['route' => 'pengawas.dashboard',   'icon' => 'grid',     'label' => 'Dashboard'],
                     ];
+                } elseif ($userRole === 'pembuat_soal') {
+                    $navItems = [
+                        ['route' => 'pembuat-soal.dashboard',     'icon' => 'grid',     'label' => 'Dashboard'],
+                        ['route' => 'pembuat-soal.soal.index',    'icon' => 'pencil',   'label' => 'Bank Soal'],
+                        ['route' => 'pembuat-soal.narasi.index',  'icon' => 'document', 'label' => 'Narasi Soal'],
+                        ['route' => 'pembuat-soal.kategori.index','icon' => 'tag',      'label' => 'Kategori Soal'],
+                    ];
                 } else {
                     $navItems = [
                         ['route' => 'dinas.dashboard',         'icon' => 'grid',     'label' => 'Dashboard'],

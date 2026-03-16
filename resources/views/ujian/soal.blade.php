@@ -264,6 +264,19 @@
                             <label class="soal-option"
                                    :class="isSelected('{{ $soal['id'] }}', '{{ $opsi['label'] }}') ? 'selected' : ''"
                                    @click="selectOpsi('{{ $soal['id'] }}', '{{ $opsi['label'] }}', '{{ $soal['tipe_soal'] }}')">
+                                @if($soal['tipe_soal'] === 'pg_kompleks')
+                                {{-- PGK: checkbox style --}}
+                                <div class="flex-shrink-0 w-9 h-9 rounded-lg border-2 flex items-center justify-center transition-colors"
+                                     :class="isSelected('{{ $soal['id'] }}', '{{ $opsi['label'] }}')
+                                             ? 'border-blue-600 bg-blue-600 text-white'
+                                             : 'border-gray-300 text-gray-400'">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
+                                         :class="isSelected('{{ $soal['id'] }}', '{{ $opsi['label'] }}') ? 'opacity-100' : 'opacity-0'">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                                @else
+                                {{-- PG regular: letter --}}
                                 <div class="flex-shrink-0 w-9 h-9 rounded-lg border-2 flex items-center justify-center
                                             font-bold text-sm transition-colors"
                                      :class="isSelected('{{ $soal['id'] }}', '{{ $opsi['label'] }}')
@@ -271,6 +284,7 @@
                                              : 'border-gray-300 text-gray-500'">
                                     {{ $opsi['label'] }}
                                 </div>
+                                @endif
                                 <div class="flex-1 min-w-0">
                                     @if($opsi['teks'])
                                     <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</span>
@@ -371,8 +385,8 @@
                                              'border-blue-200 bg-blue-50/40': getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null
                                          }">
                                         <div class="flex items-start gap-3 flex-1 min-w-0">
-                                            <span class="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700
-                                                         flex items-center justify-center text-xs font-bold">{{ $opsi['label'] }}</span>
+                                            <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700
+                                                         flex items-center justify-center text-xs font-bold">{{ $loop->iteration }})</span>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</p>
                                                 @if(!empty($opsi['gambar']))

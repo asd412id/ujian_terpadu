@@ -48,6 +48,7 @@
                 <option value="admin_dinas" style="color: #111827;" {{ old('role', $user->role ?? '') === 'admin_dinas' ? 'selected' : '' }}>Admin Dinas</option>
                 <option value="admin_sekolah" style="color: #111827;" {{ old('role', $user->role ?? '') === 'admin_sekolah' ? 'selected' : '' }}>Operator Sekolah</option>
                 <option value="pengawas" style="color: #111827;" {{ old('role', $user->role ?? '') === 'pengawas' ? 'selected' : '' }}>Pengawas</option>
+                <option value="pembuat_soal" style="color: #111827;" {{ old('role', $user->role ?? '') === 'pembuat_soal' ? 'selected' : '' }}>Pembuat Soal</option>
             </select>
         </div>
 

@@ -6,7 +6,7 @@
 @endpush
 
 @section('breadcrumb')
-    <a href="{{ route('dinas.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
+    <a href="{{ route('pembuat-soal.soal.index') }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -20,14 +20,25 @@
     <div class="flex items-center justify-between">
         <h1 class="text-xl font-bold text-gray-900">Preview Soal</h1>
         <div class="flex items-center gap-2">
-            <a href="{{ route('dinas.soal.edit', $soal->id) }}"
+            @if($soal->is_verified)
+            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                Terverifikasi
+            </span>
+            @else
+            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 002 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                Belum Diverifikasi
+            </span>
+            @endif
+            <a href="{{ route('pembuat-soal.soal.edit', $soal->id) }}"
                class="btn-primary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
                 Edit
             </a>
-            <a href="{{ route('dinas.soal.index') }}"
+            <a href="{{ route('pembuat-soal.soal.index') }}"
                class="btn-secondary inline-flex items-center gap-2">
                 Kembali
             </a>
