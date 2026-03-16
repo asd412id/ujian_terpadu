@@ -348,7 +348,7 @@
                                 <div class="space-y-2">
                                     <template x-for="(opsi, opsiIdx) in previewData.opsi" :key="opsi.label">
                                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                            <span class="flex-shrink-0 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold" x-text="(opsiIdx + 1) + ')'"></span>
+                                            <span class="flex-shrink-0 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold" x-text="String.fromCharCode(97 + opsiIdx) + '.'"></span>
                                             <div class="flex-1">
                                                 <span class="text-sm text-gray-800 ck-content mathjax-process" x-safe-html="opsi.teks"></span>
                                                 <template x-if="opsi.gambar"><img :src="opsi.gambar" class="mt-1 max-h-16 rounded border"></template>

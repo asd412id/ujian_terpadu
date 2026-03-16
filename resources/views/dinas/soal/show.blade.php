@@ -167,7 +167,7 @@
         <div class="space-y-2">
             @foreach($soal->opsiJawaban->sortBy('urutan') as $opsi)
             <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
-                <span class="flex-shrink-0 w-auto min-w-[1.75rem] h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold px-1.5">{{ $loop->iteration }})</span>
+                <span class="flex-shrink-0 w-auto min-w-[1.75rem] h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold px-1.5">{{ chr(96 + $loop->iteration) }}.</span>
                 <div class="flex-1">
                     <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
                     @if($opsi->gambar)

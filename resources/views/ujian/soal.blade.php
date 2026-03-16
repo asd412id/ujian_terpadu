@@ -386,7 +386,7 @@
                                          }">
                                         <div class="flex items-start gap-3 flex-1 min-w-0">
                                             <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700
-                                                         flex items-center justify-center text-xs font-bold">{{ $loop->iteration }})</span>
+                                                         flex items-center justify-center text-xs font-bold">{{ chr(96 + $loop->iteration) }}.</span>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</p>
                                                 @if(!empty($opsi['gambar']))

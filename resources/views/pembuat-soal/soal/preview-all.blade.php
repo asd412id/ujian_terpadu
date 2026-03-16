@@ -207,7 +207,7 @@
                 <div class="space-y-1.5">
                     @foreach($soal->opsiJawaban->sortBy('urutan') as $opsi)
                     <div class="flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                        <span class="flex-shrink-0 h-6 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ $loop->iteration }})</span>
+                        <span class="flex-shrink-0 h-6 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ chr(96 + $loop->iteration) }}.</span>
                         <div class="flex-1">
                             <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
                         </div>
