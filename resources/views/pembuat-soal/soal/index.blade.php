@@ -15,9 +15,9 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Bank Soal Saya</h1>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             <template x-if="activeTab === 'soal'">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     @if($soal->total() > 0)
                     <a href="{{ route('pembuat-soal.soal.preview-all', request()->only('kategori')) }}"
                        class="btn-secondary inline-flex items-center gap-2">
@@ -395,7 +395,7 @@
                 <template x-if="previewData && !previewLoading">
                     <div class="space-y-5">
                         {{-- Meta --}}
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 rounded-xl p-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 rounded-xl p-4">
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wide">Jenis</p>
                                 <span class="inline-block mt-1 text-xs font-semibold px-2.5 py-1 rounded-full"

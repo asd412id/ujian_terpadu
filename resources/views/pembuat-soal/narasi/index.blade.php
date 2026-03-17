@@ -45,6 +45,7 @@
 
     {{-- Table --}}
     <div class="card overflow-hidden p-0">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                 <tr>
@@ -98,6 +99,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 
     @if($narasis->hasPages())

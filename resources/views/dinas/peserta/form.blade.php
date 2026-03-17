@@ -49,7 +49,7 @@
         </div>
 
         {{-- NIS & NISN --}}
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">NIS</label>
                 <input type="text" name="nis" value="{{ old('nis', $peserta->nis ?? '') }}"
@@ -66,7 +66,7 @@
         </div>
 
         {{-- Kelas & Jurusan --}}
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Kelas</label>
                 <input type="text" name="kelas" value="{{ old('kelas', $peserta->kelas ?? '') }}"

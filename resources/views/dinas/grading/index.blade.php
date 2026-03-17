@@ -17,15 +17,15 @@
             </p>
         </div>
         {{-- Filter --}}
-        <form method="GET" action="{{ route('dinas.grading') }}" class="flex items-center gap-2">
+        <form method="GET" action="{{ route('dinas.grading') }}" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <select name="paket_id" onchange="this.form.submit()"
-                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Semua Paket</option>
                 @foreach($paketList as $p)
                 <option value="{{ $p->id }}" {{ request('paket_id') == $p->id ? 'selected' : '' }}>{{ $p->nama }}</option>
                 @endforeach
             </select>
-            <div class="w-56" x-data x-on:change="$el.closest('form').submit()">
+            <div class="w-full sm:w-56" x-data x-on:change="$el.closest('form').submit()">
                 <x-searchable-select
                     name="sekolah_id"
                     :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
@@ -79,7 +79,7 @@
 
         {{-- Form Nilai --}}
         <form action="{{ route('dinas.grading.nilai', $jawaban->id) }}" method="POST"
-              class="flex items-end gap-3 flex-wrap"
+              class="flex flex-col sm:flex-row sm:items-end gap-3 flex-wrap"
               x-data="{ nilai: {{ $jawaban->skor_manual ?? 0 }}, maks: {{ $jawaban->soal->bobot }} }">
             @csrf
             <div class="flex-1">

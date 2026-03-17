@@ -14,6 +14,7 @@
         body { font-family: Arial, Helvetica, sans-serif; background: white; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .kartu {
             width: 9cm;
+            max-width: 100%;
             border: 2px solid #1e3a5f;
             border-radius: 12px;
             padding: 16px 18px;

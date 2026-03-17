@@ -65,10 +65,10 @@
     <div class="card overflow-hidden p-0">
         <div class="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 class="font-semibold text-gray-900">Status Peserta</h2>
-            <form method="GET" action="{{ route('pengawas.sesi', $sesi->id) }}" class="flex items-center gap-2">
+            <form method="GET" action="{{ route('pengawas.sesi', $sesi->id) }}" class="flex flex-col sm:flex-row sm:items-center gap-2">
                 <input type="text" name="search" placeholder="Cari peserta..."
                        value="{{ $filters['search'] ?? '' }}"
-                       class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                       class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full sm:w-40 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onchange="this.form.submit()">
                     <option value="">Semua</option>

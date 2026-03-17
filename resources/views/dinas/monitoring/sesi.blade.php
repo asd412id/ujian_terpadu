@@ -85,8 +85,8 @@
             <form method="GET" action="{{ route('dinas.monitoring.sesi', $sesi->id) }}" class="flex items-center gap-2 flex-wrap">
                 <input type="text" name="search" placeholder="Cari nama / NIS..."
                        value="{{ $filters['search'] ?? '' }}"
-                       class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <div class="w-56" x-data x-on:change="$el.closest('form').submit()">
+                       class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full sm:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="w-full sm:w-56" x-data x-on:change="$el.closest('form').submit()">
                     <x-searchable-select
                         name="sekolah_id"
                         :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"

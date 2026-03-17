@@ -75,10 +75,10 @@
                     <tr>
                         <th class="px-4 py-3 text-center">No</th>
                         <th class="px-4 py-3 text-left">Soal</th>
-                        <th class="px-4 py-3 text-center">Tipe</th>
-                        <th class="px-4 py-3 text-center">% Benar</th>
-                        <th class="px-4 py-3 text-center">% Salah</th>
-                        <th class="px-4 py-3 text-center">% Kosong</th>
+                        <th class="px-4 py-3 text-center hidden sm:table-cell">Tipe</th>
+                        <th class="px-4 py-3 text-center hidden md:table-cell">% Benar</th>
+                        <th class="px-4 py-3 text-center hidden md:table-cell">% Salah</th>
+                        <th class="px-4 py-3 text-center hidden lg:table-cell">% Kosong</th>
                         <th class="px-4 py-3 text-center">TK</th>
                         <th class="px-4 py-3 text-center">Kesulitan</th>
                         <th class="px-4 py-3 text-center">DB</th>
@@ -94,7 +94,7 @@
                                 {{ $item['pertanyaan'] ?: '(tanpa teks)' }}
                             </button>
                         </td>
-                        <td class="px-4 py-3 text-center">
+                        <td class="px-4 py-3 text-center hidden sm:table-cell">
                             @php
                                 $tipeLabel = match($item['tipe']) {
                                     'pilihan_ganda' => 'PG',
@@ -108,9 +108,9 @@
                             @endphp
                             <span class="text-xs font-medium bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ $tipeLabel }}</span>
                         </td>
-                        <td class="px-4 py-3 text-center text-green-600 font-medium">{{ $item['pct_benar'] }}%</td>
-                        <td class="px-4 py-3 text-center text-red-500 font-medium">{{ $item['pct_salah'] }}%</td>
-                        <td class="px-4 py-3 text-center text-gray-400">{{ $item['pct_kosong'] }}%</td>
+                        <td class="px-4 py-3 text-center text-green-600 font-medium hidden md:table-cell">{{ $item['pct_benar'] }}%</td>
+                        <td class="px-4 py-3 text-center text-red-500 font-medium hidden md:table-cell">{{ $item['pct_salah'] }}%</td>
+                        <td class="px-4 py-3 text-center text-gray-400 hidden lg:table-cell">{{ $item['pct_kosong'] }}%</td>
                         <td class="px-4 py-3 text-center font-bold text-gray-900">{{ $item['tingkat_kesulitan'] !== null ? number_format($item['tingkat_kesulitan'], 2) : '-' }}</td>
                         <td class="px-4 py-3 text-center">
                             @php

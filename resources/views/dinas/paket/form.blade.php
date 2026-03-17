@@ -133,7 +133,7 @@
         <hr class="border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700">Sesi Ujian Awal <span class="text-gray-400 text-xs font-normal">(opsional)</span></h3>
         <p class="text-sm text-gray-500 -mt-3">Buat sesi ujian langsung saat membuat paket. Sesi tambahan bisa dibuat nanti.</p>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Nama Sesi</label>
                 <input type="text" name="nama_sesi" value="{{ old('nama_sesi') }}"

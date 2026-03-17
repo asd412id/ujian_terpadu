@@ -4,7 +4,7 @@
 
 @section('content')
 {{-- Top Navigation Bar --}}
-<header class="w-full bg-white border-b border-gray-200 px-6 py-3.5">
+<header class="w-full bg-white border-b border-gray-200 px-4 sm:px-6 py-3.5">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
             <img src="/images/logo.svg" alt="Logo" class="w-9 h-9 rounded-xl">

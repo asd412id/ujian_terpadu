@@ -231,7 +231,7 @@
             <h2 class="font-semibold text-gray-900">Bank Soal</h2>
             <div class="flex items-center gap-2 flex-wrap">
                 <input type="text" x-model="search" placeholder="Cari soal..."
-                       class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                       class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-full sm:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <select x-model="filterJenis"
                         class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Semua Jenis</option>

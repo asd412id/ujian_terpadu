@@ -6,7 +6,7 @@
 <div x-data="selesaiApp()" x-init="init()">
 
 {{-- Top Navigation Bar --}}
-<header class="w-full bg-white border-b border-gray-200 px-6 py-3.5">
+<header class="w-full bg-white border-b border-gray-200 px-4 sm:px-6 py-3.5">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
             <img src="/images/logo.svg" alt="Logo" class="w-9 h-9 rounded-xl">
@@ -27,7 +27,7 @@
     </div>
 </header>
 
-<main class="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+<main class="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6">
 
     {{-- Offline Banner --}}
     <div x-show="!isOnline && hasPendingSync"

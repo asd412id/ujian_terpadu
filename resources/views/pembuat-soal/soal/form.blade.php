@@ -148,7 +148,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {{-- Kolom Kiri --}}
                             <div class="space-y-2">
                                 <label class="text-xs font-medium text-gray-500">Kiri</label>

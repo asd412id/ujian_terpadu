@@ -64,11 +64,11 @@
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
                         <th class="text-left px-4 py-3 font-medium text-gray-600">Sekolah</th>
-                        <th class="text-center px-4 py-3 font-medium text-gray-600">Sesi Aktif</th>
+                        <th class="text-center px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Sesi Aktif</th>
                         <th class="text-center px-4 py-3 font-medium text-gray-600">Peserta Online</th>
-                        <th class="text-center px-4 py-3 font-medium text-gray-600">Selesai</th>
-                        <th class="text-center px-4 py-3 font-medium text-gray-600">Cheating</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                        <th class="text-center px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Selesai</th>
+                        <th class="text-center px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Cheating</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Status</th>
                         <th class="text-center px-4 py-3 font-medium text-gray-600">Aksi</th>
                     </tr>
                 </thead>
@@ -97,7 +97,7 @@
                                 <p class="font-medium text-gray-900" x-text="s.nama_sekolah"></p>
                                 <p class="text-xs text-gray-400" x-text="s.kode_sekolah"></p>
                             </td>
-                            <td class="px-4 py-3 text-center">
+                            <td class="px-4 py-3 text-center hidden md:table-cell">
                                 <span class="font-semibold text-blue-600" x-text="s.sesi_aktif"></span>
                             </td>
                             <td class="px-4 py-3 text-center">
@@ -107,13 +107,13 @@
                                     <span class="font-semibold" x-text="s.peserta_online"></span>
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-center text-gray-700" x-text="s.peserta_selesai"></td>
-                            <td class="px-4 py-3 text-center">
+                            <td class="px-4 py-3 text-center text-gray-700 hidden lg:table-cell" x-text="s.peserta_selesai"></td>
+                            <td class="px-4 py-3 text-center hidden lg:table-cell">
                                 <span class="font-semibold"
                                       :class="s.cheating_count > 0 ? 'text-red-600' : 'text-gray-400'"
                                       x-text="s.cheating_count"></span>
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 hidden sm:table-cell">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                                       :class="{
                                           'bg-green-100 text-green-800': s.status === 'aktif',

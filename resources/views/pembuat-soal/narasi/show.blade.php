@@ -67,7 +67,7 @@
                         </div>
                         <div class="text-sm text-gray-800 line-clamp-2">{!! Str::limit(strip_tags($soal->pertanyaan), 150) !!}</div>
                         @if($soal->opsiJawaban->count() > 0)
-                        <div class="mt-2 grid grid-cols-2 gap-1">
+                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
                             @foreach($soal->opsiJawaban as $opsi)
                             <div class="text-xs {{ $opsi->is_correct ? 'text-green-700 font-semibold' : 'text-gray-500' }}">
                                 {{ $opsi->label }}. {!! Str::limit(strip_tags($opsi->teks), 50) !!}

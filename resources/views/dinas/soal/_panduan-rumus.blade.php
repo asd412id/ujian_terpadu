@@ -265,7 +265,7 @@
                 <span class="w-5 h-5 bg-blue-600 text-white rounded text-xs flex items-center justify-center font-bold">5</span>
                 Huruf Yunani & Simbol
             </h4>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div class="bg-white rounded-lg border border-blue-100 p-3">
                     <p class="font-medium text-gray-700 mb-2 text-xs">Huruf Kecil</p>
                     <div class="grid grid-cols-3 gap-1 text-xs">
