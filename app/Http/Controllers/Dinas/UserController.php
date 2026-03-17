@@ -35,7 +35,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name'       => 'required|string|max:200',
             'email'      => 'required|email|unique:users',
-            'password'   => 'required|string|min:8|confirmed',
+            'password'   => 'required|string|min:8',
             'role'       => 'required|in:admin_dinas,admin_sekolah,pengawas,pembuat_soal',
             'sekolah_id' => 'nullable|exists:sekolah,id',
         ]);
@@ -60,7 +60,7 @@ class UserController extends Controller
             'role'       => 'required|in:admin_dinas,admin_sekolah,pengawas,pembuat_soal',
             'sekolah_id' => 'nullable|exists:sekolah,id',
             'is_active'  => 'boolean',
-            'password'   => 'nullable|string|min:8|confirmed',
+            'password'   => 'nullable|string|min:8',
         ]);
 
         $this->userService->updateUser($user, $data);
