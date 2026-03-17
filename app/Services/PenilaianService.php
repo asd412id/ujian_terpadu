@@ -8,14 +8,22 @@ use App\Repositories\JawabanRepository;
 
 class PenilaianService
 {
+    /** @var array<string, array<string, string>> soalId → [displayLabel → originalLabel] */
+    private array $labelRemap = [];
+
     public function __construct(
         protected JawabanRepository $jawabanRepository
     ) {}
 
     public function hitungNilai(SesiPeserta $sesiPeserta): array
     {
-        $sesiPeserta->loadMissing(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal.soal']);
+        $sesiPeserta->loadMissing(['jawaban.soal.opsiJawaban', 'jawaban.soal.pasangan', 'sesi.paket.paketSoal.soal']);
         $paket = $sesiPeserta->sesi->paket;
+
+        // Build label-remap per soal: display-label → original-label
+        // During the exam, opsi are shuffled and relabeled A,B,C,D...
+        // Student answers use these relabeled keys, so we must map back.
+        $this->labelRemap = $this->buildLabelRemap($sesiPeserta);
 
         $jumlahBenar  = 0;
         $jumlahSalah  = 0;
@@ -103,6 +111,10 @@ class PenilaianService
     {
         $benar = $jawaban->soal->opsiJawaban->where('is_benar', true)->pluck('label')->first();
         $pilihan = $jawaban->jawaban_pg[0] ?? null;
+        // Remap display label back to original label
+        if ($pilihan !== null) {
+            $pilihan = $this->remapLabel($jawaban->soal_id, $pilihan);
+        }
         return $pilihan === $benar ? $bobot : 0;
     }
 
@@ -115,7 +127,13 @@ class PenilaianService
             ->values()
             ->toArray();
 
-        $pilihan = collect($jawaban->jawaban_pg ?? [])->sort()->values()->toArray();
+        // Remap display labels back to original labels
+        $soalId = $jawaban->soal_id;
+        $pilihan = collect($jawaban->jawaban_pg ?? [])
+            ->map(fn ($label) => $this->remapLabel($soalId, $label))
+            ->sort()
+            ->values()
+            ->toArray();
 
         if ($pilihan === $jawabanBenar) return $bobot;
 
@@ -135,13 +153,23 @@ class PenilaianService
         $totalPernyataan = $opsiList->count();
         if ($totalPernyataan === 0) return 0;
 
-        // jawaban_pg stores object like {"1":"benar","2":"salah","3":"benar"}
+        // jawaban_pg stores object like {"A":"benar","B":"salah","C":"benar"}
+        // where keys are DISPLAY labels (A,B,C...) from the exam UI
         $jawabanPeserta = $jawaban->jawaban_pg;
         if (!is_array($jawabanPeserta)) return 0;
 
+        // Remap display labels (A,B,C) → original labels (1,2,3) so we can
+        // match against the opsi records in the database
+        $soalId = $jawaban->soal_id;
+        $remapped = [];
+        foreach ($jawabanPeserta as $displayLabel => $value) {
+            $originalLabel = $this->remapLabel($soalId, (string) $displayLabel);
+            $remapped[$originalLabel] = $value;
+        }
+
         $benarCount = 0;
         foreach ($opsiList as $opsi) {
-            $pesertaJawab = $jawabanPeserta[$opsi->label] ?? null;
+            $pesertaJawab = $remapped[$opsi->label] ?? null;
             if ($pesertaJawab === null) continue;
 
             $kunciBenar = (bool) $opsi->is_benar;
@@ -191,5 +219,56 @@ class PenilaianService
         $kunci = strtolower(trim($kunciJawaban));
 
         return $jawab === $kunci ? $bobot : 0;
+    }
+
+    /**
+     * Build mapping from display labels (A,B,C...) to original opsi labels per soal.
+     *
+     * During the exam, options can be shuffled and relabeled A,B,C,D...
+     * The student's answers use these display labels. For scoring we need
+     * to map back to the original opsi labels stored in the DB.
+     *
+     * @return array<string, array<string, string>> soalId → [displayLabel → originalLabel]
+     */
+    private function buildLabelRemap(SesiPeserta $sesiPeserta): array
+    {
+        $urutanOpsi = $sesiPeserta->urutan_opsi ?? [];
+        if (empty($urutanOpsi)) return [];
+
+        $labels = range('A', 'Z');
+        $remap  = [];
+
+        // Pre-index all opsiJawaban by soal for quick lookup
+        $opsiBysoal = [];
+        foreach ($sesiPeserta->jawaban as $jawaban) {
+            $soalId = $jawaban->soal_id;
+            if (!isset($opsiBysoal[$soalId])) {
+                $opsiBysoal[$soalId] = $jawaban->soal->opsiJawaban->keyBy('id');
+            }
+        }
+
+        foreach ($urutanOpsi as $soalId => $opsiIds) {
+            if (!is_array($opsiIds) || !isset($opsiBysoal[$soalId])) continue;
+            $opsiMap = $opsiBysoal[$soalId];
+            $soalRemap = [];
+            foreach ($opsiIds as $i => $opsiId) {
+                $opsi = $opsiMap[$opsiId] ?? null;
+                if ($opsi) {
+                    $displayLabel = $labels[$i] ?? chr(65 + $i);
+                    $soalRemap[$displayLabel] = $opsi->label;
+                }
+            }
+            $remap[$soalId] = $soalRemap;
+        }
+
+        return $remap;
+    }
+
+    /**
+     * Remap a display label (A,B,C...) back to the original opsi label.
+     */
+    private function remapLabel(string $soalId, string $displayLabel): string
+    {
+        return $this->labelRemap[$soalId][$displayLabel] ?? $displayLabel;
     }
 }
