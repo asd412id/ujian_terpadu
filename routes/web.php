@@ -132,6 +132,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 
     // Narasi Soal
     Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
+    Route::post('/narasi/upload-image', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'uploadImage'])->name('narasi.upload-image');
     Route::resource('narasi', \App\Http\Controllers\Dinas\NarasiSoalController::class)->names('narasi');
 
     // Kategori Soal
@@ -237,6 +238,7 @@ Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:
 
     // Narasi Soal (CRUD, scoped to own)
     Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
+    Route::post('/narasi/upload-image', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'uploadImage'])->name('narasi.upload-image');
     Route::resource('narasi', \App\Http\Controllers\PembuatSoal\NarasiSoalController::class)->names('narasi');
 
     // Kategori Soal (read-only)

@@ -433,6 +433,9 @@ class SoalController extends Controller
         $section->addText('    c. 17.000', $normalStyle);
         $section->addText('    d. 19.000', $normalStyle);
         $section->addText('    Jawaban: C', $normalStyle);
+        $section->addTextBreak(0);
+        $section->addText('[/NARASI_SOAL]', $boldStyle);
+        $section->addText('(Soal setelah tag ini tidak lagi terkait dengan narasi di atas)', $italicStyle);
         $section->addTextBreak(1);
         $section->addText('9. Apa arti semboyan "Bhinneka Tunggal Ika"?', $boldStyle);
         $section->addText('    a. Satu untuk semua', $normalStyle);
@@ -441,7 +444,7 @@ class SoalController extends Controller
         $section->addText('    d. Merdeka atau mati', $normalStyle);
         $section->addText('    Jawaban: B', $normalStyle);
         $section->addTextBreak(1);
-        $section->addText('10. [ESSAY] Jelaskan mengapa keberagaman budaya di Indonesia sangat kaya berdasarkan teks!', $boldStyle);
+        $section->addText('10. [ESSAY] Jelaskan mengapa keberagaman budaya di Indonesia sangat kaya!', $boldStyle);
         $section->addText('    Jawaban:', $normalStyle);
         $section->addTextBreak(2);
 
@@ -467,7 +470,9 @@ class SoalController extends Controller
         $section->addTextBreak(1);
         $section->addText('NARASI / TEKS BACAAN:', $boldStyle);
         $section->addListItem('Gunakan tag [NARASI] dan [/NARASI] untuk menandai awal dan akhir teks bacaan.', 0, $normalStyle);
-        $section->addListItem('Semua soal setelah tag [/NARASI] sampai tag [NARASI] berikutnya akan dikaitkan dengan narasi tersebut.', 0, $normalStyle);
+        $section->addListItem('Semua soal setelah tag [/NARASI] otomatis dikaitkan dengan narasi tersebut.', 0, $normalStyle);
+        $section->addListItem('Gunakan tag [/NARASI_SOAL] untuk mengakhiri hubungan narasi — soal setelahnya menjadi soal biasa.', 0, $normalStyle);
+        $section->addListItem('Jika ada [NARASI] baru, narasi sebelumnya otomatis terputus.', 0, $normalStyle);
         $section->addListItem('Soal bernarasi akan ditampilkan bersama teks bacaannya saat ujian berlangsung.', 0, $normalStyle);
         $section->addListItem('Saat pengacakan soal, soal dalam satu narasi tetap berurutan (hanya posisi grup yang diacak).', 0, $normalStyle);
 

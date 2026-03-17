@@ -218,12 +218,12 @@
                                 </svg>
                                 <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">{{ $soal['narasi']['judul'] ?? 'Teks Bacaan' }}</span>
                             </div>
-                            @if(!empty($soal['narasi']['gambar']))
-                            <div class="mb-3 rounded-lg overflow-hidden border border-indigo-200">
-                                <img src="{{ asset('storage/'.$soal['narasi']['gambar']) }}" alt="Gambar Narasi" class="max-h-60 w-auto">
-                            </div>
-                            @endif
                             <div class="prose prose-sm max-w-none text-gray-800">
+                                @if(!empty($soal['narasi']['gambar']))
+                                <div class="mb-3 rounded-lg overflow-hidden border border-indigo-200">
+                                    <img src="{{ asset('storage/'.$soal['narasi']['gambar']) }}" alt="Gambar Narasi" class="max-h-60 w-auto">
+                                </div>
+                                @endif
                                 {!! $soal['narasi']['konten'] !!}
                             </div>
                         </div>

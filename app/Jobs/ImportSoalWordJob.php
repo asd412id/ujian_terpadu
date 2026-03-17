@@ -303,6 +303,8 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 if (preg_match('/^\[NARASI\]\s*$/i', $plainText)) {
                     $inNarasi = true;
                     $currentNarasiContent = '';
+                    // New narasi block resets any previous narasi association
+                    $currentNarasiIndex = null;
                     continue;
                 }
                 if (preg_match('/^\[\/NARASI\]\s*$/i', $plainText)) {
@@ -317,8 +319,14 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $currentNarasiContent = '';
                     continue;
                 }
+                // [/NARASI_SOAL] — explicitly end narasi association for subsequent soal
+                if (preg_match('/^\[\/NARASI_SOAL\]\s*$/i', $plainText)) {
+                    $currentNarasiIndex = null;
+                    continue;
+                }
                 // Also handle inline: [NARASI] content text [/NARASI]
                 if (preg_match('/^\[NARASI\]\s*(.+?)\s*\[\/NARASI\]\s*$/is', $plainText, $nm)) {
+                    // New narasi block resets any previous narasi association
                     $narasiList[] = [
                         'judul'  => 'Narasi ' . (count($narasiList) + 1),
                         'konten' => trim(!empty($html) ? preg_replace('/\[NARASI\]\s*/i', '', preg_replace('/\s*\[\/NARASI\]/i', '', $html)) : e($nm[1])),
@@ -498,12 +506,15 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         };
                     }
 
-                    // Parse gambar reference from pertanyaan text
-                    $gambarFromText = null;
+                    // Parse gambar reference from pertanyaan text — inline into HTML
                     if (preg_match('/\[gambar:\s*(.+?)\]/i', $soalText, $gm)) {
                         $soalText = trim(preg_replace('/\[gambar:\s*.+?\]/i', '', $soalText));
                         $soalHtml = preg_replace('/\[gambar:\s*.+?\]/i', '', $soalHtml);
-                        $gambarFromText = $this->saveImageFromFolder(trim($gm[1]));
+                        $savedImgPath = $this->saveImageFromFolder(trim($gm[1]));
+                        if ($savedImgPath) {
+                            $imgUrl = Storage::disk('public')->url($savedImgPath);
+                            $soalHtml .= '<p><img src="' . e($imgUrl) . '" alt="gambar" style="max-width:100%;"></p>';
+                        }
                     }
 
                     // Parse optional meta tags
@@ -520,10 +531,8 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         $soalHtml = preg_replace('/\[bobot:\s*[\d.,]+\]/i', '', $soalHtml);
                     }
 
-                    // If images are already inlined in the HTML (as <img> tags),
-                    // don't also set gambar_soal — this prevents double rendering.
-                    $hasInlineImage = !empty($images) && str_contains($soalHtml, '<img ');
-                    $gambarSoal = $hasInlineImage ? null : (!empty($images) ? $this->saveImageData($images[0]) : $gambarFromText);
+                    // All images are now inlined in the HTML content.
+                    // gambar_soal is no longer used for Word-imported soal.
 
                     $current = [
                         'pertanyaan'      => trim($soalHtml),
@@ -533,7 +542,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         'opsi_html'       => [],
                         'opsi_gambar'     => [],
                         'kunci'           => null,
-                        'gambar_soal'     => $gambarSoal,
+                        'gambar_soal'     => null,
                         'pasangan'        => [],
                         'pernyataan_bs'   => [],
                         'tingkat'         => $tingkat,
@@ -577,14 +586,15 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $opsiHtml = trim($opsiHtml);
                     if (empty($opsiHtml)) $opsiHtml = e($opsiText);
 
-                    // Parse text-based image reference
+                    // Parse text-based image reference — inline into opsi_html
                     if (preg_match('/^(.*?)\s*\|\s*gambar:\s*(.+)$/i', $opsiText, $gm)) {
                         $opsiText = trim($gm[1]);
                         $opsiHtml = preg_replace('/\s*\|\s*gambar:\s*.+$/i', '', $opsiHtml);
                         $imgFile  = trim($gm[2]);
                         $savedPath = $this->saveImageFromFolder($imgFile);
                         if ($savedPath) {
-                            $current['opsi_gambar'][$label] = $savedPath;
+                            $url = Storage::disk('public')->url($savedPath);
+                            $opsiHtml .= '<br><img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
                         }
                     } elseif (preg_match('/^gambar:\s*(.+)$/i', $opsiText, $gm)) {
                         $opsiText = '';
@@ -592,23 +602,13 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         $imgFile  = trim($gm[1]);
                         $savedPath = $this->saveImageFromFolder($imgFile);
                         if ($savedPath) {
-                            $current['opsi_gambar'][$label] = $savedPath;
+                            $url = Storage::disk('public')->url($savedPath);
+                            $opsiHtml = '<img src="' . e($url) . '" alt="gambar" style="max-width:100%;vertical-align:middle;">';
                         }
                     }
 
                     $current['opsi'][$label] = $opsiText;
                     $current['opsi_html'][$label] = $opsiHtml;
-
-                    // Embedded image in this option paragraph
-                    if (!empty($images) && empty($current['opsi_gambar'][$label])) {
-                        $current['opsi_gambar'][$label] = $this->saveImageData($images[0]);
-                    }
-
-                    // Ensure opsi entry exists even if text is empty
-                    if (empty($opsiText) && !empty($current['opsi_gambar'][$label])) {
-                        $current['opsi'][$label] = '';
-                        $current['opsi_html'][$label] = '';
-                    }
 
                 // Menjodohkan: "kiri = kanan"
                 } elseif ($current && $current['jenis'] === 'menjodohkan' && preg_match('/^(.+?)\s*=\s*(.+)$/', $text, $m)) {
@@ -646,31 +646,20 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 } elseif ($current && preg_match('/^\[bobot:\s*([\d.,]+)\]/i', $text, $bm)) {
                     $current['bobot'] = (float) str_replace(',', '.', trim($bm[1]));
 
-                // Standalone image following a soal
-                } elseif ($current && empty($text) && !empty($images)) {
+                // Standalone image following a soal — always inline into HTML content
+                } elseif ($current && empty($text) && !empty($images) && !empty($html)) {
+                    $pStyle = '';
+                    if ($alignment === 'center') {
+                        $pStyle = ' style="text-align:center"';
+                    }
+                    $imgBlock = '<p' . $pStyle . '>' . $html . '</p>';
+
                     if (!empty($current['opsi'])) {
+                        // Append image inline to last option's HTML
                         $lastLabel = array_key_last($current['opsi']);
-                        if (empty($current['opsi_gambar'][$lastLabel] ?? null)) {
-                            // Assign image to last option if it doesn't have one yet
-                            $current['opsi_gambar'][$lastLabel] = $this->saveImageData($images[0]);
-                        } else {
-                            // Last option already has image — create new option with image
-                            $nextLabel = chr(ord($lastLabel) + 1);
-                            if ($nextLabel >= 'A' && $nextLabel <= 'Z') {
-                                $current['opsi'][$nextLabel] = '';
-                                $current['opsi_html'][$nextLabel] = '';
-                                $current['opsi_gambar'][$nextLabel] = $this->saveImageData($images[0]);
-                            }
-                        }
-                    } elseif (!$current['gambar_soal'] && !str_contains($current['pertanyaan'], '<img ')) {
-                        $current['gambar_soal'] = $this->saveImageData($images[0]);
-                    } elseif (!empty($html)) {
-                        // gambar_soal already set or pertanyaan has inline images — append as inline
-                        $pStyle = '';
-                        if ($alignment === 'center') {
-                            $pStyle = ' style="text-align:center"';
-                        }
-                        $imgBlock = '<p' . $pStyle . '>' . $html . '</p>';
+                        $current['opsi_html'][$lastLabel] = ($current['opsi_html'][$lastLabel] ?? '') . $imgBlock;
+                    } else {
+                        // Append image inline to pertanyaan
                         $current['pertanyaan'] .= $imgBlock;
                         $current['pertanyaan_html'] = ($current['pertanyaan_html'] ?? '') . $imgBlock;
                     }

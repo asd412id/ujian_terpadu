@@ -39,11 +39,6 @@
     {{-- Narasi Content --}}
     <div class="card">
         <h2 class="font-semibold text-gray-900 mb-3">Teks Narasi</h2>
-        @if($narasi->gambar)
-        <div class="mb-4">
-            <img src="{{ Storage::url($narasi->gambar) }}" alt="Gambar Narasi" class="max-h-60 rounded-lg border">
-        </div>
-        @endif
         <div class="prose prose-sm max-w-none text-gray-700 bg-gray-50 rounded-xl p-5 border border-gray-200">
             {!! $narasi->konten !!}
         </div>

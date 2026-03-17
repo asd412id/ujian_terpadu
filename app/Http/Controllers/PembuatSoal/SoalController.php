@@ -5,9 +5,11 @@ namespace App\Http\Controllers\PembuatSoal;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Dinas\SoalController as DinasSoalController;
 use App\Models\ImportJob;
+use App\Models\NarasiSoal;
 use App\Models\Soal;
 use App\Jobs\ImportSoalWordJob;
 use App\Services\SoalService;
+use App\Repositories\KategoriSoalRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +19,8 @@ use ZipArchive;
 class SoalController extends Controller
 {
     public function __construct(
-        protected SoalService $soalService
+        protected SoalService $soalService,
+        protected KategoriSoalRepository $kategoriSoalRepository
     ) {}
 
     public function index(Request $request)
@@ -33,7 +36,17 @@ class SoalController extends Controller
 
         $kategori = $this->soalService->getActiveKategori();
 
-        return view('pembuat-soal.soal.index', compact('soal', 'kategori'));
+        // Narasi tab data
+        $narasis = NarasiSoal::with('kategori')
+            ->withCount('soalList')
+            ->where('created_by', Auth::id())
+            ->when($request->narasi_kategori, fn ($q) => $q->where('kategori_id', $request->narasi_kategori))
+            ->when($request->narasi_search, fn ($q) => $q->where('judul', 'like', "%{$request->narasi_search}%"))
+            ->latest()
+            ->paginate(20, ['*'], 'narasi_page')
+            ->withQueryString();
+
+        return view('pembuat-soal.soal.index', compact('soal', 'kategori', 'narasis'));
     }
 
     public function create()

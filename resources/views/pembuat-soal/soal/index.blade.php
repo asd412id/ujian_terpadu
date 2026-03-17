@@ -16,183 +16,333 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Bank Soal Saya</h1>
         <div class="flex items-center gap-2">
-            @if($soal->total() > 0)
-            <a href="{{ route('pembuat-soal.soal.preview-all', request()->only('kategori')) }}"
-               class="btn-secondary inline-flex items-center gap-2">
+            <template x-if="activeTab === 'soal'">
+                <div class="flex items-center gap-2">
+                    @if($soal->total() > 0)
+                    <a href="{{ route('pembuat-soal.soal.preview-all', request()->only('kategori')) }}"
+                       class="btn-secondary inline-flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Preview Semua
+                    </a>
+                    @endif
+                    <a href="{{ route('pembuat-soal.soal.import') }}"
+                       class="btn-secondary inline-flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        Import Soal
+                    </a>
+                    <a href="{{ route('pembuat-soal.soal.create') }}"
+                       class="btn-primary inline-flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Tambah Soal
+                    </a>
+                </div>
+            </template>
+            <template x-if="activeTab === 'narasi'">
+                <a href="{{ route('pembuat-soal.narasi.create') }}"
+                   class="btn-primary inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Tambah Narasi
+                </a>
+            </template>
+        </div>
+    </div>
+
+    {{-- Tabs --}}
+    <div class="border-b border-gray-200">
+        <nav class="flex gap-6 -mb-px" aria-label="Tabs">
+            <button @click="switchTab('soal')"
+                    :class="activeTab === 'soal' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
-                Preview Semua
+                Soal
+                <span class="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full"
+                      :class="activeTab === 'soal' ? 'bg-blue-100 text-blue-600' : ''">{{ $soal->total() }}</span>
+            </button>
+            <button @click="switchTab('narasi')"
+                    :class="activeTab === 'narasi' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Narasi
+                <span class="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full"
+                      :class="activeTab === 'narasi' ? 'bg-blue-100 text-blue-600' : ''">{{ $narasis->total() }}</span>
+            </button>
+        </nav>
+    </div>
+
+    {{-- ============ TAB: SOAL ============ --}}
+    <div x-show="activeTab === 'soal'" x-cloak>
+
+        {{-- Filter --}}
+        <form method="GET" action="{{ route('pembuat-soal.soal.index') }}"
+              class="card flex flex-col sm:flex-row gap-3 p-4">
+            <input type="hidden" name="tab" value="soal">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari soal..."
+                   class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select name="kategori"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua Kategori</option>
+                @foreach($kategori as $kat)
+                <option value="{{ $kat->id }}" {{ request('kategori') == $kat->id ? 'selected' : '' }}>
+                    {{ $kat->nama }}
+                </option>
+                @endforeach
+            </select>
+            <select name="tipe"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua Tipe</option>
+                <option value="pilihan_ganda" {{ request('tipe') === 'pilihan_ganda' ? 'selected' : '' }}>Pilihan Ganda</option>
+                <option value="pilihan_ganda_kompleks" {{ request('tipe') === 'pilihan_ganda_kompleks' ? 'selected' : '' }}>PG Kompleks</option>
+                <option value="benar_salah" {{ request('tipe') === 'benar_salah' ? 'selected' : '' }}>Benar / Salah</option>
+                <option value="isian" {{ request('tipe') === 'isian' ? 'selected' : '' }}>Isian</option>
+                <option value="essay" {{ request('tipe') === 'essay' ? 'selected' : '' }}>Essay</option>
+                <option value="menjodohkan" {{ request('tipe') === 'menjodohkan' ? 'selected' : '' }}>Menjodohkan</option>
+            </select>
+            <select name="kesulitan"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua Kesulitan</option>
+                <option value="mudah" {{ request('kesulitan') === 'mudah' ? 'selected' : '' }}>Mudah</option>
+                <option value="sedang" {{ request('kesulitan') === 'sedang' ? 'selected' : '' }}>Sedang</option>
+                <option value="sulit" {{ request('kesulitan') === 'sulit' ? 'selected' : '' }}>Sulit</option>
+            </select>
+            <button type="submit"
+                    class="btn-primary">
+                Cari
+            </button>
+            @if(request()->hasAny(['search', 'kategori', 'tipe', 'kesulitan']))
+            <a href="{{ route('pembuat-soal.soal.index') }}"
+               class="btn-secondary text-center">
+                Reset
             </a>
             @endif
-            <a href="{{ route('pembuat-soal.soal.import') }}"
-               class="btn-secondary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                </svg>
-                Import Soal
-            </a>
-            <a href="{{ route('pembuat-soal.soal.create') }}"
-               class="btn-primary inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Tambah Soal
-            </a>
+        </form>
+
+        {{-- Stats --}}
+        <div class="flex flex-wrap gap-2 mt-4">
+            <span class="text-sm text-gray-500 flex items-center">
+                {{ $soal->total() }} soal ditemukan
+            </span>
         </div>
-    </div>
 
-    {{-- Filter --}}
-    <form method="GET" action="{{ route('pembuat-soal.soal.index') }}"
-          class="card flex flex-col sm:flex-row gap-3 p-4">
-        <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari soal..."
-               class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <select name="kategori"
-                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Kategori</option>
-            @foreach($kategori as $kat)
-            <option value="{{ $kat->id }}" {{ request('kategori') == $kat->id ? 'selected' : '' }}>
-                {{ $kat->nama }}
-            </option>
-            @endforeach
-        </select>
-        <select name="tipe"
-                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Tipe</option>
-            <option value="pilihan_ganda" {{ request('tipe') === 'pilihan_ganda' ? 'selected' : '' }}>Pilihan Ganda</option>
-            <option value="pilihan_ganda_kompleks" {{ request('tipe') === 'pilihan_ganda_kompleks' ? 'selected' : '' }}>PG Kompleks</option>
-            <option value="benar_salah" {{ request('tipe') === 'benar_salah' ? 'selected' : '' }}>Benar / Salah</option>
-            <option value="isian" {{ request('tipe') === 'isian' ? 'selected' : '' }}>Isian</option>
-            <option value="essay" {{ request('tipe') === 'essay' ? 'selected' : '' }}>Essay</option>
-            <option value="menjodohkan" {{ request('tipe') === 'menjodohkan' ? 'selected' : '' }}>Menjodohkan</option>
-        </select>
-        <select name="kesulitan"
-                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Semua Kesulitan</option>
-            <option value="mudah" {{ request('kesulitan') === 'mudah' ? 'selected' : '' }}>Mudah</option>
-            <option value="sedang" {{ request('kesulitan') === 'sedang' ? 'selected' : '' }}>Sedang</option>
-            <option value="sulit" {{ request('kesulitan') === 'sulit' ? 'selected' : '' }}>Sulit</option>
-        </select>
-        <button type="submit"
-                class="btn-primary">
-            Cari
-        </button>
-        @if(request()->hasAny(['search', 'kategori', 'tipe', 'kesulitan']))
-        <a href="{{ route('pembuat-soal.soal.index') }}"
-           class="btn-secondary text-center">
-            Reset
-        </a>
-        @endif
-    </form>
-
-    {{-- Stats --}}
-    <div class="flex flex-wrap gap-2">
-        <span class="text-sm text-gray-500 flex items-center">
-            {{ $soal->total() }} soal ditemukan
-        </span>
-    </div>
-
-    {{-- Tabel --}}
-    <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                    <tr>
-                        <th class="px-5 py-3 text-left w-8">#</th>
-                        <th class="px-5 py-3 text-left">Pertanyaan</th>
-                        <th class="px-5 py-3 text-left hidden lg:table-cell">Kategori</th>
-                        <th class="px-5 py-3 text-center hidden sm:table-cell">Jenis</th>
-                        <th class="px-5 py-3 text-center hidden md:table-cell">Tingkat</th>
-                        <th class="px-5 py-3 text-center hidden md:table-cell">Status</th>
-                        <th class="px-5 py-3 text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse($soal as $item)
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-5 py-3 text-gray-400 text-xs">{{ $soal->firstItem() + $loop->index }}</td>
-                        <td class="px-5 py-3 max-w-xs">
-                            <p class="text-gray-900 line-clamp-2">{{ strip_tags($item->pertanyaan) }}</p>
-                            @if($item->narasi_id)
-                            <span class="text-xs text-indigo-500 mt-0.5 inline-flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Bernarasi
-                            </span>
-                            @endif
-                            @if($item->gambar_soal)
-                            <span class="text-xs text-blue-500 mt-0.5 inline-flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                Ada gambar
-                            </span>
-                            @endif
-                        </td>
-                        <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">
-                            {{ $item->kategori->nama ?? '—' }}
-                        </td>
-                        <td class="px-5 py-3 text-center hidden sm:table-cell">
-                             @php
-                                $tipeLabel = [
-                                    'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
-                                    'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
-                                    'benar_salah' => ['B/S', 'indigo'],
-                                    'isian' => ['Isian', 'green'],
-                                    'essay' => ['Essay', 'amber'],
-                                    'menjodohkan' => ['Jodoh', 'pink'],
-                                ];
-                                [$label, $color] = $tipeLabel[$item->tipe_soal] ?? [$item->tipe_soal, 'gray'];
-                            @endphp
-                            <span class="text-xs font-semibold bg-{{ $color }}-100 text-{{ $color }}-700 px-2 py-0.5 rounded-full">
-                                {{ $label }}
-                            </span>
-                        </td>
-                        <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ ucfirst($item->tingkat_kesulitan ?? '—') }}</td>
-                        <td class="px-5 py-3 text-center hidden md:table-cell">
-                            @if($item->is_verified)
-                                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Terverifikasi</span>
-                            @else
-                                <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Menunggu</span>
-                            @endif
-                        </td>
-                        <td class="px-5 py-3 text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('pembuat-soal.soal.show', $item->id) }}"
-                                   class="text-gray-500 hover:text-gray-700 text-xs font-medium"
-                                   @click.prevent="openPreview('{{ $item->id }}')">Preview</a>
-                                <a href="{{ route('pembuat-soal.soal.edit', $item->id) }}"
-                                   class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
-                                @if(!$item->is_verified)
-                                <form action="{{ route('pembuat-soal.soal.destroy', $item->id) }}" method="POST"
-                                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal',message:'Hapus soal ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
-                                </form>
-                                @else
-                                <span class="text-gray-300 text-xs cursor-not-allowed" title="Soal terverifikasi tidak dapat dihapus">Hapus</span>
+        {{-- Tabel Soal --}}
+        <div class="card overflow-hidden p-0 mt-4">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                        <tr>
+                            <th class="px-5 py-3 text-left w-8">#</th>
+                            <th class="px-5 py-3 text-left">Pertanyaan</th>
+                            <th class="px-5 py-3 text-left hidden lg:table-cell">Kategori</th>
+                            <th class="px-5 py-3 text-center hidden sm:table-cell">Jenis</th>
+                            <th class="px-5 py-3 text-center hidden md:table-cell">Tingkat</th>
+                            <th class="px-5 py-3 text-center hidden md:table-cell">Status</th>
+                            <th class="px-5 py-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($soal as $item)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3 text-gray-400 text-xs">{{ $soal->firstItem() + $loop->index }}</td>
+                            <td class="px-5 py-3 max-w-xs">
+                                <p class="text-gray-900 line-clamp-2">{{ strip_tags($item->pertanyaan) }}</p>
+                                @if($item->narasi_id)
+                                <span class="text-xs text-indigo-500 mt-0.5 inline-flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    Bernarasi
+                                </span>
                                 @endif
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" class="px-5 py-12 text-center text-gray-400">
-                            <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                            Belum ada soal. <a href="{{ route('pembuat-soal.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                @if($item->gambar_soal || str_contains($item->pertanyaan ?? '', '<img '))
+                                <span class="text-xs text-blue-500 mt-0.5 inline-flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    Ada gambar
+                                </span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">
+                                {{ $item->kategori->nama ?? '—' }}
+                            </td>
+                            <td class="px-5 py-3 text-center hidden sm:table-cell">
+                                 @php
+                                    $tipeLabel = [
+                                        'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
+                                        'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
+                                        'benar_salah' => ['B/S', 'indigo'],
+                                        'isian' => ['Isian', 'green'],
+                                        'essay' => ['Essay', 'amber'],
+                                        'menjodohkan' => ['Jodoh', 'pink'],
+                                    ];
+                                    [$label, $color] = $tipeLabel[$item->tipe_soal] ?? [$item->tipe_soal, 'gray'];
+                                @endphp
+                                <span class="text-xs font-semibold bg-{{ $color }}-100 text-{{ $color }}-700 px-2 py-0.5 rounded-full">
+                                    {{ $label }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ ucfirst($item->tingkat_kesulitan ?? '—') }}</td>
+                            <td class="px-5 py-3 text-center hidden md:table-cell">
+                                @if($item->is_verified)
+                                    <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Terverifikasi</span>
+                                @else
+                                    <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Menunggu</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ route('pembuat-soal.soal.show', $item->id) }}"
+                                       class="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                                       @click.prevent="openPreview('{{ $item->id }}')">Preview</a>
+                                    <a href="{{ route('pembuat-soal.soal.edit', $item->id) }}"
+                                       class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
+                                    @if(!$item->is_verified)
+                                    <form action="{{ route('pembuat-soal.soal.destroy', $item->id) }}" method="POST"
+                                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal',message:'Hapus soal ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                                    </form>
+                                    @else
+                                    <span class="text-gray-300 text-xs cursor-not-allowed" title="Soal terverifikasi tidak dapat dihapus">Hapus</span>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="px-5 py-12 text-center text-gray-400">
+                                <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Belum ada soal. <a href="{{ route('pembuat-soal.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if($soal->hasPages())
+            <div class="px-5 py-4 border-t border-gray-100">
+                {{ $soal->withQueryString()->links() }}
+            </div>
+            @endif
         </div>
-        @if($soal->hasPages())
-        <div class="px-5 py-4 border-t border-gray-100">
-            {{ $soal->withQueryString()->links() }}
+    </div>
+
+    {{-- ============ TAB: NARASI ============ --}}
+    <div x-show="activeTab === 'narasi'" x-cloak>
+
+        {{-- Filter Narasi --}}
+        <form method="GET" action="{{ route('pembuat-soal.soal.index') }}"
+              class="card flex flex-col sm:flex-row gap-3 p-4">
+            <input type="hidden" name="tab" value="narasi">
+            <input type="text" name="narasi_search" value="{{ request('narasi_search') }}" placeholder="Cari judul narasi..."
+                   class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select name="narasi_kategori"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua Kategori</option>
+                @foreach($kategori as $kat)
+                <option value="{{ $kat->id }}" {{ request('narasi_kategori') == $kat->id ? 'selected' : '' }}>
+                    {{ $kat->nama }}
+                </option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn-primary">Cari</button>
+            @if(request()->hasAny(['narasi_search', 'narasi_kategori']))
+            <a href="{{ route('pembuat-soal.soal.index', ['tab' => 'narasi']) }}"
+               class="btn-secondary text-center">
+                Reset
+            </a>
+            @endif
+        </form>
+
+        {{-- Stats Narasi --}}
+        <div class="flex flex-wrap gap-2 mt-4">
+            <span class="text-sm text-gray-500 flex items-center">
+                {{ $narasis->total() }} narasi ditemukan
+            </span>
         </div>
-        @endif
+
+        {{-- Tabel Narasi --}}
+        <div class="card overflow-hidden p-0 mt-4">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                        <tr>
+                            <th class="px-5 py-3 text-left">Judul</th>
+                            <th class="px-5 py-3 text-left hidden md:table-cell">Kategori</th>
+                            <th class="px-5 py-3 text-center">Soal</th>
+                            <th class="px-5 py-3 text-center hidden sm:table-cell">Status</th>
+                            <th class="px-5 py-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($narasis as $narasi)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3">
+                                <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600">
+                                    {{ $narasi->judul }}
+                                </a>
+                                <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                            </td>
+                            <td class="px-5 py-3 hidden md:table-cell">
+                                @if($narasi->kategori)
+                                    <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $narasi->kategori->nama }}</span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3 text-center font-medium text-gray-700">{{ $narasi->soal_list_count ?? 0 }}</td>
+                            <td class="px-5 py-3 text-center hidden sm:table-cell">
+                                @if($narasi->is_active)
+                                    <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Aktif</span>
+                                @else
+                                    <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Nonaktif</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}"
+                                       class="text-gray-500 hover:text-blue-600 text-xs font-medium">Lihat</a>
+                                    <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}"
+                                       class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
+                                    <form action="{{ route('pembuat-soal.narasi.destroy', $narasi->id) }}" method="POST"
+                                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini? Soal yang terkait akan dilepas dari narasi.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="px-5 py-12 text-center text-gray-400">
+                                <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Belum ada narasi. <a href="{{ route('pembuat-soal.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if($narasis->hasPages())
+            <div class="px-5 py-4 border-t border-gray-100">
+                {{ $narasis->withQueryString()->links() }}
+            </div>
+            @endif
+        </div>
     </div>
 
     {{-- Preview Modal --}}
@@ -390,9 +540,17 @@
 <script>
 function soalIndex() {
     return {
+        activeTab: new URLSearchParams(window.location.search).get('tab') || 'soal',
         showPreview: false,
         previewLoading: false,
         previewData: null,
+
+        switchTab(tab) {
+            this.activeTab = tab;
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tab);
+            window.history.replaceState({}, '', url);
+        },
 
         openPreview(id) {
             this.showPreview = true;

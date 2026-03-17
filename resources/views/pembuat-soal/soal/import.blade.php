@@ -301,6 +301,27 @@
                     <li>Tag opsional bobot nilai: <code class="bg-blue-100 px-1 rounded">[bobot: 2]</code> &mdash; default: 1. Bisa ditaruh di baris soal atau baris terpisah.</li>
                 </ul>
             </div>
+            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-sm text-indigo-800">
+                <strong>Soal Bernarasi (Teks Bacaan):</strong>
+                <ul class="list-disc list-inside mt-1 space-y-0.5">
+                    <li>Tulis teks narasi di antara tag <code class="bg-indigo-100 px-1 rounded">[NARASI]</code> dan <code class="bg-indigo-100 px-1 rounded">[/NARASI]</code>.</li>
+                    <li>Soal-soal setelah <code class="bg-indigo-100 px-1 rounded">[/NARASI]</code> otomatis terkait dengan narasi tersebut.</li>
+                    <li>Tulis <code class="bg-indigo-100 px-1 rounded">[/NARASI_SOAL]</code> untuk mengakhiri hubungan narasi &mdash; soal setelahnya menjadi soal biasa tanpa narasi.</li>
+                    <li>Narasi bisa berisi gambar yang disisipkan langsung di Word (inline).</li>
+                </ul>
+                <div class="mt-2 bg-white/60 rounded p-2.5 font-mono text-xs space-y-0.5">
+                    <p class="text-indigo-600 font-bold">[NARASI]</p>
+                    <p>Bacalah teks berikut!</p>
+                    <p class="text-gray-500">Indonesia adalah negara kepulauan terbesar...</p>
+                    <p class="text-indigo-600 font-bold">[/NARASI]</p>
+                    <p class="mt-1.5"><strong>8. Berapa jumlah pulau di Indonesia?</strong></p>
+                    <p class="pl-4">a. 13.000 &nbsp; b. 15.000 &nbsp; c. 17.000 &nbsp; d. 19.000</p>
+                    <p class="pl-4">Jawaban: C</p>
+                    <p class="mt-1.5 text-indigo-600 font-bold">[/NARASI_SOAL]</p>
+                    <p class="mt-1.5"><strong>9. Apa arti semboyan "Bhinneka Tunggal Ika"?</strong></p>
+                    <p class="pl-4 text-gray-500 italic">&larr; soal ini TIDAK terkait narasi di atas</p>
+                </div>
+            </div>
             <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
                 <strong>Soal Bergambar (format ZIP):</strong>
                 <ul class="list-disc list-inside mt-1 space-y-0.5">

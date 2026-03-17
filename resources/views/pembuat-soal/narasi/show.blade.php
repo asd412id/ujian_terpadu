@@ -3,7 +3,7 @@
 @section('title', 'Detail Narasi — ' . $narasi->judul)
 
 @section('breadcrumb')
-    <a href="{{ route('pembuat-soal.narasi.index') }}" class="text-gray-500 hover:text-blue-600">Narasi Soal</a>
+    <a href="{{ route('pembuat-soal.soal.index', ['tab' => 'narasi']) }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -39,11 +39,6 @@
     {{-- Narasi Content --}}
     <div class="card">
         <h2 class="font-semibold text-gray-900 mb-3">Teks Narasi</h2>
-        @if($narasi->gambar)
-        <div class="mb-4">
-            <img src="{{ Storage::url($narasi->gambar) }}" alt="Gambar Narasi" class="max-h-60 rounded-lg border">
-        </div>
-        @endif
         <div class="prose prose-sm max-w-none text-gray-700 bg-gray-50 rounded-xl p-5 border border-gray-200">
             {!! $narasi->konten !!}
         </div>

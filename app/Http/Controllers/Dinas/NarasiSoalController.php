@@ -7,6 +7,7 @@ use App\Models\NarasiSoal;
 use App\Services\NarasiSoalService;
 use App\Repositories\KategoriSoalRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class NarasiSoalController extends Controller
 {
@@ -39,13 +40,8 @@ class NarasiSoalController extends Controller
             'judul'       => 'required|string|max:255',
             'konten'      => 'required|string',
             'kategori_id' => 'required|exists:kategori_soal,id',
-            'gambar'      => 'nullable|image|max:2048',
             'is_active'   => 'boolean',
         ]);
-
-        if ($request->hasFile('gambar')) {
-            $data['gambar'] = $request->file('gambar')->store('narasi', 'public');
-        }
 
         $this->narasiSoalService->createNarasi($data);
 
@@ -71,13 +67,8 @@ class NarasiSoalController extends Controller
             'judul'       => 'required|string|max:255',
             'konten'      => 'required|string',
             'kategori_id' => 'required|exists:kategori_soal,id',
-            'gambar'      => 'nullable|image|max:2048',
             'is_active'   => 'boolean',
         ]);
-
-        if ($request->hasFile('gambar')) {
-            $data['gambar'] = $request->file('gambar')->store('narasi', 'public');
-        }
 
         $this->narasiSoalService->updateNarasi($narasi, $data);
 
@@ -101,5 +92,14 @@ class NarasiSoalController extends Controller
         $narasis = $this->narasiSoalService->getActive($request->kategori_id);
 
         return response()->json($narasis);
+    }
+
+    public function uploadImage(Request $request)
+    {
+        $request->validate(['image' => 'required|image|mimes:jpeg,png,gif,webp|max:5120']);
+
+        $path = $request->file('image')->store('narasi/inline', 'public');
+
+        return response()->json(['url' => Storage::disk('public')->url($path)]);
     }
 }

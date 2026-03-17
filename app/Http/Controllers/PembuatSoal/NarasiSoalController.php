@@ -8,6 +8,7 @@ use App\Services\NarasiSoalService;
 use App\Repositories\KategoriSoalRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class NarasiSoalController extends Controller
 {
@@ -18,17 +19,11 @@ class NarasiSoalController extends Controller
 
     public function index(Request $request)
     {
-        $narasis = NarasiSoal::with('kategori')
-            ->where('created_by', Auth::id())
-            ->when($request->kategori, fn ($q) => $q->where('kategori_id', $request->kategori))
-            ->when($request->search, fn ($q) => $q->where('judul', 'like', "%{$request->search}%"))
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
-
-        $kategoris = $this->kategoriSoalRepository->getActive();
-
-        return view('pembuat-soal.narasi.index', compact('narasis', 'kategoris'));
+        // Narasi is now a tab within Bank Soal page
+        return redirect()->route('pembuat-soal.soal.index', array_merge(
+            ['tab' => 'narasi'],
+            $request->only(['search', 'kategori'])
+        ));
     }
 
     public function create()
@@ -43,17 +38,12 @@ class NarasiSoalController extends Controller
             'judul'       => 'required|string|max:255',
             'konten'      => 'required|string',
             'kategori_id' => 'required|exists:kategori_soal,id',
-            'gambar'      => 'nullable|image|max:2048',
             'is_active'   => 'boolean',
         ]);
 
-        if ($request->hasFile('gambar')) {
-            $data['gambar'] = $request->file('gambar')->store('narasi', 'public');
-        }
-
         $this->narasiSoalService->createNarasi($data);
 
-        return redirect()->route('pembuat-soal.narasi.index')
+        return redirect()->route('pembuat-soal.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil ditambahkan.');
     }
 
@@ -81,17 +71,12 @@ class NarasiSoalController extends Controller
             'judul'       => 'required|string|max:255',
             'konten'      => 'required|string',
             'kategori_id' => 'required|exists:kategori_soal,id',
-            'gambar'      => 'nullable|image|max:2048',
             'is_active'   => 'boolean',
         ]);
 
-        if ($request->hasFile('gambar')) {
-            $data['gambar'] = $request->file('gambar')->store('narasi', 'public');
-        }
-
         $this->narasiSoalService->updateNarasi($narasi, $data);
 
-        return redirect()->route('pembuat-soal.narasi.index')
+        return redirect()->route('pembuat-soal.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil diperbarui.');
     }
 
@@ -101,7 +86,7 @@ class NarasiSoalController extends Controller
 
         $this->narasiSoalService->deleteNarasi($narasi);
 
-        return redirect()->route('pembuat-soal.narasi.index')
+        return redirect()->route('pembuat-soal.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil dihapus.');
     }
 
@@ -114,5 +99,14 @@ class NarasiSoalController extends Controller
             ->get(['id', 'judul', 'kategori_id']);
 
         return response()->json($narasis);
+    }
+
+    public function uploadImage(Request $request)
+    {
+        $request->validate(['image' => 'required|image|mimes:jpeg,png,gif,webp|max:5120']);
+
+        $path = $request->file('image')->store('narasi/inline', 'public');
+
+        return response()->json(['url' => Storage::disk('public')->url($path)]);
     }
 }
