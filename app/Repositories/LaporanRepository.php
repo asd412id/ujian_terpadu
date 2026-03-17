@@ -413,7 +413,7 @@ class LaporanRepository
      */
     public function findSesiPesertaWithDetail(string $sesiPesertaId): SesiPeserta
     {
-        return SesiPeserta::with(['peserta.sekolah', 'sesi.paket.soal.opsiJawaban', 'jawaban'])
+        return SesiPeserta::with(['peserta.sekolah', 'sesi.paket.soal.opsiJawaban', 'sesi.paket.soal.pasangan', 'jawaban'])
             ->findOrFail($sesiPesertaId);
     }
 

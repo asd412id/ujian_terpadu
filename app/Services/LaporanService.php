@@ -241,16 +241,35 @@ class LaporanService
     {
         $sp = $this->repository->findSesiPesertaWithDetail($sesiPesertaId);
 
+        // Build label remap: display label → original label per soal
+        $labelRemap = $this->buildLabelRemap($sp);
+
         $jawabanMap = $sp->jawaban->keyBy('soal_id');
         $detail = [];
 
         foreach ($sp->sesi->paket->soal->sortBy('urutan') as $idx => $soal) {
             $j = $jawabanMap->get($soal->id);
+            $remap = $labelRemap[$soal->id] ?? [];
+
+            // Build kunci jawaban
+            $kunci = $this->buildKunci($soal);
+
+            // Build jawaban peserta (remapped to original labels)
+            $jawaban = '-';
+            $jawabanDisplay = '-';
+            if ($j) {
+                $raw = $j->jawaban_pg ?? $j->jawaban_teks ?? $j->jawaban_pasangan ?? null;
+                [$jawaban, $jawabanDisplay] = $this->formatJawaban($soal, $j, $remap);
+            }
+
             $detail[] = [
                 'nomor' => $idx + 1,
                 'tipe' => $soal->tipe_soal,
                 'pertanyaan' => mb_substr(strip_tags($soal->pertanyaan ?? ''), 0, 120),
-                'jawaban' => $j ? ($j->jawaban_pg ?? $j->jawaban_teks ?? '-') : '-',
+                'kunci' => $kunci,
+                'jawaban' => $jawaban,
+                'jawaban_display' => $jawabanDisplay,
+                'opsi' => $this->buildOpsiList($soal, $remap),
                 'is_terjawab' => $j?->is_terjawab ?? false,
                 'skor' => $j ? round(($j->skor_auto ?? 0) + ($j->skor_manual ?? 0), 2) : 0,
                 'bobot' => $soal->bobot ?? 1,
@@ -262,6 +281,109 @@ class LaporanService
             'sesiPeserta' => $sp,
             'detail' => $detail,
         ];
+    }
+
+    private function buildLabelRemap(\App\Models\SesiPeserta $sp): array
+    {
+        $urutanOpsi = $sp->urutan_opsi ?? [];
+        if (empty($urutanOpsi)) return [];
+
+        $labels = range('A', 'Z');
+        $remap  = [];
+
+        $opsiBysoal = [];
+        foreach ($sp->sesi->paket->soal as $soal) {
+            $opsiBysoal[$soal->id] = $soal->opsiJawaban->keyBy('id');
+        }
+
+        foreach ($urutanOpsi as $soalId => $opsiIds) {
+            if (!is_array($opsiIds) || !isset($opsiBysoal[$soalId])) continue;
+            $opsiMap = $opsiBysoal[$soalId];
+            $soalRemap = [];
+            foreach ($opsiIds as $i => $opsiId) {
+                $opsi = $opsiMap[$opsiId] ?? null;
+                if ($opsi) {
+                    $displayLabel = $labels[$i] ?? chr(65 + $i);
+                    $soalRemap[$displayLabel] = $opsi->label;
+                }
+            }
+            $remap[$soalId] = $soalRemap;
+        }
+
+        return $remap;
+    }
+
+    private function buildKunci(\App\Models\Soal $soal): string
+    {
+        return match ($soal->tipe_soal) {
+            'pg' => $soal->opsiJawaban->where('is_benar', true)->pluck('label')->first() ?? '-',
+            'pg_kompleks' => $soal->opsiJawaban->where('is_benar', true)->pluck('label')->sort()->implode(', '),
+            'benar_salah' => $soal->opsiJawaban->map(fn($o) => $o->label . ':' . ($o->is_benar ? 'B' : 'S'))->implode(', '),
+            'isian' => $soal->opsiJawaban->where('is_benar', true)->pluck('teks')->first() ?? '-',
+            'menjodohkan' => $soal->pasangan->count() . ' pasangan',
+            'essay' => 'Manual',
+            default => '-',
+        };
+    }
+
+    private function formatJawaban(\App\Models\Soal $soal, \App\Models\JawabanPeserta $j, array $remap): array
+    {
+        if (!$j->is_terjawab) return ['-', '-'];
+
+        $remapFn = fn(string $label) => $remap[$label] ?? $label;
+
+        return match ($soal->tipe_soal) {
+            'pg' => (function () use ($j, $remapFn) {
+                $display = $j->jawaban_pg[0] ?? '-';
+                $original = $remapFn($display);
+                return [$original, $display !== $original ? "{$display}→{$original}" : $display];
+            })(),
+            'pg_kompleks' => (function () use ($j, $remapFn) {
+                $answers = $j->jawaban_pg ?? [];
+                $remapped = array_map($remapFn, $answers);
+                sort($remapped);
+                $displayStr = implode(',', $answers);
+                $origStr = implode(',', $remapped);
+                return [$origStr, $displayStr !== $origStr ? "{$displayStr}→{$origStr}" : $origStr];
+            })(),
+            'benar_salah' => (function () use ($j, $remapFn, $soal) {
+                $answers = $j->jawaban_pg ?? [];
+                $parts = [];
+                $remappedParts = [];
+                foreach ($answers as $dl => $val) {
+                    $ol = $remapFn((string) $dl);
+                    $short = $val === 'benar' ? 'B' : 'S';
+                    $parts[] = "{$dl}:{$short}";
+                    $remappedParts[] = "{$ol}:{$short}";
+                }
+                return [implode(', ', $remappedParts), implode(', ', $parts)];
+            })(),
+            'isian' => [$j->jawaban_teks ?? '-', $j->jawaban_teks ?? '-'],
+            'essay' => [mb_substr($j->jawaban_teks ?? '-', 0, 60), mb_substr($j->jawaban_teks ?? '-', 0, 60)],
+            'menjodohkan' => (function () use ($j) {
+                $pairs = $j->jawaban_pasangan ?? [];
+                return [count($pairs) . ' pasangan', count($pairs) . ' pasangan'];
+            })(),
+            default => ['-', '-'],
+        };
+    }
+
+    private function buildOpsiList(\App\Models\Soal $soal, array $remap): array
+    {
+        if (!in_array($soal->tipe_soal, ['pg', 'pg_kompleks', 'benar_salah'])) return [];
+
+        return $soal->opsiJawaban->sortBy('urutan')->map(function ($opsi) use ($remap) {
+            $displayLabel = null;
+            if (!empty($remap)) {
+                $displayLabel = array_search($opsi->label, $remap);
+            }
+            return [
+                'label' => $opsi->label,
+                'display_label' => $displayLabel ?: $opsi->label,
+                'teks' => mb_substr(strip_tags($opsi->teks ?? ''), 0, 80),
+                'is_benar' => (bool) $opsi->is_benar,
+            ];
+        })->values()->toArray();
     }
 
     /**

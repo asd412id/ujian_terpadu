@@ -46,7 +46,7 @@
                 </select>
             </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <button type="submit"
                     class="btn-primary">
                 Tampilkan
@@ -56,7 +56,7 @@
                class="btn-secondary">Reset</a>
             @endif
             {{-- Export --}}
-            <div class="ml-auto flex items-center gap-2">
+            <div class="sm:ml-auto flex flex-wrap items-center gap-2">
                 @if(request('paket_id'))
                 <a href="{{ route('dinas.laporan.analisis-soal', request('paket_id')) }}"
                    class="btn-secondary inline-flex items-center gap-1.5">
@@ -179,7 +179,7 @@
     {{-- Tabel Hasil --}}
     @if(isset($data) && is_object($data) && $data->count() > 0)
     <div class="card overflow-hidden p-0">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b border-gray-100 gap-2">
             <p class="text-sm text-gray-500">Menampilkan {{ $data->count() }} dari {{ $data->total() }} data</p>
             <button type="button"
                     x-data
@@ -216,11 +216,12 @@
                         <th class="px-5 py-3 text-left">Peserta</th>
                         <th class="px-5 py-3 text-left hidden lg:table-cell">Sekolah</th>
                         <th class="px-5 py-3 text-center hidden sm:table-cell">Kelas</th>
-                        <th class="px-5 py-3 text-center">Benar</th>
-                        <th class="px-5 py-3 text-center">Salah</th>
-                        <th class="px-5 py-3 text-center">Kosong</th>
+                        <th class="px-5 py-3 text-center hidden sm:table-cell">Benar</th>
+                        <th class="px-5 py-3 text-center hidden sm:table-cell">Salah</th>
+                        <th class="px-5 py-3 text-center hidden md:table-cell">Kosong</th>
                         <th class="px-5 py-3 text-center">Nilai</th>
                         <th class="px-5 py-3 text-center">Status</th>
+                        <th class="px-5 py-3 text-center w-16">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -235,9 +236,9 @@
                         </td>
                         <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">{{ $hasil->peserta->sekolah->nama ?? '—' }}</td>
                         <td class="px-5 py-3 text-center hidden sm:table-cell text-gray-600">{{ $hasil->peserta->kelas ?? '—' }}</td>
-                        <td class="px-5 py-3 text-center font-bold text-green-600">{{ $hasil->jumlah_benar ?? 0 }}</td>
-                        <td class="px-5 py-3 text-center font-bold text-red-500">{{ $hasil->jumlah_salah ?? 0 }}</td>
-                        <td class="px-5 py-3 text-center text-gray-400">{{ $hasil->jumlah_kosong ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-bold text-green-600 hidden sm:table-cell">{{ $hasil->jumlah_benar ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-bold text-red-500 hidden sm:table-cell">{{ $hasil->jumlah_salah ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center text-gray-400 hidden md:table-cell">{{ $hasil->jumlah_kosong ?? 0 }}</td>
                         <td class="px-5 py-3 text-center">
                             @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
                             <span class="font-bold {{ $nilai >= 80 ? 'text-green-600' : ($nilai >= 60 ? 'text-amber-600' : 'text-red-600') }}">
@@ -256,6 +257,17 @@
                             @else
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{{ ucfirst(str_replace('_', ' ', $hasil->status)) }}</span>
                             @endif
+                        </td>
+                        <td class="px-5 py-3 text-center">
+                            <a href="{{ route('dinas.laporan.detail-siswa', $hasil->id) }}"
+                               class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                               title="Detail Jawaban">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                Detail
+                            </a>
                         </td>
                     </tr>
                     @endforeach
