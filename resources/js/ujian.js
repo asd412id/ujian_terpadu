@@ -43,6 +43,11 @@ function ujianApp() {
         showDurasiToast: false,
         durasiToastMsg:  '',
 
+        // Incomplete BS/PGK warning
+        showIncompleteWarning: false,
+        incompleteWarningMsg:  '',
+        _pendingNavIndex:      null,
+
         // Cache progress (pre-warm)
         cacheTotal:      0,
         cacheDone:       0,
@@ -556,7 +561,16 @@ function ujianApp() {
         },
 
         // ===== NAVIGATION =====
-        goToSoal(index) {
+        goToSoal(index, force = false) {
+            if (!force) {
+                const warning = this.checkIncompleteAnswer();
+                if (warning) {
+                    this._pendingNavIndex = index;
+                    this.incompleteWarningMsg = warning;
+                    this.showIncompleteWarning = true;
+                    return;
+                }
+            }
             this.currentIndex = index;
             this.saveState();
             // Scroll to top
@@ -564,6 +578,37 @@ function ujianApp() {
         },
         nextSoal() { if (this.currentIndex < this.totalSoal - 1) this.goToSoal(this.currentIndex + 1); },
         prevSoal() { if (this.currentIndex > 0) this.goToSoal(this.currentIndex - 1); },
+
+        dismissIncompleteWarning() {
+            this.showIncompleteWarning = false;
+        },
+        forceNavigate() {
+            this.showIncompleteWarning = false;
+            this.showNavigator = false;
+            if (this._pendingNavIndex !== null) {
+                this.goToSoal(this._pendingNavIndex, true);
+                this._pendingNavIndex = null;
+            }
+        },
+
+        checkIncompleteAnswer() {
+            const cfg = window.UJIAN_CONFIG;
+            const currentSoal = cfg.soalList?.[this.currentIndex];
+            if (!currentSoal) return null;
+
+            const soalId = currentSoal.id;
+            const tipe = currentSoal.tipe_soal;
+            const opsiCount = currentSoal.opsi?.length ?? 0;
+
+            if (tipe === 'benar_salah') {
+                const answered = Object.keys(this.answers[soalId]?.benarSalah ?? {}).length;
+                if (answered > 0 && answered < opsiCount) {
+                    return `Anda baru menjawab ${answered} dari ${opsiCount} pernyataan. Pastikan semua pernyataan sudah dijawab Benar atau Salah.`;
+                }
+            }
+
+            return null;
+        },
 
         // ===== JAWABAN =====
         getAnswer(soalId) {
@@ -653,6 +698,10 @@ function ujianApp() {
 
         getBenarSalah(soalId, label) {
             return this.answers[soalId]?.benarSalah?.[label] ?? null;
+        },
+
+        getBsAnsweredCount(soalId) {
+            return Object.keys(this.answers[soalId]?.benarSalah ?? {}).length;
         },
 
         // ===== TANDAI =====

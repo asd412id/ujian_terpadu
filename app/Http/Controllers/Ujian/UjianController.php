@@ -77,6 +77,7 @@ class UjianController extends Controller
         $labels = range('A', 'Z');
         $soalListJs = collect($soalList)->map(fn ($s) => [
             'id'          => $s['id'],
+            'tipe_soal'   => $s['tipe_soal'] ?? null,
             'narasi_id'   => $s['narasi_id'] ?? null,
             'gambar_soal' => isset($s['gambar_soal']) && $s['gambar_soal']
                              ? asset('storage/' . $s['gambar_soal']) : null,

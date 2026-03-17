@@ -300,9 +300,15 @@
                             @endforeach
 
                             @if($soal['tipe_soal'] === 'pg_kompleks')
-                            <p class="text-xs text-blue-600 font-medium px-1">
-                                ℹ️ Pilihan ganda kompleks — bisa pilih lebih dari satu jawaban
-                            </p>
+                            <div class="flex items-start gap-2.5 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                                <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-semibold text-blue-800">Pilihan Ganda Kompleks</p>
+                                    <p class="text-xs text-blue-700 mt-0.5">Jawaban bisa <strong>lebih dari satu</strong>. Centang semua jawaban yang benar.</p>
+                                </div>
+                            </div>
                             @endif
 
                             {{-- Isian Singkat --}}
@@ -375,18 +381,39 @@
                             {{-- Benar / Salah --}}
                             @elseif($soal['tipe_soal'] === 'benar_salah')
                             <div class="card p-5">
-                                <p class="text-sm font-medium text-gray-700 mb-4">
-                                    Tentukan <strong>Benar</strong> atau <strong>Salah</strong> untuk setiap pernyataan berikut:
-                                </p>
+                                {{-- Prominent instruction banner --}}
+                                <div class="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200 mb-4">
+                                    <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                    <div>
+                                        <p class="text-sm font-semibold text-amber-800">Jawab SEMUA pernyataan di bawah ini!</p>
+                                        <p class="text-xs text-amber-700 mt-0.5">Pilih <strong>Benar</strong> atau <strong>Salah</strong> untuk <strong>setiap</strong> pernyataan. Tidak cukup hanya menjawab satu.</p>
+                                    </div>
+                                </div>
+
+                                {{-- Progress counter --}}
+                                <div class="flex items-center gap-2 mb-3 px-1">
+                                    <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full transition-all duration-300"
+                                             :class="getBsAnsweredCount('{{ $soal['id'] }}') === {{ count($soal['opsi_jawaban']) }} ? 'bg-green-500' : 'bg-amber-400'"
+                                             :style="'width: ' + Math.round((getBsAnsweredCount('{{ $soal['id'] }}') / {{ count($soal['opsi_jawaban']) }}) * 100) + '%'"></div>
+                                    </div>
+                                    <span class="text-xs font-bold flex-shrink-0"
+                                          :class="getBsAnsweredCount('{{ $soal['id'] }}') === {{ count($soal['opsi_jawaban']) }} ? 'text-green-600' : 'text-amber-600'">
+                                        <span x-text="getBsAnsweredCount('{{ $soal['id'] }}')">0</span> / {{ count($soal['opsi_jawaban']) }}
+                                    </span>
+                                </div>
+
                                 <div class="space-y-3">
                                     @foreach($soal['opsi_jawaban'] as $opsi)
-                                    <div class="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-3 rounded-lg border border-gray-200 bg-white"
-                                         :class="{
-                                             'border-blue-200 bg-blue-50/40': getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null
-                                         }">
+                                    <div class="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-3 rounded-lg border-2 bg-white transition-colors duration-150"
+                                         :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null
+                                             ? 'border-blue-200 bg-blue-50/40'
+                                             : 'border-amber-200 border-dashed'">
                                         <div class="flex items-start gap-3 flex-1 min-w-0">
-                                            <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700
-                                                         flex items-center justify-center text-xs font-bold">{{ chr(96 + $loop->iteration) }}.</span>
+                                            <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full flex items-center justify-center text-xs font-bold"
+                                                  :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'">{{ chr(96 + $loop->iteration) }}.</span>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</p>
                                                 @if(!empty($opsi['gambar']))
@@ -415,9 +442,6 @@
                                     </div>
                                     @endforeach
                                 </div>
-                                <p class="text-xs text-indigo-600 font-medium px-1 mt-3">
-                                    ℹ️ Pilih Benar atau Salah untuk setiap pernyataan
-                                </p>
                             </div>
                             @endif
 
@@ -610,6 +634,35 @@
                 </svg>
                 Kumpulkan Ujian
             </button>
+        </div>
+    </div>
+
+    {{-- ========== INCOMPLETE BS/PGK WARNING MODAL ========== --}}
+    <div x-show="showIncompleteWarning" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" @click.stop>
+            <div class="text-center mb-4">
+                <div class="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900">Jawaban Belum Lengkap</h3>
+                <p class="text-sm text-gray-600 mt-2" x-text="incompleteWarningMsg"></p>
+            </div>
+            <div class="flex gap-3">
+                <button @click="dismissIncompleteWarning()"
+                        class="flex-1 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition-colors">
+                    Lengkapi Jawaban
+                </button>
+                <button @click="forceNavigate()"
+                        class="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors">
+                    Lewati
+                </button>
+            </div>
         </div>
     </div>
 
