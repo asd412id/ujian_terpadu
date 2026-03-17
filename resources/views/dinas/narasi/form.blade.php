@@ -3,7 +3,7 @@
 @section('title', isset($narasi) ? 'Edit Narasi Soal' : 'Tambah Narasi Soal')
 
 @section('breadcrumb')
-    <a href="{{ route('dinas.narasi.index') }}" class="text-gray-500 hover:text-blue-600">Narasi Soal</a>
+    <a href="{{ route('dinas.soal.index', ['tab' => 'narasi']) }}" class="text-gray-500 hover:text-blue-600">Bank Soal</a>
     <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>

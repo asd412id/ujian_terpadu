@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
+use App\Models\NarasiSoal;
 use App\Models\Soal;
 use App\Jobs\ImportSoalWordJob;
+use App\Repositories\KategoriSoalRepository;
 use App\Services\SoalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +20,8 @@ use ZipArchive;
 class SoalController extends Controller
 {
     public function __construct(
-        protected SoalService $soalService
+        protected SoalService $soalService,
+        protected KategoriSoalRepository $kategoriSoalRepository
     ) {}
 
     public function index(Request $request)
@@ -33,7 +36,16 @@ class SoalController extends Controller
 
         $kategori = $this->soalService->getActiveKategori();
 
-        return view('dinas.soal.index', compact('soal', 'kategori'));
+        $narasiQuery = NarasiSoal::with('kategori')->withCount('soalList');
+        if ($request->narasi_search) {
+            $narasiQuery->where('judul', 'like', '%' . $request->narasi_search . '%');
+        }
+        if ($request->narasi_kategori) {
+            $narasiQuery->where('kategori_id', $request->narasi_kategori);
+        }
+        $narasis = $narasiQuery->latest()->paginate(20, ['*'], 'narasi_page');
+
+        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis'));
     }
 
     public function create()

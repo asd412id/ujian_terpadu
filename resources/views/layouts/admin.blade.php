@@ -49,7 +49,6 @@
                         ['route' => 'dinas.monitoring',        'icon' => 'eye',      'label' => 'Monitoring Ujian', 'badge' => 'LIVE'],
                         ['route' => 'dinas.paket.index',       'icon' => 'document', 'label' => 'Paket Ujian'],
                         ['route' => 'dinas.soal.index',       'icon' => 'pencil',   'label' => 'Bank Soal'],
-                        ['route' => 'dinas.narasi.index',      'icon' => 'document', 'label' => 'Narasi Soal'],
                         ['route' => 'dinas.kategori.index',    'icon' => 'tag',      'label' => 'Kategori Soal'],
                         ['route' => 'dinas.sekolah.index',     'icon' => 'office',   'label' => 'Sekolah'],
                         ['route' => 'dinas.peserta.index',     'icon' => 'users',    'label' => 'Peserta'],

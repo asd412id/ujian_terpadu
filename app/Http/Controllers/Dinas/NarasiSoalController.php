@@ -18,14 +18,7 @@ class NarasiSoalController extends Controller
 
     public function index(Request $request)
     {
-        $narasis = $this->narasiSoalService->getAllPaginated(
-            kategoriId: $request->kategori,
-            search: $request->search,
-            perPage: 20
-        );
-        $kategoris = $this->kategoriSoalRepository->getActive();
-
-        return view('dinas.narasi.index', compact('narasis', 'kategoris'));
+        return redirect()->route('dinas.soal.index', ['tab' => 'narasi']);
     }
 
     public function create()
@@ -45,7 +38,7 @@ class NarasiSoalController extends Controller
 
         $this->narasiSoalService->createNarasi($data);
 
-        return redirect()->route('dinas.narasi.index')
+        return redirect()->route('dinas.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil ditambahkan.');
     }
 
@@ -72,7 +65,7 @@ class NarasiSoalController extends Controller
 
         $this->narasiSoalService->updateNarasi($narasi, $data);
 
-        return redirect()->route('dinas.narasi.index')
+        return redirect()->route('dinas.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil diperbarui.');
     }
 
@@ -80,7 +73,7 @@ class NarasiSoalController extends Controller
     {
         $this->narasiSoalService->deleteNarasi($narasi);
 
-        return redirect()->route('dinas.narasi.index')
+        return redirect()->route('dinas.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil dihapus.');
     }
 
