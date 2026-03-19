@@ -62,7 +62,8 @@
             <h2 class="font-semibold text-gray-900">Detail Jawaban Per Soal</h2>
             <p class="text-xs text-gray-500 mt-0.5">{{ $paket->nama }} · {{ $sesiPeserta->sesi->nama_sesi }}</p>
         </div>
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
@@ -145,6 +146,73 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @foreach($detail as $item)
+            @php
+                $tipeLabel = match($item['tipe']) {
+                    'pg' => 'PG',
+                    'pg_kompleks' => 'PGK',
+                    'menjodohkan' => 'Jodoh',
+                    'benar_salah' => 'BS',
+                    'isian' => 'Isian',
+                    'essay' => 'Essay',
+                    default => $item['tipe'],
+                };
+            @endphp
+            <div class="px-4 py-3" x-data="{ open: false }">
+                <div class="flex items-start justify-between gap-2" @click="open = !open">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-bold text-gray-400">#{{ $item['nomor'] }}</span>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ $tipeLabel }}</span>
+                            @if(!$item['is_terjawab'])
+                                <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Kosong</span>
+                            @elseif($item['is_benar'])
+                                <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Benar</span>
+                            @else
+                                <span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Salah</span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-700 line-clamp-2">{{ $item['pertanyaan'] ?: '(tanpa teks)' }}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-sm font-bold {{ $item['skor'] > 0 ? 'text-green-600' : 'text-gray-400' }}">{{ $item['skor'] }}</p>
+                        <p class="text-xs text-gray-400">/ {{ $item['bobot'] }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                    <span>Kunci: <span class="font-mono font-semibold text-blue-700">{{ $item['kunci'] }}</span></span>
+                    <span>Jawaban: <span class="font-mono font-semibold text-gray-900">
+                        @if($item['jawaban_display'] !== '-' && $item['jawaban_display'] !== $item['jawaban'])
+                            {{ $item['jawaban_display'] }}
+                        @else
+                            {{ $item['jawaban'] }}
+                        @endif
+                    </span></span>
+                </div>
+                {{-- Expandable options --}}
+                @if(!empty($item['opsi']))
+                <div x-show="open" x-cloak x-transition class="mt-2 pt-2 border-t border-gray-100">
+                    <p class="text-xs font-semibold text-gray-600 mb-1">Opsi jawaban:</p>
+                    @foreach($item['opsi'] as $opsi)
+                    <div class="flex items-start gap-2 py-0.5 text-xs {{ $opsi['is_benar'] ? 'text-green-700 font-semibold' : 'text-gray-600' }}">
+                        <span class="font-mono w-5 shrink-0">{{ $opsi['label'] }}</span>
+                        @if($opsi['display_label'] !== $opsi['label'])
+                            <span class="text-gray-400 w-8 shrink-0">({{ $opsi['display_label'] }})</span>
+                        @endif
+                        <span>{{ $opsi['teks'] }}</span>
+                        @if($opsi['is_benar'])
+                            <svg class="w-3.5 h-3.5 text-green-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+            @endforeach
         </div>
     </div>
 </div>

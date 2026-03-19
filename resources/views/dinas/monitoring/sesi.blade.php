@@ -106,18 +106,19 @@
                 @endif
             </form>
         </div>
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left">Peserta</th>
-                        <th class="px-5 py-3 text-left hidden sm:table-cell">Sekolah</th>
-                        <th class="px-5 py-3 text-left hidden sm:table-cell">Kelas</th>
+                        <th class="px-5 py-3 text-left hidden md:table-cell">Sekolah</th>
+                        <th class="px-5 py-3 text-left hidden md:table-cell">Kelas</th>
                         <th class="px-5 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-center">Jawab</th>
                         <th class="px-5 py-3 text-center">Ragu</th>
                         <th class="px-5 py-3 text-center">Nilai</th>
-                        <th class="px-5 py-3 text-center hidden md:table-cell">Sisa Waktu</th>
+                        <th class="px-5 py-3 text-center hidden lg:table-cell">Sisa Waktu</th>
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Login</th>
                         <th class="px-5 py-3 text-center">Aksi</th>
                     </tr>
@@ -130,8 +131,8 @@
                             <p class="font-medium text-gray-900">{{ $sp->peserta->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $sp->peserta->nis ?? $sp->peserta->nisn }}</p>
                         </td>
-                        <td class="px-5 py-3 hidden sm:table-cell text-xs text-gray-600">{{ $sp->peserta->sekolah?->nama ?? '—' }}</td>
-                        <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $sp->peserta->kelas ?? '—' }}</td>
+                        <td class="px-5 py-3 hidden md:table-cell text-xs text-gray-600">{{ $sp->peserta->sekolah?->nama ?? '—' }}</td>
+                        <td class="px-5 py-3 hidden md:table-cell text-gray-600">{{ $sp->peserta->kelas ?? '—' }}</td>
                         <td class="px-5 py-3 text-center">
                             <template x-if="live && (live.status === 'submit' || live.status === 'dinilai')">
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
@@ -161,7 +162,7 @@
                                 <span class="text-gray-400">—</span>
                             </template>
                         </td>
-                        <td class="px-5 py-3 text-center hidden md:table-cell">
+                        <td class="px-5 py-3 text-center hidden lg:table-cell">
                             <template x-if="live && live.sisa_waktu > 0 && ['mengerjakan','login'].includes(live.status)">
                                 <span :class="live.sisa_waktu < 600 ? 'text-red-600 font-bold' : 'text-gray-600'"
                                       x-text="Math.floor(live.sisa_waktu/60) + ':' + String(live.sisa_waktu%60).padStart(2,'0')"></span>
@@ -201,6 +202,74 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($pesertaList as $sp)
+            @if(!$sp->peserta) @continue @endif
+            <div class="px-4 py-3" x-data="{ get live() { return pesertaLive['{{ $sp->id }}'] ?? null } }">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <div class="min-w-0">
+                        <p class="font-medium text-gray-900 text-sm">{{ $sp->peserta->nama }}</p>
+                        <p class="text-xs text-gray-500">{{ $sp->peserta->nis ?? $sp->peserta->nisn }} · {{ $sp->peserta->sekolah?->nama ?? '—' }}</p>
+                    </div>
+                    <div class="shrink-0">
+                        <template x-if="live && (live.status === 'submit' || live.status === 'dinilai')">
+                            <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Submit</span>
+                        </template>
+                        <template x-if="live && (live.status === 'mengerjakan' || live.status === 'login')">
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                                Online
+                            </span>
+                        </template>
+                        <template x-if="!live || (!['submit','dinilai','mengerjakan','login'].includes(live.status))">
+                            <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Belum</span>
+                        </template>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                    <div class="bg-gray-50 rounded-lg p-1.5">
+                        <p class="font-bold text-gray-900" x-text="live ? (live.soal_terjawab + '/{{ $sesi->paket?->jumlah_soal ?? '?' }}') : '{{ ($sp->soal_terjawab ?? 0) . '/' . ($sesi->paket?->jumlah_soal ?? '?') }}'"></p>
+                        <p class="text-gray-500">Jawab</p>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-1.5">
+                        <p class="font-bold text-amber-700" x-text="live ? live.soal_ditandai : '{{ $sp->soal_ditandai ?? 0 }}'"></p>
+                        <p class="text-gray-500">Ragu</p>
+                    </div>
+                    <div class="bg-blue-50 rounded-lg p-1.5">
+                        <template x-if="live && ['submit','dinilai'].includes(live.status) && live.nilai_akhir !== null">
+                            <div>
+                                <p class="font-bold" :class="live.nilai_akhir >= 70 ? 'text-green-600' : 'text-red-600'" x-text="parseFloat(live.nilai_akhir).toFixed(1)"></p>
+                                <p class="text-gray-500">Nilai</p>
+                            </div>
+                        </template>
+                        <template x-if="!live || !['submit','dinilai'].includes(live.status) || live.nilai_akhir === null">
+                            <div>
+                                <p class="font-bold text-gray-400">—</p>
+                                <p class="text-gray-500">Nilai</p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <template x-if="live && ['submit','dinilai','mengerjakan','login'].includes(live.status)">
+                    <button type="button"
+                        @click="$dispatch('open-reset-modal', { id: '{{ $sp->id }}', nama: '{{ addslashes($sp->peserta->nama) }}' })"
+                        class="w-full text-center text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1.5 rounded transition-colors border border-red-200">
+                        Reset Ujian
+                    </button>
+                </template>
+            </div>
+            @empty
+            <div class="py-10 text-center text-gray-400 text-sm">
+                @if(!empty($filters['search']) || !empty($filters['status']))
+                    Tidak ada peserta yang cocok dengan filter.
+                @else
+                    Belum ada peserta yang login.
+                @endif
+            </div>
+            @endforelse
         </div>
         @if($pesertaList->hasPages())
         <div class="px-5 py-4 border-t border-gray-100">

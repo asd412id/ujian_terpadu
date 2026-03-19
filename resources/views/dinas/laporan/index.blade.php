@@ -208,17 +208,18 @@
                 <span class="btn-text">Hitung Ulang Nilai</span>
             </button>
         </div>
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left">#</th>
                         <th class="px-5 py-3 text-left">Peserta</th>
                         <th class="px-5 py-3 text-left hidden lg:table-cell">Sekolah</th>
-                        <th class="px-5 py-3 text-center hidden sm:table-cell">Kelas</th>
-                        <th class="px-5 py-3 text-center hidden sm:table-cell">Benar</th>
-                        <th class="px-5 py-3 text-center hidden sm:table-cell">Salah</th>
-                        <th class="px-5 py-3 text-center hidden md:table-cell">Kosong</th>
+                        <th class="px-5 py-3 text-center hidden md:table-cell">Kelas</th>
+                        <th class="px-5 py-3 text-center hidden md:table-cell">Benar</th>
+                        <th class="px-5 py-3 text-center hidden md:table-cell">Salah</th>
+                        <th class="px-5 py-3 text-center hidden lg:table-cell">Kosong</th>
                         <th class="px-5 py-3 text-center">Nilai</th>
                         <th class="px-5 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-center w-16">Aksi</th>
@@ -235,10 +236,10 @@
                             </a>
                         </td>
                         <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">{{ $hasil->peserta->sekolah->nama ?? '—' }}</td>
-                        <td class="px-5 py-3 text-center hidden sm:table-cell text-gray-600">{{ $hasil->peserta->kelas ?? '—' }}</td>
-                        <td class="px-5 py-3 text-center font-bold text-green-600 hidden sm:table-cell">{{ $hasil->jumlah_benar ?? 0 }}</td>
-                        <td class="px-5 py-3 text-center font-bold text-red-500 hidden sm:table-cell">{{ $hasil->jumlah_salah ?? 0 }}</td>
-                        <td class="px-5 py-3 text-center text-gray-400 hidden md:table-cell">{{ $hasil->jumlah_kosong ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ $hasil->peserta->kelas ?? '—' }}</td>
+                        <td class="px-5 py-3 text-center font-bold text-green-600 hidden md:table-cell">{{ $hasil->jumlah_benar ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-bold text-red-500 hidden md:table-cell">{{ $hasil->jumlah_salah ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center text-gray-400 hidden lg:table-cell">{{ $hasil->jumlah_kosong ?? 0 }}</td>
                         <td class="px-5 py-3 text-center">
                             @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
                             <span class="font-bold {{ $nilai >= 80 ? 'text-green-600' : ($nilai >= 60 ? 'text-amber-600' : 'text-red-600') }}">
@@ -273,6 +274,39 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @foreach($data as $hasil)
+            @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
+            <a href="{{ route('dinas.laporan.detail-siswa', $hasil->id) }}" class="block px-4 py-3 hover:bg-gray-50">
+                <div class="flex items-start justify-between gap-2 mb-1.5">
+                    <div class="min-w-0">
+                        <p class="font-medium text-gray-900 text-sm">{{ $hasil->peserta->nama }}</p>
+                        <p class="text-xs text-gray-500">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }} · {{ $hasil->peserta->sekolah->nama ?? '—' }}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-lg font-bold {{ $nilai >= 80 ? 'text-green-600' : ($nilai >= 60 ? 'text-amber-600' : 'text-red-600') }}">{{ $nilai }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs text-gray-500">{{ $hasil->peserta->kelas ?? '—' }}</span>
+                    @if($hasil->nilai_akhir !== null)
+                        @if($hasil->nilai_akhir >= 70)
+                            <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Lulus</span>
+                        @else
+                            <span class="text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Tidak Lulus</span>
+                        @endif
+                    @elseif(in_array($hasil->status, ['submit', 'dinilai']))
+                        <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Menghitung...</span>
+                    @else
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{{ ucfirst(str_replace('_', ' ', $hasil->status)) }}</span>
+                    @endif
+                    <span class="text-xs text-gray-400 ml-auto">B:{{ $hasil->jumlah_benar ?? 0 }} S:{{ $hasil->jumlah_salah ?? 0 }}</span>
+                </div>
+            </a>
+            @endforeach
         </div>
         @if($data->hasPages())
         <div class="px-5 py-4 border-t border-gray-100">

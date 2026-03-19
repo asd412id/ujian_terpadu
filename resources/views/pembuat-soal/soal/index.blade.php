@@ -138,14 +138,15 @@
 
         {{-- Tabel Soal --}}
         <div class="card overflow-hidden p-0 mt-4">
-            <div class="overflow-x-auto">
+            {{-- Desktop table --}}
+            <div class="hidden sm:block overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                         <tr>
                             <th class="px-5 py-3 text-left w-8">#</th>
                             <th class="px-5 py-3 text-left">Pertanyaan</th>
                             <th class="px-5 py-3 text-left hidden lg:table-cell">Kategori</th>
-                            <th class="px-5 py-3 text-center hidden sm:table-cell">Jenis</th>
+                            <th class="px-5 py-3 text-center">Jenis</th>
                             <th class="px-5 py-3 text-center hidden md:table-cell">Tingkat</th>
                             <th class="px-5 py-3 text-center hidden md:table-cell">Status</th>
                             <th class="px-5 py-3 text-right">Aksi</th>
@@ -153,6 +154,17 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @forelse($soal as $item)
+                        @php
+                            $tipeLabel = [
+                                'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
+                                'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
+                                'benar_salah' => ['B/S', 'indigo'],
+                                'isian' => ['Isian', 'green'],
+                                'essay' => ['Essay', 'amber'],
+                                'menjodohkan' => ['Jodoh', 'pink'],
+                            ];
+                            [$label, $color] = $tipeLabel[$item->tipe_soal] ?? [$item->tipe_soal, 'gray'];
+                        @endphp
                         <tr class="hover:bg-gray-50">
                             <td class="px-5 py-3 text-gray-400 text-xs">{{ $soal->firstItem() + $loop->index }}</td>
                             <td class="px-5 py-3 max-w-xs">
@@ -175,18 +187,7 @@
                             <td class="px-5 py-3 hidden lg:table-cell text-gray-600 text-xs">
                                 {{ $item->kategori->nama ?? '—' }}
                             </td>
-                            <td class="px-5 py-3 text-center hidden sm:table-cell">
-                                 @php
-                                    $tipeLabel = [
-                                        'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
-                                        'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
-                                        'benar_salah' => ['B/S', 'indigo'],
-                                        'isian' => ['Isian', 'green'],
-                                        'essay' => ['Essay', 'amber'],
-                                        'menjodohkan' => ['Jodoh', 'pink'],
-                                    ];
-                                    [$label, $color] = $tipeLabel[$item->tipe_soal] ?? [$item->tipe_soal, 'gray'];
-                                @endphp
+                            <td class="px-5 py-3 text-center">
                                 <span class="text-xs font-semibold bg-{{ $color }}-100 text-{{ $color }}-700 px-2 py-0.5 rounded-full">
                                     {{ $label }}
                                 </span>
@@ -230,6 +231,62 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Mobile cards --}}
+            <div class="sm:hidden divide-y divide-gray-100">
+                @forelse($soal as $item)
+                @php
+                    $tipeLabel = [
+                        'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
+                        'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
+                        'benar_salah' => ['B/S', 'indigo'],
+                        'isian' => ['Isian', 'green'],
+                        'essay' => ['Essay', 'amber'],
+                        'menjodohkan' => ['Jodoh', 'pink'],
+                    ];
+                    [$label, $color] = $tipeLabel[$item->tipe_soal] ?? [$item->tipe_soal, 'gray'];
+                @endphp
+                <div class="px-4 py-3">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold text-gray-400">#{{ $soal->firstItem() + $loop->index }}</span>
+                            <span class="text-xs font-semibold bg-{{ $color }}-100 text-{{ $color }}-700 px-2 py-0.5 rounded-full">{{ $label }}</span>
+                            @if($item->narasi_id)
+                            <span class="text-xs text-indigo-500 inline-flex items-center gap-0.5">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Narasi
+                            </span>
+                            @endif
+                        </div>
+                        @if($item->is_verified)
+                            <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Terverifikasi</span>
+                        @else
+                            <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full shrink-0">Menunggu</span>
+                        @endif
+                    </div>
+                    <p class="text-xs text-gray-700 line-clamp-2 mb-2">{{ strip_tags($item->pertanyaan) }}</p>
+                    <div class="flex items-center gap-2 flex-wrap text-xs">
+                        <span class="text-gray-500">{{ $item->kategori->nama ?? '—' }} · {{ ucfirst($item->tingkat_kesulitan ?? '—') }}</span>
+                        <span class="ml-auto"></span>
+                        <a href="#" @click.prevent="openPreview('{{ $item->id }}')" class="text-gray-500 hover:text-gray-700 font-medium">Preview</a>
+                        <a href="{{ route('pembuat-soal.soal.edit', $item->id) }}" class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+                        @if(!$item->is_verified)
+                        <form action="{{ route('pembuat-soal.soal.destroy', $item->id) }}" method="POST"
+                              x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Soal',message:'Hapus soal ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
+                        </form>
+                        @else
+                        <span class="text-gray-300 cursor-not-allowed" title="Soal terverifikasi tidak dapat dihapus">Hapus</span>
+                        @endif
+                    </div>
+                </div>
+                @empty
+                <div class="py-12 text-center text-gray-400 text-sm">
+                    Belum ada soal. <a href="{{ route('pembuat-soal.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
+                </div>
+                @endforelse
             </div>
             @if($soal->hasPages())
             <div class="px-5 py-4 border-t border-gray-100">
@@ -275,14 +332,15 @@
 
         {{-- Tabel Narasi --}}
         <div class="card overflow-hidden p-0 mt-4">
-            <div class="overflow-x-auto">
+            {{-- Desktop table --}}
+            <div class="hidden sm:block overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                         <tr>
                             <th class="px-5 py-3 text-left">Judul</th>
                             <th class="px-5 py-3 text-left hidden md:table-cell">Kategori</th>
                             <th class="px-5 py-3 text-center">Soal</th>
-                            <th class="px-5 py-3 text-center hidden sm:table-cell">Status</th>
+                            <th class="px-5 py-3 text-center">Status</th>
                             <th class="px-5 py-3 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -303,7 +361,7 @@
                                 @endif
                             </td>
                             <td class="px-5 py-3 text-center font-medium text-gray-700">{{ $narasi->soal_list_count ?? 0 }}</td>
-                            <td class="px-5 py-3 text-center hidden sm:table-cell">
+                            <td class="px-5 py-3 text-center">
                                 @if($narasi->is_active)
                                     <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Aktif</span>
                                 @else
@@ -336,6 +394,43 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Mobile cards --}}
+            <div class="sm:hidden divide-y divide-gray-100">
+                @forelse($narasis as $narasi)
+                <div class="px-4 py-3">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600 text-sm">
+                            {{ $narasi->judul }}
+                        </a>
+                        @if($narasi->is_active)
+                            <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
+                        @else
+                            <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
+                        @endif
+                    </div>
+                    <p class="text-xs text-gray-500 line-clamp-1 mb-1.5">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                    <div class="flex items-center gap-2 flex-wrap text-xs">
+                        @if($narasi->kategori)
+                            <span class="font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $narasi->kategori->nama }}</span>
+                        @endif
+                        <span class="text-gray-500">{{ $narasi->soal_list_count ?? 0 }} soal</span>
+                        <span class="ml-auto"></span>
+                        <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="text-gray-500 hover:text-blue-600 font-medium">Lihat</a>
+                        <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}" class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+                        <form action="{{ route('pembuat-soal.narasi.destroy', $narasi->id) }}" method="POST"
+                              x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
+                        </form>
+                    </div>
+                </div>
+                @empty
+                <div class="py-12 text-center text-gray-400 text-sm">
+                    Belum ada narasi. <a href="{{ route('pembuat-soal.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a>
+                </div>
+                @endforelse
             </div>
             @if($narasis->hasPages())
             <div class="px-5 py-4 border-t border-gray-100">

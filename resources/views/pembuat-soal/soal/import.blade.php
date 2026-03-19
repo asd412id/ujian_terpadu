@@ -339,7 +339,7 @@
     @if($importJobs->count() > 0)
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 class="text-base font-semibold text-gray-900 mb-4">Riwayat Import</h3>
-        <div class="overflow-x-auto">
+        <div class="hidden sm:block overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50">
                     <tr>
@@ -381,6 +381,38 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @foreach($importJobs as $job)
+            <div class="px-4 py-3 space-y-1.5">
+                <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-gray-900 truncate">{{ Str::limit($job->filename, 40) }}</p>
+                    @switch($job->status)
+                        @case('pending')
+                            <span class="inline-flex items-center gap-1 text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0">Antrian</span>
+                            @break
+                        @case('processing')
+                            <span class="inline-flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0">Diproses</span>
+                            @break
+                        @case('selesai')
+                            <span class="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0">Selesai</span>
+                            @break
+                        @case('gagal')
+                            <span class="inline-flex items-center gap-1 text-red-700 bg-red-50 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0">Gagal</span>
+                            @break
+                    @endswitch
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <span class="font-medium px-2 py-0.5 rounded-full {{ $job->tipe === 'soal_word' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700' }}">
+                        {{ $job->tipe === 'soal_word' ? 'Word' : $job->tipe }}
+                    </span>
+                    <span>{{ $job->processed_rows ?? 0 }}/{{ $job->total_rows ?? 0 }} soal</span>
+                    <span>{{ $job->created_at->format('d M Y H:i') }}</span>
+                </div>
+            </div>
+            @endforeach
         </div>
     </div>
     @endif

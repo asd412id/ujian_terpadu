@@ -69,13 +69,14 @@
 
     {{-- Analisis Table --}}
     <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-4 py-3 text-center">No</th>
                         <th class="px-4 py-3 text-left">Soal</th>
-                        <th class="px-4 py-3 text-center hidden sm:table-cell">Tipe</th>
+                        <th class="px-4 py-3 text-center">Tipe</th>
                         <th class="px-4 py-3 text-center hidden md:table-cell">% Benar</th>
                         <th class="px-4 py-3 text-center hidden md:table-cell">% Salah</th>
                         <th class="px-4 py-3 text-center hidden lg:table-cell">% Kosong</th>
@@ -94,7 +95,7 @@
                                 {{ $item['pertanyaan'] ?: '(tanpa teks)' }}
                             </button>
                         </td>
-                        <td class="px-4 py-3 text-center hidden sm:table-cell">
+                        <td class="px-4 py-3 text-center">
                             @php
                                 $tipeLabel = match($item['tipe']) {
                                     'pilihan_ganda' => 'PG',
@@ -161,6 +162,79 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @foreach($analisis as $item)
+            @php
+                $tipeLabel = match($item['tipe']) {
+                    'pilihan_ganda' => 'PG',
+                    'pilihan_ganda_kompleks' => 'PGK',
+                    'menjodohkan' => 'Jodoh',
+                    'benar_salah' => 'BS',
+                    'isian' => 'Isian',
+                    'essay' => 'Essay',
+                    default => $item['tipe'],
+                };
+                $kesColor = match($item['kategori_kesulitan']) {
+                    'Mudah' => 'green',
+                    'Sedang' => 'amber',
+                    'Sulit' => 'red',
+                    default => 'gray',
+                };
+                $dbColor = match($item['kategori_daya_beda']) {
+                    'Sangat Baik' => 'green',
+                    'Baik' => 'blue',
+                    'Cukup' => 'amber',
+                    'Buruk' => 'red',
+                    default => 'gray',
+                };
+            @endphp
+            <div class="px-4 py-3" x-data="{ open: false }">
+                <div @click="open = !open">
+                    <div class="flex items-start justify-between gap-2 mb-1.5">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold text-gray-400">#{{ $item['nomor'] }}</span>
+                            <span class="text-xs font-medium bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ $tipeLabel }}</span>
+                            <span class="text-xs font-semibold bg-{{ $kesColor }}-100 text-{{ $kesColor }}-700 px-2 py-0.5 rounded-full">{{ $item['kategori_kesulitan'] }}</span>
+                            <span class="text-xs font-semibold bg-{{ $dbColor }}-100 text-{{ $dbColor }}-700 px-2 py-0.5 rounded-full">{{ $item['kategori_daya_beda'] }}</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-700 line-clamp-2 mb-2">{{ $item['pertanyaan'] ?: '(tanpa teks)' }}</p>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div class="bg-gray-50 rounded-lg p-1.5">
+                            <p class="font-bold text-gray-900">{{ $item['tingkat_kesulitan'] !== null ? number_format($item['tingkat_kesulitan'], 2) : '-' }}</p>
+                            <p class="text-gray-500">TK</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-1.5">
+                            <p class="font-bold text-gray-900">{{ $item['daya_beda'] !== null ? number_format($item['daya_beda'], 2) : '-' }}</p>
+                            <p class="text-gray-500">DB</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-1.5">
+                            <p class="font-bold text-green-700">{{ $item['pct_benar'] }}%</p>
+                            <p class="text-gray-500">Benar</p>
+                        </div>
+                    </div>
+                </div>
+                @if(!empty($item['distractors']))
+                <div x-show="open" x-cloak x-transition class="mt-2 pt-2 border-t border-gray-100">
+                    <p class="text-xs font-semibold text-gray-600 mb-1.5">Distribusi Opsi:</p>
+                    <div class="space-y-1">
+                        @foreach($item['distractors'] as $d)
+                        <div class="flex items-center gap-2 text-xs {{ $d['is_benar'] ? 'text-green-700 font-bold' : 'text-gray-600' }}">
+                            <span class="w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold {{ $d['is_benar'] ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600' }}">{{ $d['label'] }}</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                <div class="{{ $d['is_benar'] ? 'bg-green-500' : 'bg-gray-400' }} h-2 rounded-full" style="width: {{ min($d['pct'], 100) }}%"></div>
+                            </div>
+                            <span class="shrink-0">{{ $d['pct'] }}%</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+            </div>
+            @endforeach
         </div>
     </div>
 

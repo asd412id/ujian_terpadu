@@ -34,6 +34,7 @@
                 Cara Penulisan Dasar
             </h4>
             <div class="bg-white rounded-lg border border-blue-100 overflow-hidden">
+                <div class="overflow-x-auto">
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="bg-blue-50">
@@ -65,6 +66,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
             <p class="text-xs text-gray-500 italic">
                 <strong>Tip:</strong> Gunakan <code class="bg-gray-100 px-1 rounded">$...$</code> untuk rumus di tengah kalimat, dan <code class="bg-gray-100 px-1 rounded">$$...$$</code> untuk rumus yang berdiri sendiri (lebih besar, rata tengah).
@@ -78,6 +80,7 @@
                 Operasi & Simbol Umum
             </h4>
             <div class="bg-white rounded-lg border border-blue-100 overflow-hidden">
+                <div class="overflow-x-auto">
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="bg-blue-50">
@@ -154,6 +157,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
 
@@ -164,6 +168,7 @@
                 Fungsi, Limit, Integral & Sigma
             </h4>
             <div class="bg-white rounded-lg border border-blue-100 overflow-hidden">
+                <div class="overflow-x-auto">
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="bg-blue-50">
@@ -205,6 +210,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
 
@@ -215,6 +221,7 @@
                 Matriks, Vektor & Kurung
             </h4>
             <div class="bg-white rounded-lg border border-blue-100 overflow-hidden">
+                <div class="overflow-x-auto">
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="bg-blue-50">
@@ -256,6 +263,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
 

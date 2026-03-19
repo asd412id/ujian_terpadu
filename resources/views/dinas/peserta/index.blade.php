@@ -12,7 +12,7 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
             <a href="{{ route('dinas.peserta.import') }}"
                class="btn-secondary inline-flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -77,12 +77,13 @@
         <div class="px-5 py-3.5 border-b border-gray-100 text-sm text-gray-500">
             <span>{{ $peserta->total() }} peserta ditemukan</span>
         </div>
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left">Nama Lengkap</th>
-                        <th class="px-5 py-3 text-left hidden sm:table-cell">NIS / NISN</th>
+                        <th class="px-5 py-3 text-left hidden md:table-cell">NIS / NISN</th>
                         <th class="px-5 py-3 text-left hidden md:table-cell">Kelas</th>
                         <th class="px-5 py-3 text-left hidden lg:table-cell">Sekolah</th>
                         <th class="px-5 py-3 text-center hidden xl:table-cell">Username Ujian</th>
@@ -101,7 +102,7 @@
                                 <span class="font-medium text-gray-900">{{ $p->nama }}</span>
                             </div>
                         </td>
-                        <td class="px-5 py-3 hidden sm:table-cell text-gray-600">
+                        <td class="px-5 py-3 hidden md:table-cell text-gray-600">
                             <p>{{ $p->nis ?: '—' }}</p>
                             <p class="text-xs text-gray-400">{{ $p->nisn ?: '' }}</p>
                         </td>
@@ -149,6 +150,50 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($peserta as $p)
+            <div class="px-4 py-3">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span class="text-blue-700 text-xs font-bold">{{ substr($p->nama, 0, 1) }}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-900 text-sm">{{ $p->nama }}</p>
+                            <p class="text-xs text-gray-500">{{ $p->nis ?: $p->nisn ?: '—' }} · {{ $p->kelas ?? '—' }}</p>
+                        </div>
+                    </div>
+                    @if($p->is_active)
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
+                    @else
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
+                    @endif
+                </div>
+                <div class="ml-10.5 text-xs text-gray-500 mb-2">
+                    {{ $p->sekolah?->nama ?? '—' }}
+                </div>
+                <div class="flex items-center gap-3 ml-10.5">
+                    <a href="{{ route('dinas.peserta.edit', $p->id) }}"
+                       class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
+                    <form action="{{ route('dinas.peserta.destroy', $p->id) }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Peserta',message:'Hapus peserta {{ addslashes($p->nama) }}?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                    </form>
+                </div>
+            </div>
+            @empty
+            <div class="py-12 text-center text-gray-400 text-sm">
+                @if(request()->hasAny(['q', 'sekolah_id', 'kelas']))
+                    Tidak ada peserta yang cocok dengan filter.
+                @else
+                    Belum ada data peserta.
+                @endif
+            </div>
+            @endforelse
         </div>
         @if($peserta->hasPages())
         <div class="px-5 py-4 border-t border-gray-100">

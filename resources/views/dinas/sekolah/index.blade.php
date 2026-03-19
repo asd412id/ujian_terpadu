@@ -11,7 +11,7 @@
 
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Data Sekolah</h1>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
             <a href="{{ route('dinas.sekolah.import') }}" class="btn-secondary inline-flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -68,13 +68,14 @@
 
     {{-- Tabel --}}
     <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left">Nama Sekolah</th>
                         <th class="px-5 py-3 text-left hidden md:table-cell">NPSN</th>
-                        <th class="px-5 py-3 text-center hidden sm:table-cell">Tingkat</th>
+                        <th class="px-5 py-3 text-center">Tingkat</th>
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Peserta</th>
                         <th class="px-5 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-right">Aksi</th>
@@ -88,7 +89,7 @@
                             <p class="text-xs text-gray-500">{{ $sekolah->alamat }}</p>
                         </td>
                         <td class="px-5 py-3 hidden md:table-cell text-gray-600 font-mono text-xs">{{ $sekolah->npsn ?? '—' }}</td>
-                        <td class="px-5 py-3 text-center hidden sm:table-cell">
+                        <td class="px-5 py-3 text-center">
                             <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $sekolah->jenjang }}</span>
                         </td>
                         <td class="px-5 py-3 text-center hidden lg:table-cell font-medium text-gray-700">{{ $sekolah->peserta_count ?? 0 }}</td>
@@ -120,6 +121,43 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($sekolahList as $sekolah)
+            <div class="px-4 py-3">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <div class="min-w-0">
+                        <p class="font-medium text-gray-900 text-sm">{{ $sekolah->nama }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ $sekolah->alamat }}</p>
+                    </div>
+                    @if($sekolah->is_active)
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
+                    @else
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-2 flex-wrap text-xs mb-2">
+                    <span class="font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $sekolah->jenjang }}</span>
+                    @if($sekolah->npsn)
+                    <span class="text-gray-500 font-mono">{{ $sekolah->npsn }}</span>
+                    @endif
+                    <span class="text-gray-500">{{ $sekolah->peserta_count ?? 0 }} peserta</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('dinas.sekolah.edit', $sekolah->id) }}"
+                       class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
+                    <form action="{{ route('dinas.sekolah.destroy', $sekolah->id) }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Sekolah',message:'Hapus sekolah ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                    </form>
+                </div>
+            </div>
+            @empty
+            <div class="py-12 text-center text-gray-400 text-sm">Belum ada data sekolah.</div>
+            @endforelse
         </div>
         @if($sekolahList->hasPages())
         <div class="px-5 py-4 border-t border-gray-100">

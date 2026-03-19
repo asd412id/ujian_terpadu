@@ -12,7 +12,7 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Paket Ujian</h1>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('dinas.paket.trash') }}"
                class="btn-secondary inline-flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,7 +80,7 @@
             </div>
 
             {{-- Aksi --}}
-            <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
                 @if($item->status === 'draft')
                 <form action="{{ route('dinas.paket.publish', $item->id) }}" method="POST"
                       x-data @submit.prevent="if(await $store.confirmModal.open({title:'Publish Paket',message:'Publikasikan paket ujian ini?',confirmText:'Publish'})) $el.submit()">

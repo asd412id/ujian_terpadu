@@ -14,13 +14,14 @@
     </div>
 
     <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left w-8">#</th>
                         <th class="px-5 py-3 text-left">Nama</th>
-                        <th class="px-5 py-3 text-left hidden sm:table-cell">Kode</th>
+                        <th class="px-5 py-3 text-left">Kode</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Jenjang</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Kelompok</th>
                         <th class="px-5 py-3 text-left hidden lg:table-cell">Kurikulum</th>
@@ -32,7 +33,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3 text-gray-400 text-xs">{{ $index + 1 }}</td>
                         <td class="px-5 py-3 font-medium text-gray-900">{{ $kat->nama }}</td>
-                        <td class="px-5 py-3 hidden sm:table-cell text-gray-600 text-xs font-mono">{{ $kat->kode ?? '—' }}</td>
+                        <td class="px-5 py-3 text-gray-600 text-xs font-mono">{{ $kat->kode ?? '—' }}</td>
                         <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ $kat->jenjang ?? '—' }}</td>
                         <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ $kat->kelompok ?? '—' }}</td>
                         <td class="px-5 py-3 hidden lg:table-cell text-gray-600">{{ $kat->kurikulum ?? '—' }}</td>
@@ -56,6 +57,42 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($kategoris as $index => $kat)
+            <div class="px-4 py-3">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <div>
+                        <p class="font-medium text-gray-900 text-sm">{{ $kat->nama }}</p>
+                        @if($kat->kode)
+                        <p class="text-xs text-gray-500 font-mono mt-0.5">{{ $kat->kode }}</p>
+                        @endif
+                    </div>
+                    @if($kat->is_active)
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
+                    @else
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                    @if($kat->jenjang)
+                    <span>{{ $kat->jenjang }}</span>
+                    @endif
+                    @if($kat->kelompok)
+                    <span>· {{ $kat->kelompok }}</span>
+                    @endif
+                    @if($kat->kurikulum)
+                    <span>· {{ $kat->kurikulum }}</span>
+                    @endif
+                </div>
+            </div>
+            @empty
+            <div class="py-12 text-center text-gray-400 text-sm">
+                Belum ada kategori soal.
+            </div>
+            @endforelse
         </div>
     </div>
 

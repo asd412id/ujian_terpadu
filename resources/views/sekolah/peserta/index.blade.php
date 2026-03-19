@@ -74,12 +74,12 @@
                 Kartu Login per Sesi
             </a>
         </div>
-        <div class="overflow-x-auto">
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                     <tr>
                         <th class="px-5 py-3 text-left">Nama Lengkap</th>
-                        <th class="px-5 py-3 text-left hidden sm:table-cell">NIS / NISN</th>
+                        <th class="px-5 py-3 text-left hidden md:table-cell">NIS / NISN</th>
                         <th class="px-5 py-3 text-left hidden md:table-cell">Kelas</th>
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Username Ujian</th>
                         <th class="px-5 py-3 text-center">Status</th>
@@ -97,7 +97,7 @@
                                 <span class="font-medium text-gray-900">{{ $p->nama }}</span>
                             </div>
                         </td>
-                        <td class="px-5 py-3 hidden sm:table-cell text-gray-600">
+                        <td class="px-5 py-3 hidden md:table-cell text-gray-600">
                             <p>{{ $p->nis ?: '—' }}</p>
                             <p class="text-xs text-gray-400">{{ $p->nisn ?: '' }}</p>
                         </td>
@@ -133,6 +133,49 @@
                 </tbody>
             </table>
         </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($peserta as $p)
+            <div class="px-4 py-4 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span class="text-blue-700 text-xs font-bold">{{ substr($p->nama, 0, 1) }}</span>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">{{ $p->nama }}</p>
+                            <p class="text-xs text-gray-500">{{ $p->nis ?: '' }}{{ $p->nis && $p->nisn ? ' / ' : '' }}{{ $p->nisn ?: '' }}</p>
+                        </div>
+                    </div>
+                    @if($p->is_active)
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex-shrink-0">Aktif</span>
+                    @else
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex-shrink-0">Nonaktif</span>
+                    @endif
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5 text-xs pl-11">
+                    @if($p->kelas)
+                    <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ $p->kelas }}</span>
+                    @endif
+                    @if($p->username_ujian)
+                    <code class="bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-600">{{ $p->username_ujian }}</code>
+                    @endif
+                </div>
+                <div class="pl-11">
+                    <a href="{{ route('sekolah.kartu.show', $p->id) }}"
+                       class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">
+                        Cetak Kartu
+                    </a>
+                </div>
+            </div>
+            @empty
+            <div class="py-12 text-center text-gray-400 text-sm">
+                Belum ada peserta terdaftar.
+            </div>
+            @endforelse
+        </div>
+
         @if($peserta->hasPages())
         <div class="px-5 py-4 border-t border-gray-100">{{ $peserta->withQueryString()->links() }}</div>
         @endif

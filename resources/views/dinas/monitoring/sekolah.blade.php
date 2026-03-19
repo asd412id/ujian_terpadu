@@ -59,7 +59,8 @@
 
     {{-- Tabel Sekolah --}}
     <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
@@ -68,7 +69,7 @@
                         <th class="text-center px-4 py-3 font-medium text-gray-600">Peserta Online</th>
                         <th class="text-center px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Selesai</th>
                         <th class="text-center px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Cheating</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Status</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Status</th>
                         <th class="text-center px-4 py-3 font-medium text-gray-600">Aksi</th>
                     </tr>
                 </thead>
@@ -113,7 +114,7 @@
                                       :class="s.cheating_count > 0 ? 'text-red-600' : 'text-gray-400'"
                                       x-text="s.cheating_count"></span>
                             </td>
-                            <td class="px-4 py-3 hidden sm:table-cell">
+                            <td class="px-4 py-3 hidden md:table-cell">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                                       :class="{
                                           'bg-green-100 text-green-800': s.status === 'aktif',
@@ -133,6 +134,56 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            <template x-if="loading">
+                <div class="px-4 py-8 text-center text-gray-400">
+                    <svg class="w-6 h-6 animate-spin mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Memuat data...
+                </div>
+            </template>
+            <template x-if="!loading && filteredSekolah.length === 0">
+                <div class="px-4 py-8 text-center text-gray-400">Tidak ada data sekolah</div>
+            </template>
+            <template x-for="s in filteredSekolah" :key="s.id">
+                <div class="px-4 py-3">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-900 text-sm" x-text="s.nama_sekolah"></p>
+                            <p class="text-xs text-gray-400" x-text="s.kode_sekolah"></p>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0"
+                              :class="{
+                                  'bg-green-100 text-green-800': s.status === 'aktif',
+                                  'bg-gray-100 text-gray-600':  s.status === 'selesai',
+                                  'bg-yellow-100 text-yellow-800': s.status === 'belum'
+                              }"
+                              x-text="s.status === 'aktif' ? 'Sedang Ujian' : s.status === 'selesai' ? 'Selesai' : 'Belum Mulai'">
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                        <div class="bg-blue-50 rounded-lg p-1.5">
+                            <p class="font-bold text-blue-700" x-text="s.sesi_aktif"></p>
+                            <p class="text-gray-500">Sesi</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-1.5">
+                            <p class="font-bold text-green-700" x-text="s.peserta_online"></p>
+                            <p class="text-gray-500">Online</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-1.5">
+                            <p class="font-bold text-gray-700" x-text="s.peserta_selesai"></p>
+                            <p class="text-gray-500">Selesai</p>
+                        </div>
+                    </div>
+                    <a :href="`/dinas/monitoring/sesi?sekolah_id=${s.id}`"
+                       class="block text-center text-blue-600 text-xs font-medium">Lihat Detail →</a>
+                </div>
+            </template>
         </div>
     </div>
 

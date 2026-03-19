@@ -45,14 +45,15 @@
 
     {{-- Table --}}
     <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-5 py-3 text-left">Judul</th>
                     <th class="px-5 py-3 text-left hidden md:table-cell">Kategori</th>
                     <th class="px-5 py-3 text-center">Soal</th>
-                    <th class="px-5 py-3 text-center hidden sm:table-cell">Status</th>
+                    <th class="px-5 py-3 text-center">Status</th>
                     <th class="px-5 py-3 text-right">Aksi</th>
                 </tr>
             </thead>
@@ -73,7 +74,7 @@
                         @endif
                     </td>
                     <td class="px-5 py-3 text-center font-medium text-gray-700">{{ $narasi->soal_list_count ?? 0 }}</td>
-                    <td class="px-5 py-3 text-center hidden sm:table-cell">
+                    <td class="px-5 py-3 text-center">
                         @if($narasi->is_active)
                             <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Aktif</span>
                         @else
@@ -99,6 +100,43 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($narasis as $narasi)
+            <div class="px-4 py-3">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600 text-sm">
+                        {{ $narasi->judul }}
+                    </a>
+                    @if($narasi->is_active)
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
+                    @else
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
+                    @endif
+                </div>
+                <p class="text-xs text-gray-500 line-clamp-1 mb-1.5">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                <div class="flex items-center gap-2 flex-wrap text-xs">
+                    @if($narasi->kategori)
+                        <span class="font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $narasi->kategori->nama }}</span>
+                    @endif
+                    <span class="text-gray-500">{{ $narasi->soal_list_count ?? 0 }} soal</span>
+                    <span class="ml-auto"></span>
+                    <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="text-gray-500 hover:text-blue-600 font-medium">Lihat</a>
+                    <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}" class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+                    <form action="{{ route('pembuat-soal.narasi.destroy', $narasi->id) }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
+                    </form>
+                </div>
+            </div>
+            @empty
+            <div class="py-10 text-center text-gray-400 text-sm">
+                Belum ada narasi. <a href="{{ route('pembuat-soal.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a>
+            </div>
+            @endforelse
         </div>
     </div>
 

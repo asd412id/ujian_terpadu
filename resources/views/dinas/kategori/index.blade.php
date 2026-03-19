@@ -21,12 +21,12 @@
     </div>
 
     <div class="card overflow-hidden p-0">
-        <div class="overflow-x-auto">
+        <div class="hidden sm:block overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                 <tr>
                     <th class="px-5 py-3 text-left">Nama Kategori</th>
-                    <th class="px-5 py-3 text-left hidden sm:table-cell">Kelompok</th>
+                    <th class="px-5 py-3 text-left hidden md:table-cell">Kelompok</th>
                     <th class="px-5 py-3 text-center hidden md:table-cell">Jenjang</th>
                     <th class="px-5 py-3 text-center hidden md:table-cell">Kurikulum</th>
                     <th class="px-5 py-3 text-center">Jumlah Soal</th>
@@ -42,7 +42,7 @@
                         <p class="text-xs text-gray-500 font-mono">{{ $kat->kode }}</p>
                         @endif
                     </td>
-                    <td class="px-5 py-3 hidden sm:table-cell text-gray-600">{{ $kat->kelompok ?? '—' }}</td>
+                    <td class="px-5 py-3 hidden md:table-cell text-gray-600">{{ $kat->kelompok ?? '—' }}</td>
                     <td class="px-5 py-3 text-center hidden md:table-cell">
                         @if($kat->jenjang)
                             <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $kat->jenjang }}</span>
@@ -69,6 +69,45 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-100">
+            @forelse($kategoris as $kat)
+            <div class="px-4 py-4 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <p class="font-medium text-gray-900 text-sm">{{ $kat->nama }}</p>
+                        @if($kat->kode)
+                        <p class="text-xs text-gray-500 font-mono">{{ $kat->kode }}</p>
+                        @endif
+                    </div>
+                    <span class="text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full flex-shrink-0">{{ $kat->soal_count ?? 0 }} soal</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    @if($kat->kelompok)
+                    <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ $kat->kelompok }}</span>
+                    @endif
+                    @if($kat->jenjang)
+                    <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">{{ $kat->jenjang }}</span>
+                    @endif
+                    @if($kat->kurikulum)
+                    <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ $kat->kurikulum }}</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-3 pt-1">
+                    <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
+                            class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
+                    <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Kategori',message:'Hapus kategori ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                    </form>
+                </div>
+            </div>
+            @empty
+            <div class="py-10 text-center text-gray-400 text-sm">Belum ada kategori.</div>
+            @endforelse
         </div>
     </div>
 
