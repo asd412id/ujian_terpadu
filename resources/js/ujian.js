@@ -900,11 +900,21 @@ function ujianApp() {
                     pending.forEach(item => this.syncedSoalIds.add(item.soalId));
                     memEntries.forEach(([soalId]) => this.syncedSoalIds.add(soalId));
                 } else if (res.status === 422) {
-                    // Validation error — retry once in case of transient issue
                     let errMsg = '';
                     try { const errData = await res.json(); errMsg = errData.error || errData.message || ''; } catch {}
                     console.warn('[Sync] Validation error (422):', errMsg);
-                    if (this._syncRetries < 2) {
+
+                    // If exam expired/submitted, mark answers as synced to stop retry loop
+                    const isExpired = /(habis|expired|selesai|sudah (di)?submit|sudah (di)?kumpul)/i.test(errMsg);
+                    if (isExpired) {
+                        console.warn('[Sync] Exam expired/submitted — marking answers as synced, stopping retries');
+                        await Promise.all(pending.map(item =>
+                            db.exam_answers.update(item.id, { synced: true })
+                        ));
+                        this._memoryFallbackAnswers = {};
+                        await this.recalcPendingSync();
+                        this._syncRetries = 0;
+                    } else if (this._syncRetries < 2) {
                         this._scheduleRetry(5000);
                     } else {
                         console.warn('[Sync] 422 persistent, waiting for next auto-sync');
@@ -1118,6 +1128,9 @@ function ujianApp() {
                 console.error('[Submit] Unexpected error:', outerErr);
                 clearTimeout(submitSafetyTimer);
                 navigateTo(selesaiUrl);
+            } finally {
+                // Reset isSubmitting so button is usable if navigation somehow fails
+                setTimeout(() => { this.isSubmitting = false; }, 5000);
             }
         },
 
