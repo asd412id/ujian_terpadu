@@ -103,4 +103,10 @@ class LaporanController extends Controller
 
         return response()->json($progress);
     }
+
+    public function recalculateClear()
+    {
+        \Illuminate\Support\Facades\Cache::forget('recalculate_progress_' . auth()->id());
+        return response()->json(['status' => 'cleared']);
+    }
 }

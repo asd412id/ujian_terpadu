@@ -139,8 +139,12 @@
                     }
                 } catch (e) { console.warn('laporan:progress', e); }
             },
-            clear() {
+            async clear() {
                 this.show = false;
+                await fetch('{{ route("dinas.laporan.recalculate-clear") }}', {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '' },
+                }).catch(() => {});
                 window.location.reload();
             },
             destroy() {
