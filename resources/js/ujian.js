@@ -160,7 +160,7 @@ function ujianApp() {
                 }
 
                 // If peserta status is already submit/dinilai server-side (admin forced)
-                if (data.status && !data.is_active && data.status !== 'mengerjakan') {
+                if (data.status && ['submit', 'dinilai'].includes(data.status)) {
                     console.log('[StatusPoll] Peserta status:', data.status, '- redirecting...');
                     this._forceSubmitted = true;
                     clearInterval(this._statusCheckInterval);

@@ -65,7 +65,10 @@ class RecalculateScores extends Command
                         }
 
                         if (! $dryRun) {
-                            $sp->update($hasil);
+                            $sp->update(collect($hasil)->only([
+                                'nilai_akhir', 'nilai_benar',
+                                'jumlah_benar', 'jumlah_salah', 'jumlah_kosong',
+                            ])->toArray());
                         }
                     }
 

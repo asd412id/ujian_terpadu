@@ -68,7 +68,7 @@ class PenilaianService
                 $jumlahBenar++;
                 $nilaiBenar += $skor;
             } elseif ($skor > 0) {
-                $jumlahSalah++;
+                // Partial credit (e.g. PG Kompleks) — score counts but not as full wrong
                 $nilaiBenar += $skor;
             } else {
                 $jumlahSalah++;
@@ -81,7 +81,7 @@ class PenilaianService
         $totalSoal    = $paket->paketSoal->count();
         $jumlahKosong = $totalSoal - $jumlahBenar - $jumlahSalah;
         if ($jumlahKosong < 0) $jumlahKosong = 0;
-        $nilaiAkhir   = $totalBobot > 0 ? round(($nilaiBenar / $totalBobot) * 100, 2) : 0;
+        $nilaiAkhir   = $totalBobot > 0 ? min(100.0, round(($nilaiBenar / $totalBobot) * 100, 2)) : 0;
 
         return [
             'nilai_akhir'  => $nilaiAkhir,

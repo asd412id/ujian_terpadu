@@ -66,6 +66,14 @@ class JawabanPesertaFactory extends Factory
         ]);
     }
 
+    public function benarSalah(array $jawaban = []): static
+    {
+        return $this->state([
+            'jawaban_pg'  => $jawaban,
+            'is_terjawab' => true,
+        ]);
+    }
+
     public function ditandai(): static
     {
         return $this->state(['is_ditandai' => true]);

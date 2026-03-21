@@ -466,17 +466,20 @@ class SoalService
         $skipped = 0;
         $errors = [];
 
+        $hardErrors = []; // Errors from DB/processing exceptions (cause rollback)
+
         DB::beginTransaction();
         try {
             foreach ($rows as $index => $row) {
                 try {
-                    $soalData = array_merge([
+                    // $meta provides defaults; per-row values take priority
+                    $soalData = array_merge($meta, [
                         'pertanyaan'   => $this->normalizeEditorContent($row['pertanyaan'] ?? $row['teks_soal'] ?? null),
-                        'tipe_soal'    => $row['tipe_soal'] ?? 'pg',
-                        'bobot'        => $row['bobot'] ?? 1,
+                        'tipe_soal'    => $row['tipe_soal'] ?? $meta['tipe_soal'] ?? 'pg',
+                        'bobot'        => $row['bobot'] ?? $meta['bobot'] ?? 1,
                         'kategori_id'  => $row['kategori_id'] ?? $meta['kategori_id'] ?? null,
                         'created_by'   => $meta['created_by'] ?? null,
-                    ], $meta);
+                    ]);
 
                     if (empty($soalData['pertanyaan'])) {
                         $skipped++;
@@ -510,17 +513,19 @@ class SoalService
                     $imported++;
                 } catch (\Exception $e) {
                     $skipped++;
+                    $hardErrors[] = "Baris " . ($index + 1) . ": " . $e->getMessage();
                     $errors[] = "Baris " . ($index + 1) . ": " . $e->getMessage();
                 }
             }
 
-            if ($imported > 0 && empty($errors)) {
+            // Only rollback when there are hard DB/processing errors, not soft skips (empty rows)
+            if ($imported > 0 && empty($hardErrors)) {
                 DB::commit();
-            } elseif ($imported > 0 && !empty($errors)) {
+            } elseif (!empty($hardErrors)) {
                 DB::rollBack();
                 $imported = 0;
                 $skipped = count($rows);
-                array_unshift($errors, "Import dibatalkan: {$skipped} baris gagal, seluruh data di-rollback untuk konsistensi.");
+                array_unshift($errors, "Import dibatalkan karena " . count($hardErrors) . " baris error. Seluruh data di-rollback untuk konsistensi.");
             } else {
                 DB::rollBack();
             }

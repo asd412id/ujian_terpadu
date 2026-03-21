@@ -72,8 +72,11 @@ class RecalculateNilaiJob implements ShouldQueue
             ->chunkById(100, function ($chunk) use ($penilaianService, &$updated, &$changed, $cacheKey) {
                 foreach ($chunk as $sp) {
                     try {
-                        $sesiPeserta = SesiPeserta::with(['jawaban.soal.opsiJawaban', 'sesi.paket.paketSoal.soal'])
-                            ->find($sp->id);
+                        $sesiPeserta = SesiPeserta::with([
+                                'jawaban.soal.opsiJawaban',
+                                'jawaban.soal.pasangan',
+                                'sesi.paket.paketSoal.soal',
+                            ])->find($sp->id);
 
                         if (! $sesiPeserta) {
                             continue;
@@ -84,7 +87,12 @@ class RecalculateNilaiJob implements ShouldQueue
                         $newNilai = (float) $hasil['nilai_akhir'];
 
                         if (abs($oldNilai - $newNilai) > 0.001) {
-                            $sesiPeserta->update($hasil);
+                            // Only update score fields — do NOT overwrite status
+                            // (e.g. 'dinilai' must not be downgraded back to 'submit')
+                            $sesiPeserta->update(collect($hasil)->only([
+                                'nilai_akhir', 'nilai_benar',
+                                'jumlah_benar', 'jumlah_salah', 'jumlah_kosong',
+                            ])->toArray());
                             $changed++;
                         }
 

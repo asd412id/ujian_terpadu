@@ -57,4 +57,9 @@ class SoalFactory extends Factory
     {
         return $this->state(['tipe_soal' => 'menjodohkan']);
     }
+
+    public function benarSalah(): static
+    {
+        return $this->state(['tipe_soal' => 'benar_salah']);
+    }
 }

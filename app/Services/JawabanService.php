@@ -133,7 +133,8 @@ class JawabanService
                 break;
             } catch (\Illuminate\Database\QueryException $e) {
                 DB::rollBack();
-                if ($e->errorInfo[1] == 1020 && $attempt < $maxRetries) {
+                // Retry on lock wait timeout (1205) or deadlock (1213)
+                if (in_array($e->errorInfo[1] ?? null, [1205, 1213]) && $attempt < $maxRetries) {
                     usleep(50000 * $attempt);
                     continue;
                 }

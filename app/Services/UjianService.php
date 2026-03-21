@@ -63,6 +63,12 @@ class UjianService
 
         // Cache soal for performance (include sesiPeserta id to avoid stale data on retake)
         $cacheKey = "paket_soal_{$paket->id}_sp_{$sesiPeserta->id}";
+
+        // Always bust stale cache when starting fresh to ensure correct soal order after reset
+        if (in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login'])) {
+            Cache::forget($cacheKey);
+        }
+
         $soalList = Cache::remember($cacheKey, 3600 * 8, function () use ($paket, $sesiPeserta) {
             return $this->getSoalForPeserta($paket, $sesiPeserta);
         });

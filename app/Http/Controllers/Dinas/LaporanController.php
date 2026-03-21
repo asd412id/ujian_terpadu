@@ -71,19 +71,21 @@ class LaporanController extends Controller
         ))->download($filename);
     }
 
-        public function recalculate(Request $request)
+    public function recalculate(Request $request)
     {
         $filters = $request->only(['sekolah_id', 'paket_id']);
+        $userId  = (string) auth()->id();
+        $cacheKey = 'recalculate_progress_' . $userId;
 
         // Check if already running
-        $progress = \Illuminate\Support\Facades\Cache::get('recalculate_progress');
+        $progress = \Illuminate\Support\Facades\Cache::get($cacheKey);
         if ($progress && $progress['status'] === 'processing') {
             return back()
                 ->withInput()
                 ->with('warning', "Recalculate sedang berjalan ({$progress['updated']}/{$progress['total']}). Harap tunggu hingga selesai.");
         }
 
-        \App\Jobs\RecalculateNilaiJob::dispatch($filters, auth()->id());
+        \App\Jobs\RecalculateNilaiJob::dispatch($filters, $userId);
 
         return back()
             ->withInput()
@@ -92,7 +94,8 @@ class LaporanController extends Controller
 
     public function recalculateProgress()
     {
-        $progress = \Illuminate\Support\Facades\Cache::get('recalculate_progress');
+        $cacheKey = 'recalculate_progress_' . auth()->id();
+        $progress = \Illuminate\Support\Facades\Cache::get($cacheKey);
 
         if (! $progress) {
             return response()->json(['status' => 'idle']);

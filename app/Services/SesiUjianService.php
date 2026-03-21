@@ -6,6 +6,7 @@ use App\Models\PaketUjian;
 use App\Models\SesiUjian;
 use App\Repositories\SesiUjianRepository;
 use App\Repositories\SekolahRepository;
+use Illuminate\Support\Facades\DB;
 
 class SesiUjianService
 {
@@ -170,6 +171,10 @@ class SesiUjianService
             throw new \RuntimeException('Tidak dapat menghapus sesi yang sedang diikuti peserta.');
         }
 
+        if ($sesi->sesiPeserta()->whereIn('status', ['submit', 'dinilai'])->exists()) {
+            throw new \RuntimeException('Tidak dapat menghapus sesi yang sudah memiliki peserta submit atau dinilai.');
+        }
+
         return (bool) $sesi->delete();
     }
 
@@ -261,8 +266,10 @@ class SesiUjianService
             ->where('is_peserta_override', false)
             ->where('status', 'persiapan')
             ->each(function ($sesi) {
-                $sesi->sesiPeserta()->where('status', 'terdaftar')->delete();
-                $this->autoSyncPeserta($sesi);
+                DB::transaction(function () use ($sesi) {
+                    $sesi->sesiPeserta()->where('status', 'terdaftar')->delete();
+                    $this->autoSyncPeserta($sesi);
+                });
             });
     }
 
