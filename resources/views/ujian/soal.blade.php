@@ -730,6 +730,27 @@
         </div>
     </div>
 
+    {{-- ========== START FULLSCREEN OVERLAY ========== --}}
+    <div x-show="showStartFullscreenOverlay" x-cloak
+         class="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-950/92 p-4">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl" @click.stop>
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+            </div>
+            <h3 class="mb-2 text-xl font-bold text-slate-900">Masuk Fullscreen untuk Mulai Ujian</h3>
+            <p class="mb-5 text-sm leading-relaxed text-slate-600" x-text="startFullscreenMessage || 'Klik tombol di bawah untuk masuk fullscreen dan mulai mengerjakan ujian.'"></p>
+            <button @click="enterExamFullscreen()"
+                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 py-3 font-bold text-white transition-colors hover:bg-blue-800">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                Masuk Fullscreen
+            </button>
+        </div>
+    </div>
+
     {{-- ========== VIOLATION OVERLAY (Anti-Cheat) ========== --}}
     <div x-show="showViolationOverlay" x-cloak
          x-transition:enter="transition ease-out duration-300"

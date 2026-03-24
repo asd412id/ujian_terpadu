@@ -61,7 +61,8 @@ class UjianControllerTest extends TestCase
         $response->assertSee('Perhatian sebelum memulai ujian');
         $response->assertSee('Pada perangkat <strong>desktop</strong>', false);
         $response->assertSee('data-start-exam="true"', false);
-        $response->assertSee('activateDesktopFullscreen', false);
+        $response->assertSee('ujian-pending-fullscreen', false);
+        $response->assertDontSee('activateDesktopFullscreen', false);
         $response->assertDontSee('ujian-skip-init-fullscreen');
     }
 
@@ -75,6 +76,8 @@ class UjianControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertViewIs('ujian.soal');
         $response->assertSee('serverTimestamp', false);
+        $response->assertSee('showStartFullscreenOverlay', false);
+        $response->assertSee('enterExamFullscreen()', false);
 
         $setup['sp']->refresh();
         $this->assertEquals('mengerjakan', $setup['sp']->status);

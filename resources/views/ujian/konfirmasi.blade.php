@@ -117,22 +117,6 @@
                 {{-- Action --}}
                 <div x-data="{
                         isStarting: false,
-                        async activateDesktopFullscreen() {
-                            if (window.matchMedia('(max-width: 1023px)').matches) {
-                                return;
-                            }
-
-                            const el = document.documentElement;
-
-                            try {
-                                if (el.requestFullscreen) {
-                                    await el.requestFullscreen();
-                                } else if (el.webkitRequestFullscreen) {
-                                    el.webkitRequestFullscreen();
-                                }
-                            } catch (_) {
-                            }
-                        },
                         async startExam() {
                             if (this.isStarting) {
                                 return;
@@ -140,7 +124,7 @@
 
                             const confirmed = await $store.confirmModal.open({
                                 title: 'Mulai Ujian',
-                                message: 'Mulai ujian sekarang? Timer akan langsung berjalan. Pada perangkat desktop, mode fullscreen akan diaktifkan saat ujian dibuka.',
+                                message: 'Mulai ujian sekarang? Timer akan langsung berjalan. Pada perangkat desktop, fullscreen akan diminta setelah halaman ujian terbuka agar browser tidak langsung keluar saat berpindah halaman.',
                                 confirmText: 'Mulai'
                             });
 
@@ -149,11 +133,8 @@
                             }
 
                             this.isStarting = true;
-                            await this.activateDesktopFullscreen();
-
-                            setTimeout(() => {
-                                window.location.href='{{ route('ujian.mengerjakan', $sesiPeserta->id) }}';
-                            }, 180);
+                            window.sessionStorage.setItem('ujian-pending-fullscreen', '1');
+                            window.location.href='{{ route('ujian.mengerjakan', $sesiPeserta->id) }}';
                         }
                     }">
                     <button type="button"

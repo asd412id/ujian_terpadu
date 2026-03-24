@@ -33,6 +33,8 @@ function ujianApp() {
         _syncRetries:    0,
         _maxRetries:     5,
         _retryTimer:     null,
+        _saveQueues:     {},
+        _saveSequence:   0,
 
         // Timer
         sisaWaktu:       0,
@@ -71,6 +73,8 @@ function ujianApp() {
         antiCurangDisabled:    false,
         _memoryFallbackAnswers: {},
         _ignoreFullscreenUntil: 0,
+        showStartFullscreenOverlay: false,
+        startFullscreenMessage: '',
 
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
@@ -277,14 +281,14 @@ function ujianApp() {
 
         // ===== ANTI-CHEAT SYSTEM =====
         initAntiCheat() {
-            // 1. Request fullscreen on init (desktop only — mobile is intentionally excluded)
+            // 1. Track fullscreen state
+            this.isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+
+            // 2. Handle desktop exam start without requesting fullscreen on the previous page.
             if (!this.isMobile) {
-                this.requestFullscreen();
+                this.handlePendingFullscreenStart();
                 this.ensureFullscreenOnStart();
             }
-
-            // 2. Track fullscreen state
-            this.isFullscreen = !!document.fullscreenElement;
 
             // 3. Fullscreen change listener (desktop only)
             if (!this.isMobile) {
@@ -367,7 +371,7 @@ function ujianApp() {
 
         handleWindowBlur() {
             // Only count if not caused by our own overlay
-            if (!this.showViolationOverlay && !this.showSubmitModal) {
+            if (!this.showViolationOverlay && !this.showSubmitModal && !this.showStartFullscreenOverlay) {
                 this.logCheating('tidak_fokus', { timestamp: Date.now() });
             }
         },
@@ -462,12 +466,48 @@ function ujianApp() {
             await this.requestFullscreen();
         },
 
+        handlePendingFullscreenStart() {
+            const pendingFullscreen = window.sessionStorage.getItem('ujian-pending-fullscreen') === '1';
+
+            if (!pendingFullscreen) {
+                if (!this.isFullscreen) {
+                    this.requestFullscreen();
+                }
+                return;
+            }
+
+            window.sessionStorage.removeItem('ujian-pending-fullscreen');
+            this.markIntentionalFullscreenExit(12000);
+            this.showStartFullscreenOverlay = true;
+            this.startFullscreenMessage = 'Klik tombol di bawah untuk masuk fullscreen dan mulai mengerjakan ujian.';
+        },
+
+        async enterExamFullscreen() {
+            this.startFullscreenMessage = 'Meminta izin fullscreen...';
+            const enteredFullscreen = await this.requestFullscreen();
+
+            if (enteredFullscreen) {
+                this.showStartFullscreenOverlay = false;
+                this.startFullscreenMessage = '';
+                return;
+            }
+
+            this.showStartFullscreenOverlay = true;
+            this.startFullscreenMessage = 'Browser menolak fullscreen otomatis. Klik lagi tombol fullscreen atau aktifkan izin fullscreen pada browser Anda.';
+        },
+
         ensureFullscreenOnStart() {
             const retryDelays = [250, 700, 1400];
 
             retryDelays.forEach((delay) => {
                 window.setTimeout(() => {
-                    if (this.isMobile || this.isFullscreen || document.fullscreenElement || document.webkitFullscreenElement) {
+                    if (
+                        this.isMobile ||
+                        this.isFullscreen ||
+                        this.showStartFullscreenOverlay ||
+                        document.fullscreenElement ||
+                        document.webkitFullscreenElement
+                    ) {
                         return;
                     }
 
@@ -684,6 +724,35 @@ function ujianApp() {
             return (this.answers[soalId]?.pg ?? []).includes(label);
         },
 
+        cloneJawabanData(jawabanData) {
+            return {
+                ...jawabanData,
+                pg: Array.isArray(jawabanData?.pg) ? [...jawabanData.pg] : jawabanData?.pg,
+                pasangan: jawabanData?.pasangan ? { ...jawabanData.pasangan } : jawabanData?.pasangan,
+                benarSalah: jawabanData?.benarSalah ? { ...jawabanData.benarSalah } : jawabanData?.benarSalah,
+            };
+        },
+
+        nextAnswerIdempotencyKey(soalId) {
+            this._saveSequence += 1;
+            return `${window.UJIAN_CONFIG.sesiPesertaId}-${soalId}-${Date.now()}-${this._saveSequence}`;
+        },
+
+        queueAnswerSave(soalId, saveOperation) {
+            const previousQueue = this._saveQueues[soalId] ?? Promise.resolve();
+            const nextQueue = previousQueue
+                .catch(() => {})
+                .then(saveOperation);
+
+            this._saveQueues[soalId] = nextQueue.finally(() => {
+                if (this._saveQueues[soalId] === nextQueue) {
+                    delete this._saveQueues[soalId];
+                }
+            });
+
+            return this._saveQueues[soalId];
+        },
+
         isAnswered(soalId) {
             return this.answers[soalId]?.terjawab ?? false;
         },
@@ -790,54 +859,55 @@ function ujianApp() {
 
         // ===== SAVE (IndexedDB + Server) =====
         async saveJawaban(soalId, jawabanData) {
-            const cfg            = window.UJIAN_CONFIG;
-            const idempotencyKey = `${cfg.sesiPesertaId}-${soalId}-${Date.now()}`;
+            const cfg = window.UJIAN_CONFIG;
+            const payload = this.cloneJawabanData(jawabanData);
+            const idempotencyKey = this.nextAnswerIdempotencyKey(soalId);
+            const updatedAt = Date.now();
 
-            // 1. Simpan ke IndexedDB (immediate, offline-safe)
+            // 1. Simpan ke IndexedDB lebih dulu dan serial per soal agar perubahan cepat tidak saling menimpa.
             this.isSaving = true;
+            this.syncedSoalIds.delete(soalId);
 
-            try {
-                const existing = await db.exam_answers
-                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                    .and(item => item.soalId === soalId)
-                    .first();
+            await this.queueAnswerSave(soalId, async () => {
+                try {
+                    const existing = await db.exam_answers
+                        .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                        .and(item => item.soalId === soalId)
+                        .first();
 
-                this.syncedSoalIds.delete(soalId);
-
-                const updatedAt = Date.now();
-
-                if (existing) {
-                    await db.exam_answers.update(existing.id, {
-                        jawaban:         jawabanData,
-                        synced:          false,
-                        idempotencyKey,
-                        updatedAt,
-                    });
-                } else {
-                    await db.exam_answers.add({
-                        sesiPesertaId: cfg.sesiPesertaId,
-                        soalId,
-                        jawaban:       jawabanData,
-                        synced:        false,
-                        idempotencyKey,
-                        updatedAt,
-                    });
+                    if (existing) {
+                        await db.exam_answers.update(existing.id, {
+                            jawaban: payload,
+                            synced: false,
+                            idempotencyKey,
+                            updatedAt,
+                        });
+                    } else {
+                        await db.exam_answers.add({
+                            sesiPesertaId: cfg.sesiPesertaId,
+                            soalId,
+                            jawaban: payload,
+                            synced: false,
+                            idempotencyKey,
+                            updatedAt,
+                        });
+                    }
+                } catch (idbErr) {
+                    // IndexedDB unavailable (private browsing, storage full, etc.)
+                    // Fallback: keep in-memory and force immediate server sync
+                    console.warn('[Save] IndexedDB write failed, using memory fallback:', idbErr.message);
+                    this._memoryFallbackAnswers = this._memoryFallbackAnswers || {};
+                    this._memoryFallbackAnswers[soalId] = { jawaban: payload, idempotencyKey, updatedAt };
                 }
-            } catch (idbErr) {
-                // IndexedDB unavailable (private browsing, storage full, etc.)
-                // Fallback: keep in-memory and force immediate server sync
-                console.warn('[Save] IndexedDB write failed, using memory fallback:', idbErr.message);
-                this._memoryFallbackAnswers = this._memoryFallbackAnswers || {};
-                this._memoryFallbackAnswers[soalId] = { jawaban: jawabanData, idempotencyKey, updatedAt: Date.now() };
-            }
+            });
 
-            this.lastSaved  = true;
-            this.isSaving   = false;
+            this.lastSaved = true;
+            this.isSaving = Object.keys(this._saveQueues).length > 0;
 
             // Recalculate pendingSync from IndexedDB (prevents drift)
             await this.recalcPendingSync();
 
-            // 2. Debounced sync ke server jika online (coalesce rapid clicks)
+            // 2. Debounced sync ke server jika online setelah jeda perubahan (coalesce rapid clicks)
             if (navigator.onLine) {
                 this.debouncedSync();
             }
@@ -870,6 +940,17 @@ function ujianApp() {
             } catch { /* ignore */ }
         },
 
+        async flushPendingAnswerWrites() {
+            const queues = Object.values(this._saveQueues);
+            if (queues.length === 0) {
+                this.isSaving = false;
+                return;
+            }
+
+            await Promise.allSettled(queues);
+            this.isSaving = Object.keys(this._saveQueues).length > 0;
+        },
+
         debouncedSync() {
             if (this._syncTimer) clearTimeout(this._syncTimer);
             this._syncTimer = setTimeout(() => this.syncToServer(), 800);
@@ -888,6 +969,8 @@ function ujianApp() {
         async syncToServer() {
             if (this.isSyncing) return;
             this.isSyncing = true;
+
+            await this.flushPendingAnswerWrites();
 
             const cfg     = window.UJIAN_CONFIG;
             let pending;
@@ -1113,6 +1196,8 @@ function ujianApp() {
             }, 35000);
 
             try {
+                await this.flushPendingAnswerWrites();
+
                 // Gather ALL answers from IndexedDB as safety net
                 let allAnswers = [];
                 try {
@@ -1290,8 +1375,12 @@ function ujianApp() {
                 } else if (el.webkitRequestFullscreen) {
                     await el.webkitRequestFullscreen();
                 }
+
+                this.isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+                return this.isFullscreen;
             } catch (error) {
                 console.warn('[Anti-Cheat] Fullscreen request blocked:', error?.message || error);
+                return false;
             }
         },
 
