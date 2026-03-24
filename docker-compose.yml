@@ -230,6 +230,7 @@ services:
   mariadb:
     image: mariadb:11.7
     container_name: ujian_mariadb
+    init: true
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set in .env}
