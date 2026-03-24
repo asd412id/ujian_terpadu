@@ -58,7 +58,10 @@ class UjianControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertViewIs('ujian.konfirmasi');
+        $response->assertSee('Perhatian sebelum memulai ujian');
         $response->assertSee('Pada perangkat <strong>desktop</strong>', false);
+        $response->assertSee('data-start-exam="true"', false);
+        $response->assertSee('activateDesktopFullscreen', false);
         $response->assertDontSee('ujian-skip-init-fullscreen');
     }
 

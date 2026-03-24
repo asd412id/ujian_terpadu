@@ -280,6 +280,7 @@ function ujianApp() {
             // 1. Request fullscreen on init (desktop only — mobile is intentionally excluded)
             if (!this.isMobile) {
                 this.requestFullscreen();
+                this.ensureFullscreenOnStart();
             }
 
             // 2. Track fullscreen state
@@ -459,6 +460,20 @@ function ujianApp() {
         async returnToFullscreen() {
             this.showViolationOverlay = false;
             await this.requestFullscreen();
+        },
+
+        ensureFullscreenOnStart() {
+            const retryDelays = [250, 700, 1400];
+
+            retryDelays.forEach((delay) => {
+                window.setTimeout(() => {
+                    if (this.isMobile || this.isFullscreen || document.fullscreenElement || document.webkitFullscreenElement) {
+                        return;
+                    }
+
+                    this.requestFullscreen();
+                }, delay);
+            });
         },
 
         async autoSubmitViolation() {
@@ -1266,12 +1281,17 @@ function ujianApp() {
             }
         },
 
-        requestFullscreen() {
+        async requestFullscreen() {
             const el = document.documentElement;
-            if (el.requestFullscreen) {
-                el.requestFullscreen().catch(() => {});
-            } else if (el.webkitRequestFullscreen) {
-                el.webkitRequestFullscreen();
+
+            try {
+                if (el.requestFullscreen) {
+                    await el.requestFullscreen();
+                } else if (el.webkitRequestFullscreen) {
+                    await el.webkitRequestFullscreen();
+                }
+            } catch (error) {
+                console.warn('[Anti-Cheat] Fullscreen request blocked:', error?.message || error);
             }
         },
 
