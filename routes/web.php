@@ -40,7 +40,7 @@ Route::get('/', function () {
 // =============================================================
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
-    Route::post('/login', [LoginController::class, 'login'])->name('login.post');
+    Route::post('/login', [LoginController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
 });
 Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
@@ -58,7 +58,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 Route::prefix('ujian')->name('ujian.')->group(function () {
     Route::middleware('guest:peserta')->group(function () {
         Route::get('/login', [PesertaLoginController::class, 'showLogin'])->name('login');
-        Route::post('/login', [PesertaLoginController::class, 'login'])->name('login.post');
+        Route::post('/login', [PesertaLoginController::class, 'login'])->name('login.post')->middleware('throttle:10,1');
     });
     Route::post('/logout', [PesertaLoginController::class, 'logout'])
         ->middleware('peserta')

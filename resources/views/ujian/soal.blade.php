@@ -45,6 +45,7 @@
             submitUrl:      "{{ route('api.ujian.submit', $sesiPeserta->token_ujian) }}",
             logCheatingUrl: "{{ route('api.ujian.log-cheating') }}",
             antiCurang:     {{ $paket->anti_curang ? 'true' : 'false' }},
+            maxViolations:  {{ $maxViolations }},
             soalList:       @json($soalListJs),
             jawabanExisting: @json($jawabanExistingJs),
         };

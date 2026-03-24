@@ -61,7 +61,7 @@ class GradingRepository
             $query->whereHas('sesiPeserta.peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
         }
 
-        $perPage = $filters['per_page'] ?? 15;
+        $perPage = min((int) ($filters['per_page'] ?? 15), 200);
         return $query->latest()->paginate($perPage);
     }
 

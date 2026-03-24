@@ -54,6 +54,38 @@ class JawabanService
 
         $isAlreadySubmitted = in_array($sesiPeserta->status, ['submit', 'dinilai']);
 
+        // C1 fix: Reject new answers if already submitted/graded (only allow idempotent re-sync)
+        // Late sync is only allowed within 5 minutes of submit_at
+        if ($isAlreadySubmitted) {
+            $submitAt = $sesiPeserta->submit_at;
+            $lateSyncWindowSeconds = 300; // 5 minutes
+            if ($submitAt && now()->diffInSeconds($submitAt, false) < -$lateSyncWindowSeconds) {
+                return [
+                    'synced'      => 0,
+                    'skipped'     => count($answers),
+                    'errors'      => ['Late sync window expired'],
+                    'server_time' => now()->timestamp,
+                ];
+            }
+        }
+
+        // H1 fix: Reject answers if exam time has expired (active sessions only)
+        if (!$isAlreadySubmitted && $sesiPeserta->sisa_waktu_detik <= 0) {
+            return [
+                'synced'      => 0,
+                'skipped'     => count($answers),
+                'errors'      => ['Waktu ujian telah habis'],
+                'server_time' => now()->timestamp,
+            ];
+        }
+
+        // H3 fix: Validate soal_ids belong to the assigned paket
+        $paketSoalIds = $sesiPeserta->sesi->paket->soal()->pluck('soal.id')->toArray();
+        $answers = array_filter($answers, function ($ans) use ($paketSoalIds) {
+            return in_array($ans['soal_id'] ?? '', $paketSoalIds);
+        });
+        $answers = array_values($answers);
+
         $errors  = [];
         $synced  = 0;
         $skipped = 0;
@@ -162,12 +194,15 @@ class JawabanService
     }
 
     /**
-     * Update a specific jawaban.
+     * Update a specific jawaban (admin grading only — not exposed to students).
      */
     public function updateJawaban(string $jawabanId, array $data): mixed
     {
         $jawaban = $this->repository->findOrFail($jawabanId);
-        $jawaban->update($data);
+        // Only allow grading-related fields to be updated
+        $allowedFields = ['skor_manual', 'catatan_penilai'];
+        $filteredData = array_intersect_key($data, array_flip($allowedFields));
+        $jawaban->update($filteredData);
         return $jawaban->fresh();
     }
 

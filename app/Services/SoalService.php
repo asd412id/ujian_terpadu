@@ -403,6 +403,10 @@ class SoalService
             $kiri  = $pair['kiri'] ?? null;
             $kanan = $pair['kanan'] ?? null;
 
+            // H4 fix: Sanitize menjodohkan text to prevent stored XSS
+            if ($kiri) $kiri = $this->normalizeEditorContent($kiri);
+            if ($kanan) $kanan = $this->normalizeEditorContent($kanan);
+
             $kiriGambar  = null;
             $kananGambar = null;
 

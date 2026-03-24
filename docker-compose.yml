@@ -232,10 +232,10 @@ services:
     container_name: ujian_mariadb
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set in .env}
       MARIADB_DATABASE: ${DB_DATABASE:-ujian_terpadu}
       MARIADB_USER: ${DB_USERNAME:-ujian_user}
-      MARIADB_PASSWORD: ${DB_PASSWORD:-ujian_secret}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
@@ -270,10 +270,11 @@ services:
       --tcp-backlog 511
       --timeout 300
       --tcp-keepalive 60
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -50,7 +50,11 @@ class ImportPesertaJob implements ShouldQueue
             $source   = $this->importJob->meta['source'] ?? 'sekolah';
             $isDinas  = $source === 'dinas';
             $path     = Storage::disk('local')->path($this->importJob->filepath);
-            $rows     = Excel::toArray([], $path)[0] ?? [];
+            // M5 fix: Disable formula evaluation to prevent Excel formula injection
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($path);
+            $rows = $spreadsheet->getActiveSheet()->toArray(null, true, false, false) ?? [];
 
             // Auto-detect header row: scan the first 10 rows to find the expected headers
             // This handles files with title/merged rows before the actual header

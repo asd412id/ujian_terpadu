@@ -56,7 +56,8 @@ class JawabanController extends Controller
         } catch (ValidationException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Gagal menyimpan jawaban: ' . $e->getMessage()], 500);
+            report($e);
+            return response()->json(['error' => 'Gagal menyimpan jawaban. Silakan coba lagi.'], 500);
         }
     }
 
@@ -100,7 +101,8 @@ class JawabanController extends Controller
 
             return response()->json($result);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            report($e);
+            return response()->json(['error' => 'Gagal submit ujian. Silakan coba lagi.'], 500);
         }
     }
 

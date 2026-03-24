@@ -126,7 +126,7 @@ class MonitoringRepository
             $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
         }
 
-        $perPage = $filters['per_page'] ?? 50;
+        $perPage = min((int) ($filters['per_page'] ?? 50), 200);
         return $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
             ->paginate($perPage);
     }
@@ -269,7 +269,7 @@ class MonitoringRepository
             }
         }
 
-        $perPage = $filters['per_page'] ?? 50;
+        $perPage = min((int) ($filters['per_page'] ?? 50), 200);
         return $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
             ->paginate($perPage);
     }

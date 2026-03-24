@@ -46,7 +46,11 @@ class ImportSekolahJob implements ShouldQueue
         try {
             $mode  = $this->importJob->meta['mode'] ?? 'update';
             $path  = Storage::disk('local')->path($this->importJob->filepath);
-            $rows  = Excel::toArray([], $path)[0] ?? [];
+            // M5 fix: Disable formula evaluation to prevent Excel formula injection
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($path);
+            $rows  = $spreadsheet->getActiveSheet()->toArray(null, true, false, false) ?? [];
 
             $headerRow = array_shift($rows);
             $this->validateHeaders($headerRow);

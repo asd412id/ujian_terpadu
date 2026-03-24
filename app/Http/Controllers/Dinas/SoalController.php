@@ -253,64 +253,78 @@ class SoalController extends Controller
             return back()->withErrors(['file' => 'Gagal membuka file ZIP.']);
         }
 
-        $zip->extractTo($tmpDir);
-        $zip->close();
-
-        // Find .docx file in extracted folder
-        $docxPath = null;
-        $imagesPath = null;
-
-        $files = glob($tmpDir . '/*.docx');
-        if (empty($files)) {
-            // Check one level deep
-            $files = glob($tmpDir . '/*/*.docx');
-        }
-
-        if (!empty($files)) {
-            $docxPath = $files[0];
-        }
-
-        if (!$docxPath) {
-            // Cleanup
-            $this->cleanupTempDir($tmpDir);
-            return back()->withErrors(['file' => 'File ZIP harus berisi file Word (.docx).']);
-        }
-
-        // Find gambar folder
-        foreach (['gambar', 'images', 'img'] as $folder) {
-            $candidate = dirname($docxPath) . '/' . $folder;
-            if (is_dir($candidate)) {
-                $imagesPath = $candidate;
-                break;
+        // C2 fix: Validate ZIP entries for path traversal before extraction
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
+                $zip->close();
+                return back()->withErrors(['file' => 'File ZIP mengandung path yang tidak valid.']);
             }
         }
 
-        // If no subfolder found, check if images are alongside the docx
-        if (!$imagesPath) {
-            $imagesPath = dirname($docxPath);
+        $zip->extractTo($tmpDir);
+        $zip->close();
+
+        // M6 fix: Wrap in try/finally to ensure temp dir cleanup on error
+        try {
+            // Find .docx file in extracted folder
+            $docxPath = null;
+            $imagesPath = null;
+
+            $files = glob($tmpDir . '/*.docx');
+            if (empty($files)) {
+                // Check one level deep
+                $files = glob($tmpDir . '/*/*.docx');
+            }
+
+            if (!empty($files)) {
+                $docxPath = $files[0];
+            }
+
+            if (!$docxPath) {
+                $this->cleanupTempDir($tmpDir);
+                return back()->withErrors(['file' => 'File ZIP harus berisi file Word (.docx).']);
+            }
+
+            // Find gambar folder
+            foreach (['gambar', 'images', 'img'] as $folder) {
+                $candidate = dirname($docxPath) . '/' . $folder;
+                if (is_dir($candidate)) {
+                    $imagesPath = $candidate;
+                    break;
+                }
+            }
+
+            // If no subfolder found, check if images are alongside the docx
+            if (!$imagesPath) {
+                $imagesPath = dirname($docxPath);
+            }
+
+            // Store docx to local disk for the job
+            $storedPath = 'imports/soal/' . Str::uuid() . '.docx';
+            Storage::disk('local')->put($storedPath, file_get_contents($docxPath));
+
+            $importJob = $this->soalService->createImportJob([
+                'tipe'       => 'soal_word',
+                'filename'   => $zipFile->getClientOriginalName(),
+                'filepath'   => $storedPath,
+                'status'     => 'pending',
+                'created_by' => auth()->id(),
+                'meta'       => [
+                    'kategori_soal_id' => $request->kategori_soal_id,
+                ],
+            ]);
+
+            ImportSoalWordJob::dispatch($importJob, $imagesPath);
+
+            return response()->json([
+                'message' => 'File ZIP berhasil diupload. Import sedang diproses.',
+                'job_id'  => $importJob->id,
+            ]);
+        } catch (\Exception $e) {
+            $this->cleanupTempDir($tmpDir);
+            throw $e;
         }
-
-        // Store docx to local disk for the job
-        $storedPath = 'imports/soal/' . Str::uuid() . '.docx';
-        Storage::disk('local')->put($storedPath, file_get_contents($docxPath));
-
-        $importJob = $this->soalService->createImportJob([
-            'tipe'       => 'soal_word',
-            'filename'   => $zipFile->getClientOriginalName(),
-            'filepath'   => $storedPath,
-            'status'     => 'pending',
-            'created_by' => auth()->id(),
-            'meta'       => [
-                'kategori_soal_id' => $request->kategori_soal_id,
-            ],
-        ]);
-
-        ImportSoalWordJob::dispatch($importJob, $imagesPath);
-
-        return response()->json([
-            'message' => 'File ZIP berhasil diupload. Import sedang diproses.',
-            'job_id'  => $importJob->id,
-        ]);
     }
 
     private function cleanupTempDir(string $dir): void
@@ -328,6 +342,8 @@ class SoalController extends Controller
 
     public function importStatus(ImportJob $job)
     {
+        abort_unless($job->created_by === auth()->id(), 403);
+
         return response()->json([
             'status'         => $job->status,
             'total_rows'     => $job->total_rows,

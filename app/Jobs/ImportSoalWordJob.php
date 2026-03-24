@@ -1182,14 +1182,22 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
     {
         if (!$this->imagesPath) return null;
 
+        // C8 fix: Sanitize filename to prevent path traversal and restrict extensions
+        $filename = basename($filename);
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION) ?: 'png');
+        if (!in_array($ext, $allowedExtensions)) return null;
+
         $sourcePath = rtrim($this->imagesPath, '/\\') . '/' . $filename;
 
-        if (!file_exists($sourcePath)) return null;
+        // Verify resolved path stays within images directory
+        $realSource = realpath($sourcePath);
+        $realImagesPath = realpath($this->imagesPath);
+        if (!$realSource || !$realImagesPath || !str_starts_with($realSource, $realImagesPath)) return null;
 
-        $ext  = pathinfo($filename, PATHINFO_EXTENSION) ?: 'png';
         $name = 'soal/gambar/' . Str::uuid() . '.' . $ext;
 
-        Storage::disk('public')->put($name, file_get_contents($sourcePath));
+        Storage::disk('public')->put($name, file_get_contents($realSource));
 
         return $name;
     }

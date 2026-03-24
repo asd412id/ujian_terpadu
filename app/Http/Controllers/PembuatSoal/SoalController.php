@@ -252,58 +252,72 @@ class SoalController extends Controller
             return back()->withErrors(['file' => 'Gagal membuka file ZIP.']);
         }
 
-        $zip->extractTo($tmpDir);
-        $zip->close();
-
-        $docxPath = null;
-        $imagesPath = null;
-
-        $files = glob($tmpDir . '/*.docx');
-        if (empty($files)) {
-            $files = glob($tmpDir . '/*/*.docx');
-        }
-
-        if (!empty($files)) {
-            $docxPath = $files[0];
-        }
-
-        if (!$docxPath) {
-            $this->cleanupTempDir($tmpDir);
-            return back()->withErrors(['file' => 'File ZIP harus berisi file Word (.docx).']);
-        }
-
-        foreach (['gambar', 'images', 'img'] as $folder) {
-            $candidate = dirname($docxPath) . '/' . $folder;
-            if (is_dir($candidate)) {
-                $imagesPath = $candidate;
-                break;
+        // C2 fix: Validate ZIP entries for path traversal before extraction
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
+                $zip->close();
+                return back()->withErrors(['file' => 'File ZIP mengandung path yang tidak valid.']);
             }
         }
 
-        if (!$imagesPath) {
-            $imagesPath = dirname($docxPath);
+        $zip->extractTo($tmpDir);
+        $zip->close();
+
+        try {
+            $docxPath = null;
+            $imagesPath = null;
+
+            $files = glob($tmpDir . '/*.docx');
+            if (empty($files)) {
+                $files = glob($tmpDir . '/*/*.docx');
+            }
+
+            if (!empty($files)) {
+                $docxPath = $files[0];
+            }
+
+            if (!$docxPath) {
+                $this->cleanupTempDir($tmpDir);
+                return back()->withErrors(['file' => 'File ZIP harus berisi file Word (.docx).']);
+            }
+
+            foreach (['gambar', 'images', 'img'] as $folder) {
+                $candidate = dirname($docxPath) . '/' . $folder;
+                if (is_dir($candidate)) {
+                    $imagesPath = $candidate;
+                    break;
+                }
+            }
+
+            if (!$imagesPath) {
+                $imagesPath = dirname($docxPath);
+            }
+
+            $storedPath = 'imports/soal/' . Str::uuid() . '.docx';
+            Storage::disk('local')->put($storedPath, file_get_contents($docxPath));
+
+            $importJob = $this->soalService->createImportJob([
+                'tipe'       => 'soal_word',
+                'filename'   => $zipFile->getClientOriginalName(),
+                'filepath'   => $storedPath,
+                'status'     => 'pending',
+                'created_by' => Auth::id(),
+                'meta'       => [
+                    'kategori_soal_id' => $request->kategori_soal_id,
+                ],
+            ]);
+
+            ImportSoalWordJob::dispatch($importJob, $imagesPath);
+
+            return response()->json([
+                'message' => 'File ZIP berhasil diupload. Import sedang diproses.',
+                'job_id'  => $importJob->id,
+            ]);
+        } catch (\Exception $e) {
+            $this->cleanupTempDir($tmpDir);
+            throw $e;
         }
-
-        $storedPath = 'imports/soal/' . Str::uuid() . '.docx';
-        Storage::disk('local')->put($storedPath, file_get_contents($docxPath));
-
-        $importJob = $this->soalService->createImportJob([
-            'tipe'       => 'soal_word',
-            'filename'   => $zipFile->getClientOriginalName(),
-            'filepath'   => $storedPath,
-            'status'     => 'pending',
-            'created_by' => Auth::id(),
-            'meta'       => [
-                'kategori_soal_id' => $request->kategori_soal_id,
-            ],
-        ]);
-
-        ImportSoalWordJob::dispatch($importJob, $imagesPath);
-
-        return response()->json([
-            'message' => 'File ZIP berhasil diupload. Import sedang diproses.',
-            'job_id'  => $importJob->id,
-        ]);
     }
 
     private function cleanupTempDir(string $dir): void

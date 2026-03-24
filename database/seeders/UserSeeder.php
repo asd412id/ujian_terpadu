@@ -11,6 +11,11 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command?->warn('UserSeeder skipped in production environment.');
+            return;
+        }
+
         // Super Admin Dinas
         User::firstOrCreate(
             ['email' => 'admin@dinas.test'],

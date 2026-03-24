@@ -164,6 +164,8 @@ class PesertaController extends Controller
 
     public function importStatus(ImportJob $job)
     {
+        abort_unless($job->created_by === auth()->id(), 403);
+
         return response()->json([
             'status'         => $job->status,
             'total_rows'     => $job->total_rows,

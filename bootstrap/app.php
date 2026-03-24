@@ -17,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('soal:cleanup-orphan-images')->dailyAt('03:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust all proxies (Cloudflare Tunnel forwards requests via HTTP internally)
-        $middleware->trustProxies(at: '*');
+        // Trust proxies (Docker internal network + Cloudflare)
+        // In production, set TRUSTED_PROXIES in .env to specific CIDR ranges
+        $middleware->trustProxies(at: env('TRUSTED_PROXIES', '*'));
 
         $middleware->alias([
             'role'            => \App\Http\Middleware\RoleMiddleware::class,

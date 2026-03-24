@@ -55,7 +55,7 @@ function ujianApp() {
 
         // Anti-cheat
         violationCount:        0,
-        maxViolations:         3,
+        maxViolations:         (window.UJIAN_CONFIG?.maxViolations || 3),
         showViolationOverlay:  false,
         violationMessage:      '',
         violationType:         '',

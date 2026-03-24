@@ -110,7 +110,7 @@ class LaporanRepository
             }
         }
 
-        $perPage = $filters['per_page'] ?? 30;
+        $perPage = min((int) ($filters['per_page'] ?? 30), 200);
         return $query->latest('updated_at')->paginate($perPage);
     }
 

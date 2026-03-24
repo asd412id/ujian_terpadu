@@ -99,9 +99,10 @@ class UjianController extends Controller
         ])->values()->all();
 
         $waktuSelesaiSesi = $sesiPeserta->sesi->waktu_selesai?->timestamp;
+        $maxViolations = config('ujian.anti_cheat.max_violations', 3);
 
         return view('ujian.soal', compact(
-            'peserta', 'sesiPeserta', 'paket', 'soalList', 'soalListJs', 'jawabanExistingJs', 'sisaWaktu', 'waktuSelesaiSesi'
+            'peserta', 'sesiPeserta', 'paket', 'soalList', 'soalListJs', 'jawabanExistingJs', 'sisaWaktu', 'waktuSelesaiSesi', 'maxViolations'
         ));
     }
 
