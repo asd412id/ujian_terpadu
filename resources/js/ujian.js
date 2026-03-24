@@ -35,6 +35,7 @@ function ujianApp() {
         _retryTimer:     null,
         _saveQueues:     {},
         _saveSequence:   0,
+        _onlineSyncTimer: null,
 
         // Timer
         sisaWaktu:       0,
@@ -75,6 +76,7 @@ function ujianApp() {
         _ignoreFullscreenUntil: 0,
         showStartFullscreenOverlay: false,
         startFullscreenMessage: '',
+        _navigateOverride: null,
 
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
@@ -1183,6 +1185,11 @@ function ujianApp() {
             const selesaiUrl = '/ujian/' + cfg.sesiPesertaId + '/selesai';
 
             const navigateTo = (url) => {
+                if (typeof this._navigateOverride === 'function') {
+                    this._navigateOverride(url);
+                    return;
+                }
+
                 // Force navigation — use replace to avoid back-button returning to exam
                 try { window.location.replace(url); } catch (e) { window.location.href = url; }
                 // Fallback: if still here after 3s, force reload
@@ -1233,7 +1240,7 @@ function ujianApp() {
                 this.markIntentionalFullscreenExit();
 
                 if (!navigator.onLine) {
-                    await this.queueOfflineSubmit(cfg);
+                    await this.queueOfflineSubmit(cfg, allAnswers);
                     clearTimeout(submitSafetyTimer);
                     return navigateTo(selesaiUrl);
                 }
@@ -1261,6 +1268,10 @@ function ujianApp() {
                         let data = {};
                         try { data = await res.json(); } catch (e) { /* non-JSON response */ }
 
+                        if (data.accepted === false || data.error) {
+                            throw new Error(data.error || data.message || 'Submit ditolak server');
+                        }
+
                         // Clear IndexedDB after successful submit
                         try {
                             await db.exam_answers
@@ -1271,14 +1282,14 @@ function ujianApp() {
                         navigateTo(data.redirect ?? selesaiUrl);
                     } else {
                         console.warn('[Submit] Server error:', res.status);
-                        await this.queueOfflineSubmit(cfg);
+                        await this.queueOfflineSubmit(cfg, allAnswers);
                         clearTimeout(submitSafetyTimer);
                         navigateTo(selesaiUrl);
                     }
                 } catch (err) {
                     clearTimeout(timeoutId);
                     console.warn('[Submit] Fetch failed:', err.message);
-                    await this.queueOfflineSubmit(cfg);
+                    await this.queueOfflineSubmit(cfg, allAnswers);
                     clearTimeout(submitSafetyTimer);
                     navigateTo(selesaiUrl);
                 }
@@ -1297,14 +1308,16 @@ function ujianApp() {
             await this.doSubmit();
         },
 
-        async queueOfflineSubmit(cfg) {
-            // Tag semua jawaban sebagai perlu submit + store token for selesai page sync
+        async queueOfflineSubmit(cfg, answersSnapshot = []) {
+            // Tag semua jawaban sebagai perlu submit + simpan snapshot untuk recovery saat offline/jaringan lambat.
             try {
                 await db.exam_state.put({
                     sesiPesertaId:  cfg.sesiPesertaId,
                     currentIndex:   this.currentIndex,
                     tandaiList:     this.tandaiList,
                     pendingSubmit:  true,
+                    pendingSubmitPayload: answersSnapshot,
+                    pendingSubmitQueuedAt: Date.now(),
                     sesiToken:      cfg.sesiToken,
                     lastSyncAt:     Date.now(),
                 });
@@ -1388,10 +1401,13 @@ function ujianApp() {
         onOnline() {
             this.isOffline = false;
             this._syncRetries = 0;
-            this.recalcPendingSync().then(() => this.syncToServer());
-            // Flush any pending cheating logs
-            this.flushCheatingQueue();
+            if (this._onlineSyncTimer) clearTimeout(this._onlineSyncTimer);
+            this._onlineSyncTimer = setTimeout(() => {
+                this.recalcPendingSync().then(() => this.syncToServer());
+                this.flushCheatingQueue();
+            }, 1200);
         },
+
 
         onOffline() {
             this.isOffline = true;

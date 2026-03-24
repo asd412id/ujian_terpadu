@@ -163,7 +163,7 @@ async function syncPendingAnswers() {
             dbReq.onerror   = () => reject(dbReq.error);
         });
 
-        // Read pending answers
+        // Read pending answers + submit state
         const tx = idb.transaction(['exam_answers', 'exam_state'], 'readonly');
         const answerStore = tx.objectStore('exam_answers');
         const stateStore  = tx.objectStore('exam_state');
@@ -173,15 +173,27 @@ async function syncPendingAnswers() {
             req.onsuccess = () => resolve(req.result);
             req.onerror   = () => reject(req.error);
         });
+        const allStates = await new Promise((resolve, reject) => {
+            const req = stateStore.getAll();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror   = () => reject(req.error);
+        });
 
         const pending = allAnswers.filter(a => !a.synced);
-        if (pending.length === 0) { idb.close(); return; }
 
         // Group by sesiPesertaId
         const bySesi = {};
         pending.forEach(a => {
             if (!bySesi[a.sesiPesertaId]) bySesi[a.sesiPesertaId] = [];
             bySesi[a.sesiPesertaId].push(a);
+        });
+        allStates.forEach((state) => {
+            if (!state?.sesiPesertaId) return;
+            const hasPendingSubmit = Boolean(state.pendingSubmit)
+                || (Array.isArray(state.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
+            if (hasPendingSubmit && !bySesi[state.sesiPesertaId]) {
+                bySesi[state.sesiPesertaId] = [];
+            }
         });
 
         for (const [sesiPesertaId, answers] of Object.entries(bySesi)) {
@@ -201,18 +213,28 @@ async function syncPendingAnswers() {
                 idempotency_key: item.idempotencyKey,
                 client_timestamp: item.updatedAt,
             }));
+            const pendingSubmitSnapshot = Array.isArray(state?.pendingSubmitPayload)
+                ? state.pendingSubmitPayload.filter(item => item?.soal_id && item?.jawaban !== null)
+                : [];
+            const answersToSync = formattedAnswers.length > 0 ? formattedAnswers : pendingSubmitSnapshot;
+
+            if (answersToSync.length === 0 && !state?.pendingSubmit) {
+                continue;
+            }
 
             const res = await fetch('/api/ujian/sync-jawaban', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({
                     sesi_token: sesiToken,
-                    answers: formattedAnswers,
+                    answers: answersToSync,
                     tandai_list: state?.tandaiList ?? [],
+                    final_submit: Boolean(state?.pendingSubmit),
                 }),
             });
+            const data = await res.json().catch(() => ({}));
 
-            if (res.ok) {
+            if (res.ok && data.accepted !== false) {
                 // Mark synced in IndexedDB only if the stored row still matches the synced idempotency key
                 const writeTx = idb.transaction('exam_answers', 'readwrite');
                 const writeStore = writeTx.objectStore('exam_answers');
@@ -234,11 +256,27 @@ async function syncPendingAnswers() {
 
                 // Submit if pending
                 if (state?.pendingSubmit) {
-                    await fetch('/api/ujian/submit/' + sesiToken, {
+                    const submitRes = await fetch('/api/ujian/submit/' + sesiToken, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                         body: JSON.stringify({ sesi_token: sesiToken }),
                     });
+                    const submitData = await submitRes.json().catch(() => ({}));
+                    if (!submitRes.ok || submitData.error) {
+                        throw new Error(submitData.error || submitData.message || `Submit returned ${submitRes.status}`);
+                    }
+
+                    const stateWriteTx = idb.transaction('exam_state', 'readwrite');
+                    const stateWriteStore = stateWriteTx.objectStore('exam_state');
+                    const nextState = {
+                        ...(state || {}),
+                        sesiPesertaId,
+                        pendingSubmit: false,
+                        pendingSubmitPayload: null,
+                        pendingSubmitQueuedAt: null,
+                    };
+                    stateWriteStore.put(nextState);
+                    await new Promise((resolve) => { stateWriteTx.oncomplete = resolve; });
                 }
             }
         }

@@ -280,6 +280,7 @@ function selesaiApp() {
         _db: null,
         _retryTimer: null,
         _nilaiPollTimer: null,
+        _onlineSyncTimer: null,
         terjawab: window.SELESAI_CONFIG.serverTerjawab,
         ragu: window.SELESAI_CONFIG.serverRagu,
         kosong: window.SELESAI_CONFIG.serverKosong,
@@ -304,7 +305,12 @@ function selesaiApp() {
         },
 
         async init() {
-            window.addEventListener('online',  () => { this.isOnline = true; this.syncRetries = 0; this.trySyncPending(); });
+            window.addEventListener('online',  () => {
+                this.isOnline = true;
+                this.syncRetries = 0;
+                if (this._onlineSyncTimer) clearTimeout(this._onlineSyncTimer);
+                this._onlineSyncTimer = setTimeout(() => this.trySyncPending(), 1200);
+            });
             window.addEventListener('offline', () => this.isOnline = false);
 
             // Listen for SW trigger
@@ -408,7 +414,10 @@ function selesaiApp() {
                     .where('sesiPesertaId').equals(cfg.sesiPesertaId)
                     .and(a => !a.synced)
                     .count();
-                this.hasPendingSync = pending > 0;
+                const state = await db.exam_state.get(cfg.sesiPesertaId);
+                const hasPendingSubmit = Boolean(state?.pendingSubmit)
+                    || (Array.isArray(state?.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
+                this.hasPendingSync = pending > 0 || hasPendingSubmit;
             } catch (e) {
                 console.warn('[Selesai] checkPendingSync error:', e.message);
             }
@@ -439,13 +448,16 @@ function selesaiApp() {
                     .where('sesiPesertaId').equals(cfg.sesiPesertaId)
                     .and(a => !a.synced)
                     .toArray();
-                if (pending.length === 0) {
+                const state = await db.exam_state.get(cfg.sesiPesertaId);
+                const pendingSubmitSnapshot = Array.isArray(state?.pendingSubmitPayload)
+                    ? state.pendingSubmitPayload
+                    : [];
+
+                if (pending.length === 0 && !state?.pendingSubmit) {
                     this.hasPendingSync = false;
                     this.isSyncing = false;
                     return;
                 }
-
-                const state = await db.exam_state.get(cfg.sesiPesertaId);
 
                 const formattedAnswers = pending.map(item => ({
                     soal_id:         item.soalId,
@@ -454,9 +466,19 @@ function selesaiApp() {
                     client_timestamp: item.updatedAt,
                 }));
 
+                const fallbackAnswers = pending.length === 0
+                    ? pendingSubmitSnapshot.filter(item => item?.soal_id && item?.jawaban !== null)
+                    : [];
+                const answersToSync = pending.length > 0 ? formattedAnswers : fallbackAnswers;
+
                 const sesiToken = window.SELESAI_CONFIG?.sesiToken || state?.sesiToken;
                 if (!sesiToken) {
                     console.warn('[Selesai] No sesi token for', cfg.sesiPesertaId);
+                    return;
+                }
+
+                if (answersToSync.length === 0 && !state?.pendingSubmit) {
+                    this.hasPendingSync = false;
                     return;
                 }
 
@@ -470,7 +492,7 @@ function selesaiApp() {
                     body: JSON.stringify({
                         sesi_token: sesiToken,
                         final_submit: true,
-                        answers: formattedAnswers,
+                        answers: answersToSync,
                         tandai_list: state?.tandaiList ?? [],
                     }),
                 });
@@ -487,18 +509,29 @@ function selesaiApp() {
                         const submitCtrl = new AbortController();
                         const submitTimeout = setTimeout(() => submitCtrl.abort(), 20000);
                         try {
-                            await fetch('/api/ujian/submit/' + sesiToken, {
+                            const submitRes = await fetch('/api/ujian/submit/' + sesiToken, {
                                 method: 'POST',
                                 signal: submitCtrl.signal,
                                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                                 body: JSON.stringify({ sesi_token: sesiToken }),
                             });
                             clearTimeout(submitTimeout);
+
+                            const submitData = await submitRes.json().catch(() => ({}));
+                            if (!submitRes.ok || submitData.error) {
+                                throw new Error(submitData.error || submitData.message || `Submit returned ${submitRes.status}`);
+                            }
+
+                            await db.exam_state.update(cfg.sesiPesertaId, {
+                                pendingSubmit: false,
+                                pendingSubmitPayload: null,
+                                pendingSubmitQueuedAt: null,
+                            });
                         } catch (submitErr) {
                             clearTimeout(submitTimeout);
                             console.warn('[Selesai] Submit fetch failed:', submitErr.message);
+                            throw submitErr;
                         }
-                        await db.exam_state.update(cfg.sesiPesertaId, { pendingSubmit: false });
                     }
 
                     await this.checkPendingSync();
