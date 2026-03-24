@@ -24,12 +24,13 @@ class JawabanController extends Controller
             'sesi_token'         => 'required|string|size:64',
             'answers'            => 'required|array|max:200',
             'answers.*.soal_id'  => 'required|string',
-            'answers.*.jawaban'  => 'required',
+            'answers.*.jawaban'  => 'present',
             'answers.*.idempotency_key' => 'required|string|max:128',
             'answers.*.client_timestamp' => 'nullable|integer',
             'soal_ditandai'      => 'nullable|integer|min:0',
             'tandai_list'        => 'nullable|array',
             'tandai_list.*'      => 'string',
+            'final_submit'       => 'nullable|boolean',
         ]);
 
         // Bulk soal_id validation (1 query instead of N)
@@ -49,10 +50,11 @@ class JawabanController extends Controller
                     'ip_address'     => $request->ip(),
                     'soal_ditandai'  => $data['soal_ditandai'] ?? null,
                     'tandai_list'    => $data['tandai_list'] ?? null,
-                ]
+                ],
+                isFinalSubmit: (bool) ($data['final_submit'] ?? false),
             );
 
-            return response()->json($result);
+            return response()->json($result, ($result['accepted'] ?? true) ? 200 : 422);
         } catch (ValidationException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Exception $e) {

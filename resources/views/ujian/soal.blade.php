@@ -36,6 +36,7 @@
             sesiPesertaId:  "{{ $sesiPeserta->id }}",
             paketId:        "{{ $paket->id }}",
             sisaWaktuDetik: {{ $sisaWaktu }},
+            serverTimestamp: {{ now()->timestamp }},
             mulaiAt:        {{ $sesiPeserta->mulai_at?->timestamp ?? 'null' }},
             durasiMenit:    {{ $paket->durasi_menit }},
             waktuSelesaiSesi: {{ $waktuSelesaiSesi ?? 'null' }},
@@ -342,7 +343,7 @@
                                     Pasangkan setiap item di kolom kiri dengan kolom kanan yang sesuai:
                                 </p>
                                 <div class="space-y-3">
-                                    @foreach($soal['pasangan'] as $i => $pas)
+                                    @foreach($soal['pasangan'] as $pas)
                                     <div class="flex items-center gap-3">
                                         <div class="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm">
                                             @if($pas['kiri_gambar'])
@@ -355,20 +356,19 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                         </svg>
                                         <div class="flex-1">
-                                            <select @change="savePasangan('{{ $soal['id'] }}', {{ $i }}, $event.target.value)"
+                                            <select @change="savePasangan('{{ $soal['id'] }}', '{{ $pas['id'] }}', $event.target.value)"
                                                     class="form-input text-sm">
                                                 <option value="">— Pilih —</option>
-                                                @foreach($soal['pasangan'] as $j => $opt)
-                                                <option value="{{ $j }}"
-                                                        :selected="getPasanganJawaban('{{ $soal['id'] }}', {{ $i }}) === {{ $j }}">
+                                                @foreach($soal['pasangan'] as $opt)
+                                                <option value="{{ $opt['id'] }}"
+                                                        :selected="getPasanganJawaban('{{ $soal['id'] }}', '{{ $pas['id'] }}') === '{{ $opt['id'] }}'">
                                                     {{ $opt['kanan_teks'] }}
                                                 </option>
                                                 @endforeach
                                             </select>
-                                            @php $selectedKanan = null; @endphp
-                                            @foreach($soal['pasangan'] as $j => $opt)
+                                            @foreach($soal['pasangan'] as $opt)
                                                 @if(!empty($opt['kanan_gambar']))
-                                                <template x-if="getPasanganJawaban('{{ $soal['id'] }}', {{ $i }}) === {{ $j }}">
+                                                <template x-if="getPasanganJawaban('{{ $soal['id'] }}', '{{ $pas['id'] }}') === '{{ $opt['id'] }}'">
                                                     <img src="{{ asset('storage/'.$opt['kanan_gambar']) }}" class="mt-1 max-h-16 object-contain rounded border" alt="">
                                                 </template>
                                                 @endif

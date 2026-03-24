@@ -90,7 +90,7 @@
                         </li>
                         <li class="flex items-start gap-1.5">
                             <span class="mt-0.5">&#8226;</span>
-                            Ujian akan berjalan dalam mode <strong>layar penuh (fullscreen)</strong>
+                            Pada perangkat <strong>desktop</strong>, ujian akan berjalan dalam mode <strong>layar penuh (fullscreen)</strong>
                         </li>
                         <li class="flex items-start gap-1.5">
                             <span class="mt-0.5">&#8226;</span>
@@ -106,18 +106,11 @@
                 {{-- Action --}}
                 <button type="button" x-data
                    @click="
-                       if(await $store.confirmModal.open({title:'Mulai Ujian',message:'Mulai ujian sekarang? Timer akan langsung berjalan dan layar akan masuk mode fullscreen.',confirmText:'Mulai'})) {
-                           const el = document.documentElement;
-                           const goToExam = () => { window.location.href='{{ route('ujian.mengerjakan', $sesiPeserta->id) }}'; };
-                           if (el.requestFullscreen) {
-                               el.requestFullscreen().then(goToExam).catch(goToExam);
-                           } else if (el.webkitRequestFullscreen) {
-                               el.webkitRequestFullscreen(); goToExam();
-                           } else {
-                               goToExam();
-                           }
-                       }
-                   "
+                        if(await $store.confirmModal.open({title:'Mulai Ujian',message:'Mulai ujian sekarang? Timer akan langsung berjalan. Pada perangkat desktop, mode fullscreen akan aktif otomatis setelah halaman ujian terbuka.',confirmText:'Mulai'})) {
+                            window.location.href='{{ route('ujian.mengerjakan', $sesiPeserta->id) }}';
+                        }
+                    "
+
                    class="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors cursor-pointer">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>

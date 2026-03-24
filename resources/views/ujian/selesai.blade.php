@@ -13,7 +13,7 @@
             <span class="text-sm font-bold text-gray-900">{{ strtoupper(config('app.name')) }}</span>
         </div>
         <template x-if="!hasPendingSync">
-            <form action="{{ route('ujian.logout') }}" method="POST">
+            <form action="{{ route('ujian.logout') }}" method="POST" @submit.prevent="logout($event)">
                 @csrf
                 <button type="submit" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -233,7 +233,7 @@
 
                 {{-- Tombol Keluar (hanya muncul setelah tersinkron) --}}
                 <template x-if="!hasPendingSync">
-                    <form action="{{ route('ujian.logout') }}" method="POST">
+                    <form action="{{ route('ujian.logout') }}" method="POST" @submit.prevent="logout($event)">
                         @csrf
                         <button type="submit"
                                 class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95
@@ -414,106 +414,108 @@ function selesaiApp() {
             }
         },
 
+        async markRowsSyncedIfCurrent(rows) {
+            const db = this._getDb();
+            await Promise.all(rows.map(async (row) => {
+                const current = await db.exam_answers.get(row.id);
+                if (!current || current.idempotencyKey !== row.idempotencyKey) {
+                    return;
+                }
+
+                await db.exam_answers.update(row.id, { synced: true });
+            }));
+        },
+
         async trySyncPending() {
             if (this.isSyncing || !this.isOnline) return;
             this.isSyncing = true;
 
             try {
                 const db = this._getDb();
+                const cfg = window.SELESAI_CONFIG;
 
-                // Find all sessions with pending answers
-                const pending = await db.exam_answers.filter(a => !a.synced).toArray();
+                // Find pending answers for current session only
+                const pending = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .and(a => !a.synced)
+                    .toArray();
                 if (pending.length === 0) {
                     this.hasPendingSync = false;
                     this.isSyncing = false;
                     return;
                 }
 
-                // Group by sesiPesertaId
-                const bySesi = {};
-                pending.forEach(a => {
-                    if (!bySesi[a.sesiPesertaId]) bySesi[a.sesiPesertaId] = [];
-                    bySesi[a.sesiPesertaId].push(a);
-                });
+                const state = await db.exam_state.get(cfg.sesiPesertaId);
 
-                // Get sesi token from exam_state
-                for (const [sesiPesertaId, answers] of Object.entries(bySesi)) {
-                    const state = await db.exam_state.get(sesiPesertaId);
+                const formattedAnswers = pending.map(item => ({
+                    soal_id:         item.soalId,
+                    jawaban:         this._formatJawaban(item.jawaban),
+                    idempotency_key: item.idempotencyKey,
+                    client_timestamp: item.updatedAt,
+                }));
 
-                    // Format answers for API
-                    const formattedAnswers = answers.map(item => ({
-                        soal_id:         item.soalId,
-                        jawaban:         this._formatJawaban(item.jawaban),
-                        idempotency_key: item.idempotencyKey,
-                        client_timestamp: item.updatedAt,
-                    }));
-
-                    // Try to get token - check window config or use stored token
-                    const sesiToken = window.SELESAI_CONFIG?.sesiToken || state?.sesiToken;
-                    if (!sesiToken) {
-                        console.warn('[Selesai] No sesi token for', sesiPesertaId);
-                        continue;
-                    }
-
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-                    const res = await fetch('/api/ujian/sync-jawaban', {
-                        method: 'POST',
-                        signal: controller.signal,
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify({
-                            sesi_token: sesiToken,
-                            answers: formattedAnswers,
-                            tandai_list: state?.tandaiList ?? [],
-                        }),
-                    });
-
-                    clearTimeout(timeoutId);
-
-                    if (res.ok) {
-                        // Mark synced
-                        await Promise.all(answers.map(a => db.exam_answers.update(a.id, { synced: true })));
-                        this.syncRetries = 0;
-
-                        // If pendingSubmit, also submit
-                        if (state?.pendingSubmit) {
-                            const submitCtrl = new AbortController();
-                            const submitTimeout = setTimeout(() => submitCtrl.abort(), 20000);
-                            try {
-                                await fetch('/api/ujian/submit/' + sesiToken, {
-                                    method: 'POST',
-                                    signal: submitCtrl.signal,
-                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                                    body: JSON.stringify({ sesi_token: sesiToken }),
-                                });
-                                clearTimeout(submitTimeout);
-                            } catch (submitErr) {
-                                clearTimeout(submitTimeout);
-                                console.warn('[Selesai] Submit fetch failed:', submitErr.message);
-                            }
-                            await db.exam_state.update(sesiPesertaId, { pendingSubmit: false });
-                        }
-
-                        // Cleanup synced answers
-                        await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId)
-                            .filter(a => a.synced).delete();
-                    } else {
-                        throw new Error(`Server returned ${res.status}`);
-                    }
+                const sesiToken = window.SELESAI_CONFIG?.sesiToken || state?.sesiToken;
+                if (!sesiToken) {
+                    console.warn('[Selesai] No sesi token for', cfg.sesiPesertaId);
+                    return;
                 }
 
-                await this.checkPendingSync();
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-                // After successful sync, reload page to get fresh server counts
-                if (!this.hasPendingSync) {
-                    window.location.reload();
-                    return;
+                const res = await fetch('/api/ujian/sync-jawaban', {
+                    method: 'POST',
+                    signal: controller.signal,
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        sesi_token: sesiToken,
+                        final_submit: true,
+                        answers: formattedAnswers,
+                        tandai_list: state?.tandaiList ?? [],
+                    }),
+                });
+
+                clearTimeout(timeoutId);
+
+                const data = await res.json().catch(() => ({}));
+
+                if (res.ok && data.accepted !== false) {
+                    await this.markRowsSyncedIfCurrent(pending);
+                    this.syncRetries = 0;
+
+                    if (state?.pendingSubmit) {
+                        const submitCtrl = new AbortController();
+                        const submitTimeout = setTimeout(() => submitCtrl.abort(), 20000);
+                        try {
+                            await fetch('/api/ujian/submit/' + sesiToken, {
+                                method: 'POST',
+                                signal: submitCtrl.signal,
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                body: JSON.stringify({ sesi_token: sesiToken }),
+                            });
+                            clearTimeout(submitTimeout);
+                        } catch (submitErr) {
+                            clearTimeout(submitTimeout);
+                            console.warn('[Selesai] Submit fetch failed:', submitErr.message);
+                        }
+                        await db.exam_state.update(cfg.sesiPesertaId, { pendingSubmit: false });
+                    }
+
+                    await this.checkPendingSync();
+
+                    if (!this.hasPendingSync) {
+                        await db.exam_answers.where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                            .and(a => a.synced)
+                            .delete();
+                        window.location.reload();
+                        return;
+                    }
+                } else {
+                    throw new Error(data.error || data.message || `Server returned ${res.status}`);
                 }
             } catch (e) {
                 console.warn('[Selesai] Sync failed:', e.message);
                 this.syncRetries++;
-                // Retry with exponential backoff
                 if (this.syncRetries < this.maxRetries) {
                     const delay = Math.min(2000 * Math.pow(2, this.syncRetries - 1), 30000);
                     this._retryTimer = setTimeout(() => this.trySyncPending(), delay);
@@ -527,9 +529,27 @@ function selesaiApp() {
             if (!jawaban) return null;
             if (jawaban.pg?.length > 0) return jawaban.pg;
             if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
-            if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0) return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
+            if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0) return Object.entries(jawaban.pasangan).map(([k,v]) => [k, v]);
             if (jawaban.teks !== undefined && jawaban.teks !== '') return jawaban.teks;
+            if (jawaban.terjawab === false) return '';
             return null;
+        },
+
+        async logout(event) {
+            const form = event?.target;
+            if (!(form instanceof HTMLFormElement)) return;
+
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            } catch (e) {
+                console.warn('[Selesai] exitFullscreen failed:', e.message);
+            }
+
+            form.submit();
         },
     };
 }

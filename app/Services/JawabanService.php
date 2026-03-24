@@ -61,6 +61,7 @@ class JawabanService
             $lateSyncWindowSeconds = 300; // 5 minutes
             if ($submitAt && now()->diffInSeconds($submitAt, false) < -$lateSyncWindowSeconds) {
                 return [
+                    'accepted'    => false,
                     'synced'      => 0,
                     'skipped'     => count($answers),
                     'errors'      => ['Late sync window expired'],
@@ -69,9 +70,10 @@ class JawabanService
             }
         }
 
-        // H1 fix: Reject answers if exam time has expired (active sessions only)
-        if (!$isAlreadySubmitted && $sesiPeserta->sisa_waktu_detik <= 0) {
+        // H1 fix: Reject routine sync once exam time expires, but still allow final submit sync.
+        if (!$isFinalSubmit && !$isAlreadySubmitted && $sesiPeserta->sisa_waktu_detik <= 0) {
             return [
+                'accepted'    => false,
                 'synced'      => 0,
                 'skipped'     => count($answers),
                 'errors'      => ['Waktu ujian telah habis'],
@@ -178,6 +180,7 @@ class JawabanService
         }
 
         return [
+            'accepted'    => true,
             'synced'      => $synced,
             'skipped'     => $skipped,
             'errors'      => $errors,

@@ -40,6 +40,8 @@ function ujianApp() {
         mulaiAtTimestamp: null,
         waktuSelesaiSesi: null,
         timerInterval:   null,
+        serverTimestamp: null,
+        _timerDeadlineAt: null,
         showDurasiToast: false,
         durasiToastMsg:  '',
 
@@ -68,6 +70,7 @@ function ujianApp() {
         _resizeDebounceTimer:  null,
         antiCurangDisabled:    false,
         _memoryFallbackAnswers: {},
+        _ignoreFullscreenUntil: 0,
 
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
@@ -87,6 +90,7 @@ function ujianApp() {
             this.totalSoal   = cfg.soalList.length;
             this.sisaWaktu   = cfg.sisaWaktuDetik;
             this.durasiDetik = cfg.durasiMenit * 60;
+            this.serverTimestamp = cfg.serverTimestamp ?? null;
             this.mulaiAtTimestamp = cfg.mulaiAt ?? null;
             this.waktuSelesaiSesi = cfg.waktuSelesaiSesi ?? null;
 
@@ -110,6 +114,14 @@ function ujianApp() {
                 this.initAntiCheat();
             } else {
                 this.antiCurangDisabled = true;
+            }
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data?.type === 'TRIGGER_SYNC') {
+                        this.syncTriggeredByServiceWorker();
+                    }
+                });
             }
 
             // Always warn on page unload (UX protection, not anti-cheat)
@@ -164,12 +176,7 @@ function ujianApp() {
                     console.log('[StatusPoll] Peserta status:', data.status, '- redirecting...');
                     this._forceSubmitted = true;
                     clearInterval(this._statusCheckInterval);
-
-                    // Exit fullscreen
-                    if (document.fullscreenElement) {
-                        try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
-                    }
-
+                    this.markIntentionalFullscreenExit();
                     window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
                     return;
                 }
@@ -177,8 +184,8 @@ function ujianApp() {
                 // Sync remaining time from server (drift correction)
                 if (data.remaining_seconds !== undefined && data.remaining_seconds >= 0) {
                     const drift = Math.abs(this.sisaWaktu - data.remaining_seconds);
-                    if (drift > 5) {
-                        this.sisaWaktu = data.remaining_seconds;
+                    if (drift > 1) {
+                        this.syncTimerFromServer(data.remaining_seconds, data.server_timestamp ?? null);
                     }
                 }
 
@@ -198,7 +205,7 @@ function ujianApp() {
 
                         // Force-sync sisaWaktu from server immediately
                         if (data.remaining_seconds !== undefined) {
-                            this.sisaWaktu = data.remaining_seconds;
+                            this.syncTimerFromServer(data.remaining_seconds, data.server_timestamp ?? null);
                         }
 
                         // Show toast notification to student
@@ -236,8 +243,41 @@ function ujianApp() {
         },
 
         // ===== ANTI-CHEAT SYSTEM =====
+        markIntentionalFullscreenExit(duration = 8000) {
+            this._ignoreFullscreenUntil = Date.now() + duration;
+        },
+
+        shouldIgnoreFullscreenExit() {
+            return this.antiCurangDisabled || this.isSubmitting || Date.now() < this._ignoreFullscreenUntil;
+        },
+
+        async syncTriggeredByServiceWorker() {
+            await this.recalcPendingSync();
+            if (this.pendingSync > 0) {
+                await this.syncToServer();
+            }
+        },
+
+        async markRowsSyncedIfCurrent(rows) {
+            if (!rows.length) return [];
+
+            const markedSoalIds = [];
+            await Promise.all(rows.map(async (item) => {
+                const current = await db.exam_answers.get(item.id);
+                if (!current || current.idempotencyKey !== item.idempotencyKey) {
+                    return;
+                }
+
+                await db.exam_answers.update(item.id, { synced: true });
+                markedSoalIds.push(String(item.soalId));
+            }));
+
+            return markedSoalIds;
+        },
+
+        // ===== ANTI-CHEAT SYSTEM =====
         initAntiCheat() {
-            // 1. Request fullscreen on init (desktop only — mobile browsers have limited/no Fullscreen API)
+            // 1. Request fullscreen on init (desktop only — mobile is intentionally excluded)
             if (!this.isMobile) {
                 this.requestFullscreen();
             }
@@ -300,7 +340,7 @@ function ujianApp() {
             const heightDropped = window.innerHeight < screen.height * 0.85;
             const notInApiFullscreen = !document.fullscreenElement && !document.webkitFullscreenElement;
 
-            if (heightDropped && notInApiFullscreen && !this.showViolationOverlay && !this.isSubmitting) {
+            if (heightDropped && notInApiFullscreen && !this.showViolationOverlay && !this.shouldIgnoreFullscreenExit()) {
                 this.logCheating('fullscreen_exit', { trigger: 'resize_detection' });
                 this.recordViolation('fullscreen_exit', 'Anda keluar dari mode layar penuh. Klik tombol di bawah untuk kembali ke mode fullscreen.');
             }
@@ -311,6 +351,10 @@ function ujianApp() {
             this.isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
 
             if (wasFullscreen && !this.isFullscreen) {
+                if (this.shouldIgnoreFullscreenExit()) {
+                    return;
+                }
+
                 // Exited fullscreen
                 this.logCheating('fullscreen_exit');
                 this.recordViolation('fullscreen_exit', 'Anda keluar dari mode layar penuh. Klik tombol di bawah untuk kembali ke mode fullscreen.');
@@ -457,7 +501,7 @@ function ujianApp() {
                         const map = {};
                         j.jawaban_pasangan.forEach(pair => {
                             if (Array.isArray(pair) && pair.length === 2) {
-                                map[pair[0]] = pair[1];
+                                map[String(pair[0])] = String(pair[1]);
                             }
                         });
                         ans.pasangan = map;
@@ -496,7 +540,8 @@ function ujianApp() {
 
             // Overlay with IndexedDB data (more recent, takes priority)
             localAnswers.forEach(ans => {
-                this.answers[ans.soalId] = {
+                const soalId = String(ans.soalId);
+                this.answers[soalId] = {
                     pg:         ans.jawaban?.pg         ?? [],
                     teks:       ans.jawaban?.teks       ?? '',
                     pasangan:   ans.jawaban?.pasangan   ?? {},
@@ -504,6 +549,12 @@ function ujianApp() {
                     terjawab:   ans.jawaban?.terjawab   ?? false,
                 };
             });
+
+            this.syncedSoalIds = new Set(
+                localAnswers
+                    .filter(a => a.synced)
+                    .map(a => String(a.soalId))
+            );
 
             this.pendingSync = localAnswers.filter(a => !a.synced).length;
 
@@ -522,24 +573,22 @@ function ujianApp() {
         },
 
         // ===== TIMER (SERVER-AUTHORITATIVE) =====
+        syncTimerFromServer(remainingSeconds, serverTimestamp = null) {
+            const safeRemaining = Math.max(0, Number(remainingSeconds) || 0);
+            this.serverTimestamp = serverTimestamp ?? this.serverTimestamp;
+            this.sisaWaktu = safeRemaining;
+            this._timerDeadlineAt = Date.now() + (safeRemaining * 1000);
+        },
+
         startTimer(mulaiAtTimestamp, durasiMenit) {
+            this.syncTimerFromServer(this.sisaWaktu, this.serverTimestamp);
+
             const tick = () => {
-                const nowSec = Math.floor(Date.now() / 1000);
-
-                if (!this.mulaiAtTimestamp) {
-                    this.sisaWaktu = Math.max(0, this.sisaWaktu - 1);
-                } else {
-                    const elapsed  = nowSec - this.mulaiAtTimestamp;
-                    let sisa = Math.max(0, this.durasiDetik - elapsed);
-
-                    // Cap by sesi waktu_selesai if set
-                    if (this.waktuSelesaiSesi) {
-                        const sisaBySesi = Math.max(0, this.waktuSelesaiSesi - nowSec);
-                        sisa = Math.min(sisa, sisaBySesi);
-                    }
-
-                    this.sisaWaktu = sisa;
+                if (this._timerDeadlineAt === null) {
+                    this.syncTimerFromServer(this.sisaWaktu, this.serverTimestamp);
                 }
+
+                this.sisaWaktu = Math.max(0, Math.ceil((this._timerDeadlineAt - Date.now()) / 1000));
 
                 if (this.sisaWaktu <= 0) {
                     clearInterval(this.timerInterval);
@@ -547,6 +596,7 @@ function ujianApp() {
                 }
             };
 
+            tick();
             this.timerInterval = setInterval(tick, 1000);
         },
 
@@ -667,16 +717,20 @@ function ujianApp() {
             this.saveIsian(soalId, value);
         },
 
-        savePasangan(soalId, kiriIndex, kananValue) {
+        savePasangan(soalId, kiriId, kananValue) {
             const ans = this.getAnswer(soalId);
-            ans.pasangan[kiriIndex] = parseInt(kananValue);
+            if (!kananValue) {
+                delete ans.pasangan[kiriId];
+            } else {
+                ans.pasangan[kiriId] = kananValue;
+            }
             ans.terjawab = Object.keys(ans.pasangan).length > 0;
             this.answers[soalId] = ans;
             this.saveJawaban(soalId, { pasangan: ans.pasangan, terjawab: ans.terjawab });
         },
 
-        getPasanganJawaban(soalId, kiriIndex) {
-            return this.answers[soalId]?.pasangan?.[kiriIndex] ?? null;
+        getPasanganJawaban(soalId, kiriId) {
+            return this.answers[soalId]?.pasangan?.[kiriId] ?? null;
         },
 
         // ===== BENAR / SALAH =====
@@ -735,12 +789,14 @@ function ujianApp() {
 
                 this.syncedSoalIds.delete(soalId);
 
+                const updatedAt = Date.now();
+
                 if (existing) {
                     await db.exam_answers.update(existing.id, {
                         jawaban:         jawabanData,
                         synced:          false,
                         idempotencyKey,
-                        updatedAt:       Date.now(),
+                        updatedAt,
                     });
                 } else {
                     await db.exam_answers.add({
@@ -749,7 +805,7 @@ function ujianApp() {
                         jawaban:       jawabanData,
                         synced:        false,
                         idempotencyKey,
-                        updatedAt:     Date.now(),
+                        updatedAt,
                     });
                 }
             } catch (idbErr) {
@@ -880,41 +936,45 @@ function ujianApp() {
 
                 clearTimeout(syncTimeoutId);
 
-                if (res.ok) {
-                    let data = {};
-                    try { data = await res.json(); } catch (e) { /* non-JSON response */ }
+                let data = {};
+                try { data = await res.json(); } catch (e) { /* non-JSON response */ }
 
-                    // Mark synced in IndexedDB
-                    await Promise.all(pending.map(item =>
-                        db.exam_answers.update(item.id, { synced: true })
-                    ));
+                if (res.ok && data.accepted !== false) {
+                    const markedSoalIds = await this.markRowsSyncedIfCurrent(pending);
 
-                    // Clear memory-fallback answers on successful sync
-                    this._memoryFallbackAnswers = {};
+                    // Clear only memory-fallback answers that were actually sent in this request.
+                    memEntries.forEach(([soalId, item]) => {
+                        if (this._memoryFallbackAnswers?.[soalId]?.idempotencyKey === item.idempotencyKey) {
+                            delete this._memoryFallbackAnswers[soalId];
+                        }
+                    });
 
                     // Recalculate from IndexedDB (source of truth)
                     await this.recalcPendingSync();
                     this._syncRetries = 0;
 
                     // Track synced soal IDs for navigator indicator
-                    pending.forEach(item => this.syncedSoalIds.add(item.soalId));
-                    memEntries.forEach(([soalId]) => this.syncedSoalIds.add(soalId));
-                } else if (res.status === 422) {
-                    let errMsg = '';
-                    try { const errData = await res.json(); errMsg = errData.error || errData.message || ''; } catch {}
+                    markedSoalIds.forEach(soalId => this.syncedSoalIds.add(soalId));
+                    memEntries.forEach(([soalId]) => this.syncedSoalIds.add(String(soalId)));
+                } else if (res.status === 422 || data.accepted === false) {
+                    const errMsg = data.error || data.message || (Array.isArray(data.errors) ? data.errors.join(', ') : '');
                     console.warn('[Sync] Validation error (422):', errMsg);
 
-                    // If exam expired/submitted, mark answers as synced to stop retry loop
-                    const isExpired = /(habis|expired|selesai|sudah (di)?submit|sudah (di)?kumpul)/i.test(errMsg);
-                    if (isExpired) {
-                        console.warn('[Sync] Exam expired/submitted — marking answers as synced, stopping retries');
-                        await Promise.all(pending.map(item =>
-                            db.exam_answers.update(item.id, { synced: true })
-                        ));
-                        this._memoryFallbackAnswers = {};
-                        await this.recalcPendingSync();
-                        this._syncRetries = 0;
-                    } else if (this._syncRetries < 2) {
+                    const isExpired = /(habis|expired)/i.test(errMsg);
+                    const isAlreadySubmitted = /(selesai|sudah (di)?submit|sudah (di)?kumpul)/i.test(errMsg);
+                    if (isExpired && !this.isSubmitting) {
+                        this.syncTimerFromServer(0, data.server_time ?? null);
+                        await this.doSubmit();
+                        return;
+                    }
+
+                    if (isAlreadySubmitted) {
+                        this.markIntentionalFullscreenExit();
+                        window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
+                        return;
+                    }
+
+                    if (this._syncRetries < 2) {
                         this._scheduleRetry(5000);
                     } else {
                         console.warn('[Sync] 422 persistent, waiting for next auto-sync');
@@ -1004,8 +1064,9 @@ function ujianApp() {
         formatJawabanForApi(jawaban) {
             if (jawaban.pg?.length > 0)                        return jawaban.pg;
             if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
-            if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0)     return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
+            if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0)     return Object.entries(jawaban.pasangan).map(([k,v]) => [k, v]);
             if (jawaban.teks !== undefined && jawaban.teks !== '')                 return jawaban.teks;
+            if (jawaban.terjawab === false)                                        return '';
             return null;
         },
 
@@ -1069,10 +1130,7 @@ function ujianApp() {
                     });
                 }
 
-                // Exit fullscreen before navigating
-                if (document.fullscreenElement) {
-                    try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
-                }
+                this.markIntentionalFullscreenExit();
 
                 if (!navigator.onLine) {
                     await this.queueOfflineSubmit(cfg);
@@ -1221,7 +1279,7 @@ function ujianApp() {
         onOnline() {
             this.isOffline = false;
             this._syncRetries = 0;
-            this.syncToServer();
+            this.recalcPendingSync().then(() => this.syncToServer());
             // Flush any pending cheating logs
             this.flushCheatingQueue();
         },

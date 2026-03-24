@@ -281,41 +281,53 @@
     {{-- Reset Confirmation Modal --}}
     <div x-show="showResetModal" x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center"
-         @open-reset-modal.window="resetTarget = $event.detail; showResetModal = true"
-         @keydown.escape.window="showResetModal = false">
-        <div class="fixed inset-0 bg-black/50" @click="showResetModal = false"></div>
+         @open-reset-modal.window="openResetModal($event.detail)"
+         @keydown.escape.window="closeResetModal()"
+         @keydown.tab.prevent="trapResetFocus($event)">
+        <div class="fixed inset-0 bg-black/50" @click="closeResetModal()"></div>
         <div class="relative bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6"
-             x-show="showResetModal" x-transition>
+             x-show="showResetModal" x-transition
+             x-ref="resetDialog"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="reset-modal-title"
+             tabindex="-1">
             <div class="text-center">
                 <div class="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
                     <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Reset Ujian Peserta</h3>
+                <h3 id="reset-modal-title" class="text-lg font-semibold text-gray-900 mb-2">Reset Ujian Peserta</h3>
                 <p class="text-sm text-gray-600 mb-1">Apakah Anda yakin ingin mereset ujian:</p>
                 <p class="text-sm font-bold text-gray-900 mb-4" x-text="resetTarget?.nama ?? ''"></p>
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5 text-left">
                     <p class="text-xs text-amber-800 font-medium mb-1">Tindakan ini akan:</p>
                     <ul class="text-xs text-amber-700 space-y-0.5 list-disc list-inside">
                         <li>Menghapus semua jawaban peserta</li>
-                        <li>Menghapus log aktivitas ujian</li>
+                        <li>Membersihkan riwayat pengerjaan sebelumnya</li>
+                        <li>Mencatat aksi reset oleh admin</li>
                         <li>Mereset status ke "Terdaftar"</li>
                         <li>Peserta dapat login dan mengerjakan ulang</li>
                     </ul>
                 </div>
                 <div class="flex gap-3">
-                    <button @click="showResetModal = false"
-                            class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                    <button @click="closeResetModal()"
+                            x-ref="resetCancelButton"
+                            class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            :disabled="resetLoading">
                         Batal
                     </button>
-                    <form :action="'{{ url('dinas/monitoring/sesi/' . $sesi->id . '/reset-peserta') }}/' + (resetTarget?.id ?? '')"
-                          method="POST" class="flex-1">
+                    <form x-ref="resetForm"
+                          :action="resetAction"
+                          method="POST"
+                          class="flex-1">
                         @csrf
-                        <button type="submit"
-                                class="w-full px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
-                                :disabled="resetLoading"
-                                @click="resetLoading = true">
+                        <button type="button"
+                                x-ref="resetConfirmButton"
+                                class="w-full px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                :disabled="resetLoading || !resetTarget?.id"
+                                @click="submitReset()">
                             <span x-show="!resetLoading">Ya, Reset Ujian</span>
                             <span x-show="resetLoading" class="inline-flex items-center gap-1">
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -344,16 +356,97 @@ function sesiMonitoringApp() {
         showResetModal: false,
         resetTarget: null,
         resetLoading: false,
+        resetLastFocused: null,
         _loading: false,
+        get resetAction() {
+            return this.resetTarget?.id
+                ? '{{ url('dinas/monitoring/sesi/' . $sesi->id . '/reset-peserta') }}/' + this.resetTarget.id
+                : '{{ url('dinas/monitoring/sesi/' . $sesi->id . '/reset-peserta') }}';
+        },
 
         init() {
-            // Initial load
             this.loadStats();
             this._pollInterval = setInterval(() => this.loadStats(), 10000);
         },
 
         destroy() {
             clearInterval(this._pollInterval);
+        },
+
+        openResetModal(target) {
+            this.resetLastFocused = document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+            this.resetTarget = target ?? null;
+            this.resetLoading = false;
+            this.showResetModal = true;
+
+            this.$nextTick(() => {
+                this.$refs.resetCancelButton?.focus();
+            });
+        },
+
+        closeResetModal() {
+            if (this.resetLoading) {
+                return;
+            }
+
+            this.showResetModal = false;
+            this.resetTarget = null;
+            this.resetLoading = false;
+
+            this.$nextTick(() => {
+                this.resetLastFocused?.focus?.();
+                this.resetLastFocused = null;
+            });
+        },
+
+        trapResetFocus(event) {
+            if (!this.showResetModal) {
+                return;
+            }
+
+            const focusable = [
+                this.$refs.resetCancelButton,
+                this.$refs.resetConfirmButton,
+            ].filter((element) => element && !element.disabled);
+
+            if (focusable.length === 0) {
+                return;
+            }
+
+            const currentIndex = focusable.indexOf(document.activeElement);
+            const direction = event.shiftKey ? -1 : 1;
+            const fallbackIndex = event.shiftKey ? focusable.length - 1 : 0;
+            const nextIndex = currentIndex === -1
+                ? fallbackIndex
+                : (currentIndex + direction + focusable.length) % focusable.length;
+
+            focusable[nextIndex].focus();
+        },
+
+        submitReset() {
+            if (this.resetLoading || !this.resetTarget?.id) {
+                return;
+            }
+
+            this.resetLoading = true;
+
+            this.$nextTick(() => {
+                const form = this.$refs.resetForm;
+
+                if (!form) {
+                    this.resetLoading = false;
+                    return;
+                }
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                    return;
+                }
+
+                form.submit();
+            });
         },
 
         async loadStats() {

@@ -14,7 +14,7 @@ return new class extends Migration
                 'copy_paste','klik_kanan','tidak_fokus',
                 'koneksi_putus','koneksi_pulih',
                 'sync_offline','submit_jawaban','submit_ujian',
-                'browser_minimize','screenshot_attempt',
+                'browser_minimize','screenshot_attempt','reset_ujian',
                 'rescore_late_sync','late_submit_sync_error','final_sync_error'
             ) NOT NULL");
         }
@@ -29,7 +29,7 @@ return new class extends Migration
                 'copy_paste','klik_kanan','tidak_fokus',
                 'koneksi_putus','koneksi_pulih',
                 'sync_offline','submit_jawaban','submit_ujian',
-                'browser_minimize','screenshot_attempt'
+                'browser_minimize','screenshot_attempt','reset_ujian'
             ) NOT NULL");
         }
     }

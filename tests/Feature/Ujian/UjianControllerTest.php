@@ -34,30 +34,44 @@ class UjianControllerTest extends TestCase
     public function test_unauthenticated_peserta_redirected(): void
     {
         $sp = SesiPeserta::factory()->create();
-        $response = $this->get(route('ujian.mulai', $sp));
+        $response = $this->get(route('ujian.konfirmasi', $sp));
         $response->assertRedirect(route('ujian.login'));
     }
 
-    public function test_peserta_cannot_access_other_peserta_ujian(): void
+    public function test_peserta_cannot_access_other_peserta_konfirmasi(): void
     {
         $setup = $this->createUjianSetup();
         $otherPeserta = Peserta::factory()->create();
 
         $response = $this->actingAs($otherPeserta, 'peserta')
-            ->get(route('ujian.mulai', $setup['sp']));
+            ->get(route('ujian.konfirmasi', $setup['sp']));
 
         $response->assertStatus(403);
     }
 
-    public function test_index_starts_ujian_and_sets_status(): void
+    public function test_konfirmasi_page_shows_desktop_only_fullscreen_notice(): void
     {
         $setup = $this->createUjianSetup();
 
         $response = $this->actingAs($setup['peserta'], 'peserta')
-            ->get(route('ujian.mulai', $setup['sp']));
+            ->get(route('ujian.konfirmasi', $setup['sp']));
+
+        $response->assertOk();
+        $response->assertViewIs('ujian.konfirmasi');
+        $response->assertSee('Pada perangkat <strong>desktop</strong>', false);
+        $response->assertDontSee('ujian-skip-init-fullscreen');
+    }
+
+    public function test_mengerjakan_starts_ujian_and_sets_status(): void
+    {
+        $setup = $this->createUjianSetup();
+
+        $response = $this->actingAs($setup['peserta'], 'peserta')
+            ->get(route('ujian.mengerjakan', $setup['sp']));
 
         $response->assertStatus(200);
         $response->assertViewIs('ujian.soal');
+        $response->assertSee('serverTimestamp', false);
 
         $setup['sp']->refresh();
         $this->assertEquals('mengerjakan', $setup['sp']->status);
@@ -65,13 +79,13 @@ class UjianControllerTest extends TestCase
         $this->assertNotNull($setup['sp']->token_ujian);
     }
 
-    public function test_submitted_ujian_redirects_to_selesai(): void
+    public function test_submitted_konfirmasi_redirects_to_selesai(): void
     {
         $setup = $this->createUjianSetup();
         $setup['sp']->update(['status' => 'submit', 'submit_at' => now()]);
 
         $response = $this->actingAs($setup['peserta'], 'peserta')
-            ->get(route('ujian.mulai', $setup['sp']));
+            ->get(route('ujian.konfirmasi', $setup['sp']));
 
         $response->assertRedirect(route('ujian.selesai', $setup['sp']));
     }

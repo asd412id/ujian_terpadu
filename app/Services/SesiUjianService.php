@@ -131,10 +131,13 @@ class SesiUjianService
                 'jumlah_kosong'       => null,
             ]);
 
-            // 4. Clear cache soal jika ada
+            // 4. Clear cache soal dan monitoring jika ada
             $paketId = $sp->sesi?->paket_id;
             if ($paketId) {
                 \Illuminate\Support\Facades\Cache::forget("paket_soal_{$paketId}_sp_{$sp->id}");
+            }
+            if ($sp->sesi_id) {
+                \Illuminate\Support\Facades\Cache::forget("sesi_live_{$sp->sesi_id}");
             }
 
             // 5. Log aktivitas reset

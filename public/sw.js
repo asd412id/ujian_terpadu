@@ -213,12 +213,22 @@ async function syncPendingAnswers() {
             });
 
             if (res.ok) {
-                // Mark synced in IndexedDB
+                // Mark synced in IndexedDB only if the stored row still matches the synced idempotency key
                 const writeTx = idb.transaction('exam_answers', 'readwrite');
                 const writeStore = writeTx.objectStore('exam_answers');
                 for (const a of answers) {
-                    a.synced = true;
-                    writeStore.put(a);
+                    const current = await new Promise((resolve) => {
+                        const req = writeStore.get(a.id);
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => resolve(null);
+                    });
+
+                    if (!current || current.idempotencyKey !== a.idempotencyKey) {
+                        continue;
+                    }
+
+                    current.synced = true;
+                    writeStore.put(current);
                 }
                 await new Promise((resolve) => { writeTx.oncomplete = resolve; });
 
@@ -244,8 +254,9 @@ function formatJawabanSW(jawaban) {
     if (!jawaban) return null;
     if (jawaban.pg?.length > 0) return jawaban.pg;
     if (jawaban.benarSalah && Object.keys(jawaban.benarSalah).length > 0) return jawaban.benarSalah;
-    if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0) return Object.entries(jawaban.pasangan).map(([k,v]) => [parseInt(k), v]);
+    if (jawaban.pasangan && Object.keys(jawaban.pasangan).length > 0) return Object.entries(jawaban.pasangan).map(([k,v]) => [k, v]);
     if (jawaban.teks !== undefined && jawaban.teks !== '') return jawaban.teks;
+    if (jawaban.terjawab === false) return '';
     return null;
 }
 

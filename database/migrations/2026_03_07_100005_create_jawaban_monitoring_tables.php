@@ -76,7 +76,7 @@ return new class extends Migration
                 'copy_paste', 'klik_kanan', 'tidak_fokus',
                 'koneksi_putus', 'koneksi_pulih',
                 'sync_offline', 'submit_jawaban', 'submit_ujian',
-                'browser_minimize', 'screenshot_attempt'
+                'browser_minimize', 'screenshot_attempt', 'reset_ujian'
             ]);
             $table->json('detail')->nullable(); // detail tambahan event
             $table->string('ip_address', 45)->nullable();

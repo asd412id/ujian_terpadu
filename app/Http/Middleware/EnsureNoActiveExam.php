@@ -16,7 +16,7 @@ class EnsureNoActiveExam
 
         if ($peserta) {
             $active = SesiPeserta::where('peserta_id', $peserta->id)
-                ->whereIn('status', ['mengerjakan', 'login'])
+                ->where('status', 'mengerjakan')
                 ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
                 ->first();
 
