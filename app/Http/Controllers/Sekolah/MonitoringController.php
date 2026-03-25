@@ -79,6 +79,13 @@ class MonitoringController extends Controller
 
         $data = $this->monitoringService->getSesiStats($sesi->id);
 
+        if ($sesi->status !== 'selesai' && ! empty($data['peserta_live'])) {
+            foreach ($data['peserta_live'] as &$pesertaLive) {
+                $pesertaLive['nilai_akhir'] = null;
+            }
+            unset($pesertaLive);
+        }
+
         return response()->json($data);
     }
 

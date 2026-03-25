@@ -85,6 +85,16 @@ class LaporanRepository
     }
 
     /**
+     * Get paket list for a specific sekolah.
+     */
+    public function getPaketListBySekolah(string $sekolahId): Collection
+    {
+        return PaketUjian::where('sekolah_id', $sekolahId)
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
+    }
+
+    /**
      * Get paginated hasil ujian with filters (for dinas dashboard).
      */
     public function getHasilUjianFiltered(array $filters = []): LengthAwarePaginator
@@ -115,6 +125,42 @@ class LaporanRepository
     }
 
     /**
+     * Get paginated hasil ujian for a specific sekolah.
+     */
+    public function getHasilUjianFilteredBySekolah(string $sekolahId, array $filters = []): LengthAwarePaginator
+    {
+        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
+            ->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereIn('status', ['submit', 'dinilai']);
+
+        if (!empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
+            }
+        }
+
+        $perPage = min((int) ($filters['per_page'] ?? 30), 200);
+        return $query->latest('updated_at')->paginate($perPage);
+    }
+
+    /**
      * Build rekap statistics (single aggregate query).
      */
     public function buildRekap(array $filters = []): array
@@ -127,6 +173,53 @@ class LaporanRepository
 
         if (!empty($filters['paket_id'])) {
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'lulus') {
+                $query->where('nilai_akhir', '>=', 70);
+            } elseif ($filters['status'] === 'tidak_lulus') {
+                $query->where(function ($q) {
+                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
+                });
+            }
+        }
+
+        $row = $query->selectRaw('
+            COUNT(*) as total_peserta,
+            SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
+            SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus,
+            ROUND(AVG(nilai_akhir), 1) as rata_rata
+        ')->first();
+
+        return [
+            'total_peserta' => (int) ($row->total_peserta ?? 0),
+            'sudah_ujian'   => (int) ($row->total_peserta ?? 0),
+            'lulus'         => (int) ($row->lulus ?? 0),
+            'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
+            'rata_rata'     => (float) ($row->rata_rata ?? 0),
+        ];
+    }
+
+    /**
+     * Build rekap statistics for a specific sekolah.
+     */
+    public function buildRekapBySekolah(string $sekolahId, array $filters = []): array
+    {
+        $query = SesiPeserta::whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereIn('status', ['submit', 'dinilai']);
+
+        if (!empty($filters['paket_id'])) {
+            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
         }
 
         if (!empty($filters['status'])) {

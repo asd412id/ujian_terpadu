@@ -8,6 +8,7 @@ use App\Http\Controllers\Dinas\MonitoringController;
 use App\Http\Controllers\Dinas\LaporanController as DinasLaporanController;
 use App\Http\Controllers\Dinas\SekolahController as DinasSekolahController;
 use App\Http\Controllers\Sekolah\DashboardController as SekolahDashboardController;
+use App\Http\Controllers\Sekolah\LaporanController as SekolahLaporanController;
 use App\Http\Controllers\Sekolah\PesertaController;
 use App\Http\Controllers\Sekolah\PaketUjianController;
 use App\Http\Controllers\Sekolah\KartuLoginController;
@@ -211,6 +212,12 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
     Route::get('/monitoring/api', [SekolahMonitoringController::class, 'apiIndex'])->name('monitoring.api');
     Route::get('/monitoring/sesi/{sesi}', [SekolahMonitoringController::class, 'sesi'])->name('monitoring.sesi');
     Route::get('/monitoring/sesi/{sesi}/api', [SekolahMonitoringController::class, 'apiSesi'])->name('monitoring.sesi.api');
+
+    // Laporan Nilai (scoped ke sekolah sendiri)
+    Route::get('/laporan', [SekolahLaporanController::class, 'index'])->name('laporan');
+    Route::get('/laporan/export', [SekolahLaporanController::class, 'export'])->name('laporan.export');
+    Route::get('/laporan/analisis-soal/{paket}', [SekolahLaporanController::class, 'analisisSoal'])->name('laporan.analisis-soal');
+    Route::get('/laporan/detail-siswa/{sesiPeserta}', [SekolahLaporanController::class, 'detailSiswa'])->name('laporan.detail-siswa');
 
     // Paket Ujian (lihat dan daftarkan peserta)
     Route::get('/paket', [PaketUjianController::class, 'index'])->name('paket');

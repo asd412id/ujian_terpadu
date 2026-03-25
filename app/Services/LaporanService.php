@@ -24,6 +24,20 @@ class LaporanService
     }
 
     /**
+     * Get hasil ujian for a specific sekolah.
+     */
+    public function getHasilUjianBySekolah(string $sekolahId, array $filters = []): array
+    {
+        $filters['sekolah_id'] = $sekolahId;
+
+        return [
+            'paketList' => $this->repository->getPaketListBySekolah($sekolahId),
+            'data'      => $this->repository->getHasilUjianFilteredBySekolah($sekolahId, $filters),
+            'rekap'     => $this->repository->buildRekapBySekolah($sekolahId, $filters),
+        ];
+    }
+
+    /**
      * Get hasil ujian by sekolah.
      */
     public function getHasilBySekolah(string $sekolahId): mixed

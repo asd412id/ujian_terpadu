@@ -31,6 +31,7 @@
                         ['route' => 'sekolah.dashboard',    'icon' => 'grid',     'label' => 'Dashboard'],
                         ['route' => 'sekolah.monitoring',   'icon' => 'eye',      'label' => 'Monitoring Ujian', 'badge' => 'LIVE'],
                         ['route' => 'sekolah.paket',        'icon' => 'document', 'label' => 'Paket Ujian'],
+                        ['route' => 'sekolah.laporan',      'icon' => 'chart',    'label' => 'Laporan Nilai'],
                         ['route' => 'sekolah.peserta.index','icon' => 'users',    'label' => 'Data Peserta'],
                         ['route' => 'sekolah.kartu.index',  'icon' => 'tag',      'label' => 'Kartu Login'],
                     ];

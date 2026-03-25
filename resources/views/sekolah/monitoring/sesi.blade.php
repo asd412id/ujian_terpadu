@@ -126,7 +126,9 @@
                         <th class="px-5 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-center">Jawab</th>
                         <th class="px-5 py-3 text-center">Ragu</th>
+                        @if($sesi->status === 'selesai')
                         <th class="px-5 py-3 text-center">Nilai</th>
+                        @endif
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Sisa Waktu</th>
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Login</th>
                     </tr>
@@ -160,6 +162,7 @@
                         <td class="px-5 py-3 text-center text-amber-600 font-medium">
                             <span x-text="live ? live.soal_ditandai : '{{ $sp->soal_ditandai ?? 0 }}'"></span>
                         </td>
+                        @if($sesi->status === 'selesai')
                         <td class="px-5 py-3 text-center">
                             <template x-if="live && ['submit','dinilai'].includes(live.status) && live.nilai_akhir !== null">
                                 <span :class="live.nilai_akhir >= 70 ? 'font-bold text-green-600' : 'font-bold text-red-600'"
@@ -169,6 +172,7 @@
                                 <span class="text-gray-400">—</span>
                             </template>
                         </td>
+                        @endif
                         <td class="px-5 py-3 text-center hidden lg:table-cell">
                             <template x-if="live && live.sisa_waktu > 0 && ['mengerjakan','login'].includes(live.status)">
                                 <span :class="live.sisa_waktu < 600 ? 'text-red-600 font-bold' : 'text-gray-600'"
@@ -184,7 +188,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-5 py-10 text-center text-gray-400">
+                        <td colspan="{{ $sesi->status === 'selesai' ? 8 : 7 }}" class="px-5 py-10 text-center text-gray-400">
                             @if(!empty($filters['search']) || !empty($filters['status']))
                                 Tidak ada peserta yang cocok dengan filter.
                             @else
@@ -221,7 +225,7 @@
                         </template>
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                <div class="grid {{ $sesi->status === 'selesai' ? 'grid-cols-3' : 'grid-cols-2' }} gap-2 text-center text-xs mb-2">
                     <div class="bg-gray-50 rounded-lg p-1.5">
                         <p class="font-bold text-gray-900" x-text="live ? (live.soal_terjawab + '/{{ $sesi->paket?->jumlah_soal ?? '?' }}') : '{{ ($sp->soal_terjawab ?? 0) . '/' . ($sesi->paket?->jumlah_soal ?? '?') }}'"></p>
                         <p class="text-gray-500">Jawab</p>
@@ -230,6 +234,7 @@
                         <p class="font-bold text-amber-700" x-text="live ? live.soal_ditandai : '{{ $sp->soal_ditandai ?? 0 }}'"></p>
                         <p class="text-gray-500">Ragu</p>
                     </div>
+                    @if($sesi->status === 'selesai')
                     <div class="bg-blue-50 rounded-lg p-1.5">
                         <template x-if="live && ['submit','dinilai'].includes(live.status) && live.nilai_akhir !== null">
                             <div>
@@ -244,6 +249,7 @@
                             </div>
                         </template>
                     </div>
+                    @endif
                 </div>
             </div>
             @empty

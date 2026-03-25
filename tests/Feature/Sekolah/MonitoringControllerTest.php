@@ -89,4 +89,23 @@ class MonitoringControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonStructure(['stats', 'peserta_live']);
     }
+
+    public function test_api_sesi_hides_nilai_before_selesai(): void
+    {
+        $user = $this->sekolahUser();
+        $paket = PaketUjian::factory()->aktif()->create(['sekolah_id' => $user->sekolah_id]);
+        $peserta = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
+
+        $sp = SesiPeserta::factory()->submit()->create([
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $peserta->id,
+            'nilai_akhir' => 91,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('sekolah.monitoring.sesi.api', $sesi));
+
+        $response->assertOk();
+        $response->assertJsonPath("peserta_live.{$sp->id}.nilai_akhir", null);
+    }
 }
