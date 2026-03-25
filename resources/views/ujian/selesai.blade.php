@@ -246,7 +246,6 @@
 
 </div>{{-- end x-data selesaiApp --}}
 
-<script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
 <script>
 window.SELESAI_CONFIG = {
     sesiPesertaId: '{{ $sesiPeserta->id }}',

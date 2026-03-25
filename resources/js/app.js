@@ -1,5 +1,6 @@
 import './bootstrap';
 import Alpine from 'alpinejs';
+import Dexie from 'dexie';
 import Persist from '@alpinejs/persist';
 import DOMPurify from 'dompurify';
 import { ujianApp } from './ujian';
@@ -43,6 +44,9 @@ Alpine.store('toast', {
         this.messages = this.messages.filter(m => m.id !== id);
     }
 });
+
+// Expose Dexie globally (used by selesai page inline scripts)
+window.Dexie = Dexie;
 
 // Start Alpine
 window.Alpine = Alpine;
