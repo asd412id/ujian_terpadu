@@ -212,11 +212,10 @@ class PenilaianServiceTest extends TestCase
 
         // 1/2 benar * 2.0 bobot * 0.5 = 0.50 partial credit
         $this->assertEquals(0.50, $result['nilai_benar']);
-        // Partial credit bukan salah dan bukan benar penuh
-        $this->assertEquals(0, $result['jumlah_benar']);
+        // Partial credit dihitung sebagai dijawab, sehingga masuk benar dan tidak kosong
+        $this->assertEquals(1, $result['jumlah_benar']);
         $this->assertEquals(0, $result['jumlah_salah']);
-        // jumlah_kosong menyerap partial (totalSoal - benar - salah = 1 - 0 - 0 = 1)
-        $this->assertEquals(1, $result['jumlah_kosong']);
+        $this->assertEquals(0, $result['jumlah_kosong']);
     }
 
     public function test_pgk_partial_skor_proporsional(): void
@@ -243,7 +242,7 @@ class PenilaianServiceTest extends TestCase
 
         // (2/3) * 6.0 * 0.5 = 2.0
         $this->assertEquals(2.0, $result['nilai_benar']);
-        $this->assertEquals(0, $result['jumlah_benar']);
+        $this->assertEquals(1, $result['jumlah_benar']);
         $this->assertEquals(0, $result['jumlah_salah']);
     }
 

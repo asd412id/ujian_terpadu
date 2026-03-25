@@ -277,6 +277,12 @@ class LaporanService
                 [$jawaban, $jawabanDisplay] = $this->formatJawaban($soal, $j, $remap);
             }
 
+            $skor = $j ? round(($j->skor_auto ?? 0) + ($j->skor_manual ?? 0), 2) : 0;
+            $bobot = (float) ($soal->bobot ?? 1);
+            $statusJawaban = ! $j || ! $j->is_terjawab
+                ? 'kosong'
+                : ($skor >= $bobot ? 'benar' : ($skor > 0 ? 'sebagian' : 'salah'));
+
             $detail[] = [
                 'nomor' => $idx + 1,
                 'tipe' => $soal->tipe_soal,
@@ -286,9 +292,9 @@ class LaporanService
                 'jawaban_display' => $jawabanDisplay,
                 'opsi' => $this->buildOpsiList($soal, $remap),
                 'is_terjawab' => $j?->is_terjawab ?? false,
-                'skor' => $j ? round(($j->skor_auto ?? 0) + ($j->skor_manual ?? 0), 2) : 0,
-                'bobot' => $soal->bobot ?? 1,
-                'is_benar' => $j && $j->is_terjawab && (($j->skor_auto ?? 0) > 0 || ($j->skor_manual ?? 0) > 0),
+                'skor' => $skor,
+                'bobot' => $bobot,
+                'status_jawaban' => $statusJawaban,
             ];
         }
 

@@ -109,10 +109,12 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-center">
-                            @if(!$item['is_terjawab'])
+                            @if($item['status_jawaban'] === 'kosong')
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Kosong</span>
-                            @elseif($item['is_benar'])
+                            @elseif($item['status_jawaban'] === 'benar')
                                 <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Benar</span>
+                            @elseif($item['status_jawaban'] === 'sebagian')
+                                <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Sebagian Benar</span>
                             @else
                                 <span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Salah</span>
                             @endif
@@ -168,10 +170,12 @@
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-xs font-bold text-gray-400">#{{ $item['nomor'] }}</span>
                             <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ $tipeLabel }}</span>
-                            @if(!$item['is_terjawab'])
+                            @if($item['status_jawaban'] === 'kosong')
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Kosong</span>
-                            @elseif($item['is_benar'])
+                            @elseif($item['status_jawaban'] === 'benar')
                                 <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Benar</span>
+                            @elseif($item['status_jawaban'] === 'sebagian')
+                                <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Sebagian Benar</span>
                             @else
                                 <span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Salah</span>
                             @endif

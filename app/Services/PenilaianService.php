@@ -64,11 +64,8 @@ class PenilaianService
 
             $updates[] = ['id' => $jawaban->id, 'skor_auto' => $skor];
 
-            if ($skor >= $bobot) {
+            if ($skor > 0) {
                 $jumlahBenar++;
-                $nilaiBenar += $skor;
-            } elseif ($skor > 0) {
-                // Partial credit (e.g. PG Kompleks) — score counts but not as full wrong
                 $nilaiBenar += $skor;
             } else {
                 $jumlahSalah++;
