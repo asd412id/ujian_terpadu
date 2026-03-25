@@ -231,21 +231,21 @@
                     </button>
                 </template>
 
-                {{-- Tombol Keluar (hanya muncul setelah tersinkron) --}}
-                <template x-if="!hasPendingSync">
-                    <form action="{{ route('ujian.logout') }}" method="POST" @submit.prevent="logout($event)">
-                        @csrf
-                        <button type="submit"
-                                class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95
-                                       text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                            </svg>
-                            Keluar
-                        </button>
-                    </form>
-                </template>
+                {{-- Tombol Keluar --}}
+                <form action="{{ route('ujian.logout') }}" method="POST" @submit.prevent="logout($event)">
+                    @csrf
+                    <button type="submit"
+                            class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95
+                                   text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200"
+                            :disabled="isSyncing"
+                            :class="isSyncing ? 'opacity-80 cursor-not-allowed' : ''">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        <span x-text="isSyncing ? 'Menunggu sinkronisasi...' : 'Keluar'"></span>
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -427,7 +427,7 @@ function selesaiApp() {
                     .count();
                  const state = await db.exam_state.get(cfg.sesiPesertaId);
                  const hasPendingSubmit = Boolean(state?.pendingSubmit)
-+                    || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0);
+                    || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0);
                  this.hasPendingSync = pending > 0 || hasPendingSubmit;
 
             } catch (e) {

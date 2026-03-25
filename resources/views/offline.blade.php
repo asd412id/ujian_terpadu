@@ -2,11 +2,9 @@
 
 @section('title', 'Tidak Ada Koneksi')
 
-@section('body-class', 'bg-gradient-to-br from-slate-900 to-blue-950 min-h-screen')
-
 @section('content')
-<div class="min-h-screen flex items-center justify-center p-4">
-    <div class="text-center max-w-md">
+<div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-blue-950">
+    <div class="text-center max-w-md text-white">
 
         {{-- Icon --}}
         <div class="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
