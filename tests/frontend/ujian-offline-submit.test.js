@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Dexie from 'dexie';
+import fs from 'node:fs';
+import path from 'node:path';
 import { ujianApp } from '../../resources/js/ujian';
 
 describe('ujian offline and slow-network submit flow', () => {
@@ -97,5 +99,22 @@ describe('ujian offline and slow-network submit flow', () => {
         expect(navigations).toEqual(['/ujian/sesi-1/selesai']);
 
         await db.close();
+    });
+
+    it('keeps the selesai page transaction-based row sync guard in source', () => {
+        const selesaiPath = path.resolve('resources/views/ujian/selesai.blade.php');
+        const source = fs.readFileSync(selesaiPath, 'utf8');
+
+        expect(source).toContain("await db.transaction('rw', db.exam_answers, async () => {");
+        expect(source).toContain('const answersToSync = formattedAnswers.length > 0 ? formattedAnswers : pendingSubmitSnapshot;');
+        expect(source).not.toContain('await Promise.all(rows.map(async (row) => {');
+    });
+
+    it('keeps the soal offline banner safe-area spacing in source', () => {
+        const soalPath = path.resolve('resources/views/ujian/soal.blade.php');
+        const source = fs.readFileSync(soalPath, 'utf8');
+
+        expect(source).toContain('class="offline-banner fixed inset-x-0 top-0 z-50 safe-area-top"');
+        expect(source).toContain("'pt-[calc(4rem+env(safe-area-inset-top,0px))] sm:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]' ");
     });
 });

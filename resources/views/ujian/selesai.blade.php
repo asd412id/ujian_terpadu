@@ -413,6 +413,10 @@ function selesaiApp() {
                     idempotency_key: item.idempotencyKey,
                     client_timestamp: item.updatedAt,
                 }));
+                const pendingSubmitSnapshot = Array.isArray(state?.pendingSubmitPayload)
+                    ? state.pendingSubmitPayload.filter(item => item?.soal_id && item?.jawaban !== null)
+                    : [];
+                const answersToSync = formattedAnswers.length > 0 ? formattedAnswers : pendingSubmitSnapshot;
 
                 const sesiToken = cfg.sesiToken || state?.sesiToken;
                 if (!sesiToken) {
@@ -422,10 +426,10 @@ function selesaiApp() {
                 }
 
                 this.syncProgress = 20;
-                this.syncStatusDetail = `Mengirim ${formattedAnswers.length} jawaban...`;
+                this.syncStatusDetail = `Mengirim ${answersToSync.length} jawaban...`;
 
                 // Step 1: Sync answers
-                if (formattedAnswers.length > 0) {
+                if (answersToSync.length > 0) {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -436,7 +440,7 @@ function selesaiApp() {
                         body: JSON.stringify({
                             sesi_token: sesiToken,
                             final_submit: true,
-                            answers: formattedAnswers,
+                            answers: answersToSync,
                             tandai_list: state?.tandaiList ?? [],
                         }),
                     });
@@ -445,6 +449,8 @@ function selesaiApp() {
                     const data = await res.json().catch(() => ({}));
 
                     if (res.ok && data.accepted !== false) {
+                        this.syncStatusTitle = 'Jawaban sudah diterima server';
+                        this.syncStatusDetail = 'Menyimpan status sinkronisasi lokal...';
                         await this.markRowsSyncedIfCurrent(pending);
                         this.syncSentCount = this.syncTotalLocal;
                         this.syncProgress = 50;
@@ -555,9 +561,12 @@ function selesaiApp() {
                             .where('sesiPesertaId').equals(cfg.sesiPesertaId)
                             .and(a => !a.synced)
                             .count();
+                        const state = await db.exam_state.get(cfg.sesiPesertaId).catch(() => null);
+                        const hasPendingSubmit = Boolean(state?.pendingSubmit)
+                            || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0);
 
-                        if (pending > 0 && this.syncRetries < this.maxRetries) {
-                            // Still have unsynced rows — retry
+                        if ((pending > 0 || hasPendingSubmit) && this.syncRetries < this.maxRetries) {
+                            // Still have unsynced rows or queued submit snapshot — retry
                             this.syncProgress = 50;
                             this.syncStatusTitle = 'Beberapa jawaban belum sampai...';
                             this.syncStatusDetail = 'Mengirim ulang jawaban yang belum tersimpan...';
@@ -654,14 +663,22 @@ function selesaiApp() {
         async markRowsSyncedIfCurrent(rows) {
             if (!rows.length) return;
             const db = this._getDb();
-            // Use single transaction to avoid IDBTransaction finished errors
-            await db.transaction('rw', db.exam_answers, async () => {
-                for (const row of rows) {
-                    const current = await db.exam_answers.get(row.id);
-                    if (!current || current.idempotencyKey !== row.idempotencyKey) continue;
-                    await db.exam_answers.update(row.id, { synced: true });
-                }
-            });
+            try {
+                // Use single transaction to avoid IDBTransaction finished errors
+                await db.transaction('rw', db.exam_answers, async () => {
+                    for (const row of rows) {
+                        const current = await db.exam_answers.get(row.id);
+                        if (!current || current.idempotencyKey !== row.idempotencyKey) continue;
+                        await db.exam_answers.update(row.id, { synced: true });
+                    }
+                });
+            } catch (e) {
+                console.warn('[Selesai] Local IDB sync-state update failed after server accepted answers:', e.message);
+                this.syncStatusTitle = 'Jawaban sudah diterima server';
+                this.syncStatusDetail = 'Menyelesaikan sinkronisasi lokal...';
+                this.syncFailed = false;
+                this.syncErrorMsg = '';
+            }
         },
 
         _formatJawaban(jawaban) {

@@ -1370,6 +1370,7 @@ function ujianApp() {
                     currentIndex:   this.currentIndex,
                     tandaiList:     this.tandaiList,
                     pendingSubmit:  true,
+                    pendingSubmitPayload: Array.isArray(answersSnapshot) ? answersSnapshot : [],
                     pendingSubmitCount: answersSnapshot.length,
                     pendingSubmitQueuedAt: Date.now(),
                     sesiToken:      cfg.sesiToken,

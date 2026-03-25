@@ -68,15 +68,23 @@
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 -translate-y-full"
          x-transition:enter-end="opacity-100 translate-y-0"
-         class="offline-banner flex items-center justify-center gap-2 z-50">
-        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M12 13h.01M3 3l18 18"/>
-        </svg>
-        <span>Mode Offline — Jawaban tersimpan lokal, akan dikirim saat koneksi pulih</span>
-        <span x-show="pendingSync > 0" class="bg-amber-700 text-white text-xs px-2 py-0.5 rounded-full">
-            <span x-text="pendingSync"></span> pending
-        </span>
+         class="offline-banner fixed inset-x-0 top-0 z-50 safe-area-top">
+        <div class="mx-auto flex min-h-[3.25rem] max-w-screen-xl items-start justify-between gap-3 px-3 py-2.5 sm:min-h-[3rem] sm:items-center sm:px-4">
+            <div class="flex min-w-0 items-start gap-2.5 sm:items-center">
+                <svg class="mt-0.5 h-4 w-4 flex-shrink-0 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M12 13h.01M3 3l18 18"/>
+                </svg>
+                <p class="min-w-0 text-center text-[12px] font-semibold leading-4 sm:text-sm sm:leading-5">
+                    Mode Offline — Jawaban tersimpan lokal, akan dikirim saat koneksi pulih
+                </p>
+            </div>
+            <span x-show="pendingSync > 0"
+                  class="inline-flex flex-shrink-0 items-center rounded-full bg-amber-800/95 px-2.5 py-1 text-[11px] font-bold leading-none text-white shadow-sm sm:text-xs">
+                <span x-text="pendingSync"></span>
+                <span class="ml-1">pending</span>
+            </span>
+        </div>
     </div>
 
     {{-- ===== DURATION CHANGE TOAST ===== --}}
@@ -96,7 +104,7 @@
     </div>
 
     {{-- ===== MAIN LAYOUT ===== --}}
-    <div class="h-screen flex flex-col" :class="isOffline ? 'pt-10' : ''">
+    <div class="h-screen flex flex-col" :class="isOffline ? 'pt-[calc(4rem+env(safe-area-inset-top,0px))] sm:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]' : ''">
 
         {{-- HEADER --}}
         <header class="bg-white border-b border-gray-200 shadow-sm flex-shrink-0 safe-area-top">
