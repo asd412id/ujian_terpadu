@@ -444,13 +444,18 @@ function selesaiApp() {
 
                     const data = await res.json().catch(() => ({}));
 
-                    if (!res.ok || data.accepted === false) {
-                        throw new Error(data.error || data.message || `Server menolak jawaban (${res.status})`);
+                    if (res.ok && data.accepted !== false) {
+                        await this.markRowsSyncedIfCurrent(pending);
+                        this.syncSentCount = this.syncTotalLocal;
+                        this.syncProgress = 50;
+                    } else if (res.status === 422 || data.accepted === false) {
+                        // Server rejected sync (already submitted / late sync window / time expired)
+                        // Don't retry — proceed to verification, server already has the data
+                        console.warn('[Selesai] Sync rejected (422):', data.errors || data.error || data.message);
+                        this.syncProgress = 70;
+                    } else {
+                        throw new Error(data.error || data.message || `Server error (${res.status})`);
                     }
-
-                    await this.markRowsSyncedIfCurrent(pending);
-                    this.syncSentCount = this.syncTotalLocal;
-                    this.syncProgress = 50;
                 }
 
                 // Step 2: Submit if needed
@@ -471,15 +476,21 @@ function selesaiApp() {
                     clearTimeout(submitTimeout);
 
                     const submitData = await submitRes.json().catch(() => ({}));
-                    if (!submitRes.ok || submitData.error) {
+                    // If submit fails with already_submitted, that's fine — proceed
+                    if (submitRes.ok || submitData.already_submitted || submitData.redirect) {
+                        // Success or already submitted — clear pending flag
+                    } else if (submitRes.status >= 500) {
                         throw new Error(submitData.error || submitData.message || `Submit gagal (${submitRes.status})`);
+                    } else {
+                        // 4xx — likely already submitted, proceed to verification
+                        console.warn('[Selesai] Submit rejected:', submitRes.status, submitData.error || submitData.message);
                     }
 
                     await db.exam_state.update(cfg.sesiPesertaId, {
                         pendingSubmit: false,
                         pendingSubmitPayload: null,
                         pendingSubmitQueuedAt: null,
-                    });
+                    }).catch(() => {});
                 }
 
                 this.syncProgress = 80;
