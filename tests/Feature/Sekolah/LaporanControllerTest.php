@@ -30,7 +30,7 @@ class LaporanControllerTest extends TestCase
         $user = $this->sekolahUser();
         $paket = PaketUjian::factory()->aktif()->create(['sekolah_id' => $user->sekolah_id]);
         $peserta = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
-        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
+        $sesi = SesiUjian::factory()->selesai()->create(['paket_id' => $paket->id]);
 
         SesiPeserta::factory()->submit()->create([
             'sesi_id' => $sesi->id,
@@ -48,14 +48,47 @@ class LaporanControllerTest extends TestCase
         $response->assertViewHas(['paketList', 'data', 'rekap']);
     }
 
-    public function test_analisis_soal_forbidden_for_other_school_paket(): void
+    public function test_index_hides_unselesai_sesi_data(): void
     {
         $user = $this->sekolahUser();
-        $otherSekolah = Sekolah::factory()->create();
-        $paket = PaketUjian::factory()->aktif()->create(['sekolah_id' => $otherSekolah->id]);
+        $paket = PaketUjian::factory()->aktif()->create(['sekolah_id' => $user->sekolah_id]);
+        $peserta = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
 
-        $response = $this->actingAs($user)->get(route('sekolah.laporan.analisis-soal', $paket));
+        SesiPeserta::factory()->submit()->create([
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $peserta->id,
+            'nilai_akhir' => 82,
+            'jumlah_benar' => 10,
+            'jumlah_salah' => 2,
+            'jumlah_kosong' => 0,
+        ]);
 
-        $response->assertForbidden();
+        $response = $this->actingAs($user)->get(route('sekolah.laporan'));
+
+        $response->assertStatus(200);
+        $response->assertViewHas('data', fn ($data) => $data->count() === 0);
+    }
+
+    public function test_index_shows_selesai_sesi_data(): void
+    {
+        $user = $this->sekolahUser();
+        $paket = PaketUjian::factory()->aktif()->create(['sekolah_id' => $user->sekolah_id]);
+        $peserta = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $sesi = SesiUjian::factory()->selesai()->create(['paket_id' => $paket->id]);
+
+        SesiPeserta::factory()->submit()->create([
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $peserta->id,
+            'nilai_akhir' => 82,
+            'jumlah_benar' => 10,
+            'jumlah_salah' => 2,
+            'jumlah_kosong' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan'));
+
+        $response->assertStatus(200);
+        $response->assertViewHas('data', fn ($data) => $data->count() === 1);
     }
 }

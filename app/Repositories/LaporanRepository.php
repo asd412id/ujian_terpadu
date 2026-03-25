@@ -131,6 +131,7 @@ class LaporanRepository
     {
         $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
             ->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['paket_id'])) {
@@ -207,6 +208,7 @@ class LaporanRepository
     public function buildRekapBySekolah(string $sekolahId, array $filters = []): array
     {
         $query = SesiPeserta::whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['paket_id'])) {

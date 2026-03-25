@@ -215,10 +215,6 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
 
     // Laporan Nilai (scoped ke sekolah sendiri)
     Route::get('/laporan', [SekolahLaporanController::class, 'index'])->name('laporan');
-    Route::get('/laporan/export', [SekolahLaporanController::class, 'export'])->name('laporan.export');
-    Route::get('/laporan/analisis-soal/{paket}', [SekolahLaporanController::class, 'analisisSoal'])->name('laporan.analisis-soal');
-    Route::get('/laporan/detail-siswa/{sesiPeserta}', [SekolahLaporanController::class, 'detailSiswa'])->name('laporan.detail-siswa');
-
     // Paket Ujian (lihat dan daftarkan peserta)
     Route::get('/paket', [PaketUjianController::class, 'index'])->name('paket');
     Route::get('/paket/{paket}', [PaketUjianController::class, 'show'])->name('paket.show');
