@@ -561,17 +561,12 @@ function selesaiApp() {
                 // If can't verify but sync seemed OK, proceed anyway
             }
 
-            // Clean up IDB
+            // Clean up IDB — delete ALL data for this session
             try {
                 const db = this._getDb();
                 const cfg2 = window.SELESAI_CONFIG;
                 await db.exam_answers.where('sesiPesertaId').equals(cfg2.sesiPesertaId).delete();
-                await db.exam_state.update(cfg2.sesiPesertaId, {
-                    pendingSubmit: false,
-                    pendingSubmitPayload: null,
-                    pendingSubmitQueuedAt: null,
-                    pendingSubmitCount: 0,
-                }).catch(() => {});
+                await db.exam_state.delete(cfg2.sesiPesertaId);
             } catch (e) { /* IDB cleanup non-critical */ }
 
             // All done — show the result
@@ -646,12 +641,16 @@ function selesaiApp() {
         },
 
         async markRowsSyncedIfCurrent(rows) {
+            if (!rows.length) return;
             const db = this._getDb();
-            await Promise.all(rows.map(async (row) => {
-                const current = await db.exam_answers.get(row.id);
-                if (!current || current.idempotencyKey !== row.idempotencyKey) return;
-                await db.exam_answers.update(row.id, { synced: true });
-            }));
+            // Use single transaction to avoid IDBTransaction finished errors
+            await db.transaction('rw', db.exam_answers, async () => {
+                for (const row of rows) {
+                    const current = await db.exam_answers.get(row.id);
+                    if (!current || current.idempotencyKey !== row.idempotencyKey) continue;
+                    await db.exam_answers.update(row.id, { synced: true });
+                }
+            });
         },
 
         _formatJawaban(jawaban) {

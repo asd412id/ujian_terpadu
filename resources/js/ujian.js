@@ -100,6 +100,9 @@ function ujianApp() {
             this.mulaiAtTimestamp = cfg.mulaiAt ?? null;
             this.waktuSelesaiSesi = cfg.waktuSelesaiSesi ?? null;
 
+            // Clear stale IDB data from other/previous sessions
+            await this.clearStaleSessions(cfg.sesiPesertaId);
+
             // Restore state from IndexedDB
             await this.restoreState(cfg.sesiPesertaId);
             if (navigator.onLine) {
@@ -531,6 +534,29 @@ function ujianApp() {
             await this.doSubmit();
         },
 
+        async clearStaleSessions(currentSesiPesertaId) {
+            try {
+                // Delete all answer rows NOT belonging to the current session
+                const staleAnswers = await db.exam_answers
+                    .where('sesiPesertaId').notEqual(currentSesiPesertaId)
+                    .toArray();
+                if (staleAnswers.length > 0) {
+                    await db.exam_answers.bulkDelete(staleAnswers.map(a => a.id));
+                    console.log(`[Init] Cleared ${staleAnswers.length} stale IDB answer rows`);
+                }
+
+                // Delete all exam_state rows NOT belonging to the current session
+                const allStates = await db.exam_state.toArray();
+                const staleStates = allStates.filter(s => s.sesiPesertaId !== currentSesiPesertaId);
+                if (staleStates.length > 0) {
+                    await db.exam_state.bulkDelete(staleStates.map(s => s.sesiPesertaId));
+                    console.log(`[Init] Cleared ${staleStates.length} stale IDB state rows`);
+                }
+            } catch (e) {
+                console.warn('[Init] Could not clear stale IDB sessions:', e.message);
+            }
+        },
+
         // ===== RESTORE STATE =====
         async restoreState(sesiPesertaId) {
             const cfg = window.UJIAN_CONFIG;
@@ -543,6 +569,20 @@ function ujianApp() {
                     .toArray();
             } catch (e) {
                 console.warn('[Restore] IndexedDB read failed, using server data only:', e.message);
+            }
+
+            // Detect exam reset: server has no answers but IDB has old data
+            // This means admin reset the exam — clear stale IDB data for this session
+            const serverAnswerCount = cfg.jawabanExisting?.length ?? 0;
+            if (localAnswers.length > 0 && serverAnswerCount === 0) {
+                console.log(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} — exam was reset, clearing IDB`);
+                try {
+                    await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId).delete();
+                    await db.exam_state.delete(sesiPesertaId);
+                } catch (e) {
+                    console.warn('[Restore] IDB cleanup failed:', e.message);
+                }
+                localAnswers = [];
             }
 
             // Seed from server data first (jawabanExisting), then overlay IndexedDB
