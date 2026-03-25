@@ -97,7 +97,8 @@ class PaketUjianControllerTest extends TestCase
 
         $response->assertRedirect(route('dinas.paket.index'));
         $paket->refresh();
-        $this->assertEquals('arsip', $paket->status);
+        $this->assertEquals('draft', $paket->status);
+        $this->assertSoftDeleted('paket_ujian', ['id' => $paket->id]);
     }
 
     public function test_publish_paket_with_soal(): void

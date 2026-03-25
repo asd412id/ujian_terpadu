@@ -414,10 +414,11 @@ function selesaiApp() {
                     .where('sesiPesertaId').equals(cfg.sesiPesertaId)
                     .and(a => !a.synced)
                     .count();
-                const state = await db.exam_state.get(cfg.sesiPesertaId);
-                const hasPendingSubmit = Boolean(state?.pendingSubmit)
-                    || (Array.isArray(state?.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
-                this.hasPendingSync = pending > 0 || hasPendingSubmit;
+                 const state = await db.exam_state.get(cfg.sesiPesertaId);
+                 const hasPendingSubmit = Boolean(state?.pendingSubmit)
++                    || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0);
+                 this.hasPendingSync = pending > 0 || hasPendingSubmit;
+
             } catch (e) {
                 console.warn('[Selesai] checkPendingSync error:', e.message);
             }
@@ -449,9 +450,6 @@ function selesaiApp() {
                     .and(a => !a.synced)
                     .toArray();
                 const state = await db.exam_state.get(cfg.sesiPesertaId);
-                const pendingSubmitSnapshot = Array.isArray(state?.pendingSubmitPayload)
-                    ? state.pendingSubmitPayload
-                    : [];
 
                 if (pending.length === 0 && !state?.pendingSubmit) {
                     this.hasPendingSync = false;
@@ -466,10 +464,7 @@ function selesaiApp() {
                     client_timestamp: item.updatedAt,
                 }));
 
-                const fallbackAnswers = pending.length === 0
-                    ? pendingSubmitSnapshot.filter(item => item?.soal_id && item?.jawaban !== null)
-                    : [];
-                const answersToSync = pending.length > 0 ? formattedAnswers : fallbackAnswers;
+                const answersToSync = pending.length > 0 ? formattedAnswers : [];
 
                 const sesiToken = window.SELESAI_CONFIG?.sesiToken || state?.sesiToken;
                 if (!sesiToken) {

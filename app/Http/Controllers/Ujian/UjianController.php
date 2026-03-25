@@ -146,6 +146,14 @@ class UjianController extends Controller
             abort(403);
         }
 
+        if ($sesiPeserta->status === 'mengerjakan') {
+            $this->ujianService->selesaikanUjian(
+                sesiPesertaId: $sesiPeserta->id,
+                pesertaId: $peserta->id
+            );
+            $sesiPeserta->refresh();
+        }
+
         $result         = $this->ujianService->getHasilUjian($sesiPeserta->id);
         $sesiPeserta    = $result['sesiPeserta'];
         $ringkasan      = $result['ringkasan'];

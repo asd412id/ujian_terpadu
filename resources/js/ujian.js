@@ -102,6 +102,12 @@ function ujianApp() {
 
             // Restore state from IndexedDB
             await this.restoreState(cfg.sesiPesertaId);
+            if (navigator.onLine) {
+                await this.recalcPendingSync();
+                if (this.pendingSync > 0) {
+                    await this.syncToServer();
+                }
+            }
 
             // Sync timer dengan server
             this.startTimer(cfg.mulaiAt, cfg.durasiMenit);
@@ -465,7 +471,9 @@ function ujianApp() {
 
         async returnToFullscreen() {
             this.showViolationOverlay = false;
-            await this.requestFullscreen();
+            if (!this.isMobile) {
+                await this.requestFullscreen();
+            }
         },
 
         handlePendingFullscreenStart() {
@@ -1179,7 +1187,6 @@ function ujianApp() {
         async doSubmit() {
             if (this.isSubmitting) return;
             this.isSubmitting = true;
-            this.showSubmitModal = false;
 
             const cfg = window.UJIAN_CONFIG;
             const selesaiUrl = '/ujian/' + cfg.sesiPesertaId + '/selesai';
@@ -1242,6 +1249,7 @@ function ujianApp() {
                 if (!navigator.onLine) {
                     await this.queueOfflineSubmit(cfg, allAnswers);
                     clearTimeout(submitSafetyTimer);
+                    this.showSubmitModal = false;
                     return navigateTo(selesaiUrl);
                 }
 
@@ -1279,11 +1287,13 @@ function ujianApp() {
                                 .delete();
                         } catch (e) { /* ignore */ }
                         clearTimeout(submitSafetyTimer);
+                        this.showSubmitModal = false;
                         navigateTo(data.redirect ?? selesaiUrl);
                     } else {
                         console.warn('[Submit] Server error:', res.status);
                         await this.queueOfflineSubmit(cfg, allAnswers);
                         clearTimeout(submitSafetyTimer);
+                        this.showSubmitModal = false;
                         navigateTo(selesaiUrl);
                     }
                 } catch (err) {
@@ -1296,10 +1306,14 @@ function ujianApp() {
             } catch (outerErr) {
                 console.error('[Submit] Unexpected error:', outerErr);
                 clearTimeout(submitSafetyTimer);
+                this.showSubmitModal = false;
                 navigateTo(selesaiUrl);
             } finally {
                 // Reset isSubmitting so button is usable if navigation somehow fails
                 setTimeout(() => { this.isSubmitting = false; }, 5000);
+                if (this.showSubmitModal) {
+                    this.showSubmitModal = true;
+                }
             }
         },
 
@@ -1309,18 +1323,19 @@ function ujianApp() {
         },
 
         async queueOfflineSubmit(cfg, answersSnapshot = []) {
-            // Tag semua jawaban sebagai perlu submit + simpan snapshot untuk recovery saat offline/jaringan lambat.
+            // Tag semua jawaban sebagai perlu submit + simpan ringkasan ringan untuk recovery saat offline/jaringan lambat.
             try {
                 await db.exam_state.put({
                     sesiPesertaId:  cfg.sesiPesertaId,
                     currentIndex:   this.currentIndex,
                     tandaiList:     this.tandaiList,
                     pendingSubmit:  true,
-                    pendingSubmitPayload: answersSnapshot,
+                    pendingSubmitCount: answersSnapshot.length,
                     pendingSubmitQueuedAt: Date.now(),
                     sesiToken:      cfg.sesiToken,
                     lastSyncAt:     Date.now(),
                 });
+
             } catch (e) {
                 console.warn('[Submit] Could not queue offline submit to IDB:', e.message);
             }
@@ -1380,6 +1395,7 @@ function ujianApp() {
         },
 
         async requestFullscreen() {
+            if (this.isMobile) return false;
             const el = document.documentElement;
 
             try {
