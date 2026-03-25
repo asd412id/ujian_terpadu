@@ -92,9 +92,12 @@ class MonitoringServiceTest extends TestCase
         $reflection = new \ReflectionMethod($this->service, 'getPesertaStatus');
         $params = $reflection->getParameters();
 
-        $this->assertCount(1, $params);
+        $this->assertCount(2, $params);
         $this->assertEquals('sesiId', $params[0]->getName());
         $this->assertEquals('string', $params[0]->getType()->getName());
+        $this->assertEquals('filters', $params[1]->getName());
+        $this->assertTrue($params[1]->isDefaultValueAvailable());
+        $this->assertEquals([], $params[1]->getDefaultValue());
     }
 
     public function test_get_peserta_status_returns_array(): void
@@ -130,9 +133,12 @@ class MonitoringServiceTest extends TestCase
         $reflection = new \ReflectionMethod($this->service, 'getPesertaByRuang');
         $params = $reflection->getParameters();
 
-        $this->assertCount(1, $params);
+        $this->assertCount(2, $params);
         $this->assertEquals('sesiId', $params[0]->getName());
         $this->assertEquals('string', $params[0]->getType()->getName());
+        $this->assertEquals('filters', $params[1]->getName());
+        $this->assertTrue($params[1]->isDefaultValueAvailable());
+        $this->assertEquals([], $params[1]->getDefaultValue());
     }
 
     public function test_get_peserta_by_ruang_returns_array(): void

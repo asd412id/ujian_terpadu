@@ -28,6 +28,23 @@ class MonitoringRepository
     }
 
     /**
+     * Get dashboard sesi list filtered by sekolah.
+     */
+    public function getDashboardSesiListBySekolah(string $sekolahId): Collection
+    {
+        return SesiUjian::with(['paket.sekolah', 'pengawas'])
+            ->withCount([
+                'sesiPeserta as total_peserta',
+                'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
+                'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
+            ])
+            ->where('status', 'berlangsung')
+            ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->latest()
+            ->get();
+    }
+
+    /**
      * Get aggregated summary of active sesi peserta.
      */
     public function getDashboardSummary(): array
@@ -127,8 +144,16 @@ class MonitoringRepository
         }
 
         $perPage = min((int) ($filters['per_page'] ?? 50), 200);
-        return $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
+        return $query->orderByRaw("CASE status WHEN 'mengerjakan' THEN 1 WHEN 'login' THEN 2 WHEN 'submit' THEN 3 WHEN 'dinilai' THEN 4 WHEN 'terdaftar' THEN 5 WHEN 'belum_login' THEN 6 ELSE 7 END")
             ->paginate($perPage);
+    }
+
+    /**
+     * Get active sekolah list (for filter dropdown).
+     */
+    public function getActiveSekolahList(): Collection
+    {
+        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
     }
 
     /**
@@ -145,12 +170,22 @@ class MonitoringRepository
     }
 
     /**
-     * Get active sekolah list (for filter dropdown).
+     * Get aggregated summary of active sesi peserta for a sekolah.
      */
-    public function getActiveSekolahList(): Collection
+    public function getDashboardSummaryBySekolah(string $sekolahId): array
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        $raw = SesiPeserta::query()
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
+            ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->selectRaw("\n                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,\n                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit\n            ")
+            ->first();
+
+        return [
+            'peserta_online' => $raw->peserta_online ?? 0,
+            'sudah_submit'   => $raw->sudah_submit ?? 0,
+        ];
     }
+
 
     /**
      * Get sekolah monitoring data with batch queries.
@@ -270,7 +305,7 @@ class MonitoringRepository
         }
 
         $perPage = min((int) ($filters['per_page'] ?? 50), 200);
-        return $query->orderByRaw("FIELD(status, 'mengerjakan', 'login', 'submit', 'dinilai', 'terdaftar', 'belum_login')")
+        return $query->orderByRaw("CASE status WHEN 'mengerjakan' THEN 1 WHEN 'login' THEN 2 WHEN 'submit' THEN 3 WHEN 'dinilai' THEN 4 WHEN 'terdaftar' THEN 5 WHEN 'belum_login' THEN 6 ELSE 7 END")
             ->paginate($perPage);
     }
 

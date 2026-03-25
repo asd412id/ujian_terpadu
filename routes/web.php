@@ -11,6 +11,7 @@ use App\Http\Controllers\Sekolah\DashboardController as SekolahDashboardControll
 use App\Http\Controllers\Sekolah\PesertaController;
 use App\Http\Controllers\Sekolah\PaketUjianController;
 use App\Http\Controllers\Sekolah\KartuLoginController;
+use App\Http\Controllers\Sekolah\MonitoringController as SekolahMonitoringController;
 use App\Http\Controllers\Ujian\LobbyController;
 use App\Http\Controllers\Ujian\UjianController;
 use App\Http\Controllers\Ujian\JawabanController;
@@ -204,6 +205,12 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
     Route::get('/kartu-login/{sesi}/cetak', [KartuLoginController::class, 'cetak'])->name('kartu.cetak');
     Route::get('/kartu-login/peserta/{peserta}', [KartuLoginController::class, 'cetakSatu'])->name('kartu.satu');
     Route::get('/kartu-login/peserta/{peserta}/show', [KartuLoginController::class, 'show'])->name('kartu.show');
+
+    // Monitoring Peserta Ujian
+    Route::get('/monitoring', [SekolahMonitoringController::class, 'index'])->name('monitoring');
+    Route::get('/monitoring/api', [SekolahMonitoringController::class, 'apiIndex'])->name('monitoring.api');
+    Route::get('/monitoring/sesi/{sesi}', [SekolahMonitoringController::class, 'sesi'])->name('monitoring.sesi');
+    Route::get('/monitoring/sesi/{sesi}/api', [SekolahMonitoringController::class, 'apiSesi'])->name('monitoring.sesi.api');
 
     // Paket Ujian (lihat dan daftarkan peserta)
     Route::get('/paket', [PaketUjianController::class, 'index'])->name('paket');

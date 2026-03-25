@@ -30,6 +30,24 @@ class MonitoringService
     }
 
     /**
+     * Get school monitoring data with summary.
+     */
+    public function getSekolahMonitoring(string $sekolahId): array
+    {
+        $sesiList = $this->repository->getDashboardSesiListBySekolah($sekolahId);
+        $summaryRaw = $this->repository->getDashboardSummaryBySekolah($sekolahId);
+
+        $summary = [
+            'total_sesi'     => $sesiList->count(),
+            'peserta_online' => $summaryRaw['peserta_online'],
+            'peserta_ragu'   => 0,
+            'sudah_submit'   => $summaryRaw['sudah_submit'],
+        ];
+
+        return compact('sesiList', 'summary');
+    }
+
+    /**
      * Get active sessions with optional filters.
      */
     public function getSesiAktif(array $filters = []): mixed
