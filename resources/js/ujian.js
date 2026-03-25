@@ -1078,7 +1078,7 @@ function ujianApp() {
 
                     if (isAlreadySubmitted) {
                         this.markIntentionalFullscreenExit();
-                        window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
+                        window.location.replace('/ujian/' + cfg.sesiPesertaId + '/selesai');
                         return;
                     }
 
