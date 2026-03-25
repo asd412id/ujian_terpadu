@@ -274,10 +274,12 @@ class PesertaService
             );
         }
 
-        // Update password if provided
+        // Update password only when provided; otherwise keep existing hash/plaintext
         if ($plainPassword) {
             $data['password_ujian'] = Hash::make($plainPassword);
             $data['password_plain'] = encrypt($plainPassword);
+        } else {
+            unset($data['password_ujian'], $data['password_plain']);
         }
 
         $this->repository->update($peserta, $data);
