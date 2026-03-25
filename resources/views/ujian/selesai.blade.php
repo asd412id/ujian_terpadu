@@ -5,6 +5,69 @@
 @section('content')
 <div x-data="selesaiApp()" x-init="init()">
 
+{{-- ====== SYNC OVERLAY (tampil sampai semua jawaban terverifikasi di server) ====== --}}
+<div x-show="!syncVerified" x-transition.opacity class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6">
+    <div class="w-full max-w-sm text-center space-y-6">
+
+        {{-- Spinner animasi --}}
+        <div class="relative mx-auto w-20 h-20">
+            <svg class="w-20 h-20 animate-spin" viewBox="0 0 50 50" fill="none">
+                <circle cx="25" cy="25" r="20" stroke="#e2e8f0" stroke-width="5"></circle>
+                <circle cx="25" cy="25" r="20" stroke="#3b82f6" stroke-width="5"
+                        stroke-dasharray="80 126" stroke-linecap="round"
+                        :class="syncFailed ? 'stroke-red-500' : 'stroke-blue-500'"></circle>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-sm font-bold"
+                      :class="syncFailed ? 'text-red-600' : 'text-blue-600'"
+                      x-text="syncProgress + '%'"></span>
+            </div>
+        </div>
+
+        {{-- Status text --}}
+        <div>
+            <h2 class="text-lg font-bold text-gray-900" x-text="syncStatusTitle"></h2>
+            <p class="text-sm text-gray-500 mt-1" x-text="syncStatusDetail"></p>
+        </div>
+
+        {{-- Progress bar --}}
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div class="h-2.5 rounded-full transition-all duration-500"
+                 :class="syncFailed ? 'bg-red-500' : 'bg-blue-500'"
+                 :style="'width: ' + syncProgress + '%'"></div>
+        </div>
+
+        {{-- Jumlah terkirim --}}
+        <p class="text-xs text-gray-400" x-show="syncTotalLocal > 0">
+            <span x-text="syncSentCount"></span> / <span x-text="syncTotalLocal"></span> jawaban terkirim
+        </p>
+
+        {{-- Offline warning --}}
+        <div x-show="!isOnline" x-transition
+             class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+            <svg class="w-5 h-5 mx-auto mb-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            Tidak ada koneksi internet. Jawaban akan otomatis terkirim saat koneksi tersambung.
+            <br><strong>Jangan tutup browser ini.</strong>
+        </div>
+
+        {{-- Retry button --}}
+        <button x-show="syncFailed && isOnline" x-transition
+                @click="retrySyncAll()"
+                class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all">
+            Coba Kirim Ulang
+        </button>
+
+        {{-- Sync error detail --}}
+        <p x-show="syncFailed" x-transition class="text-xs text-red-500" x-text="syncErrorMsg"></p>
+    </div>
+</div>
+
+{{-- ====== MAIN CONTENT (tersembunyi sampai sync terverifikasi) ====== --}}
+<div x-show="syncVerified" x-transition.opacity>
+
 {{-- Top Navigation Bar --}}
 <header class="w-full bg-white border-b border-gray-200 px-4 sm:px-6 py-3.5">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
@@ -15,42 +78,18 @@
         <form action="{{ route('ujian.logout') }}" method="POST" @submit.prevent="logout($event)">
             @csrf
             <button type="submit"
-                    class="flex items-center gap-1.5 text-sm font-medium transition-colors"
-                    :class="hasPendingSync ? 'text-amber-600 hover:text-amber-700' : 'text-gray-500 hover:text-red-600'">
+                    class="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
-                <span x-text="hasPendingSync ? 'Keluar (sinkronisasi belum selesai)' : 'Keluar'"></span>
+                Keluar
             </button>
         </form>
     </div>
 </header>
 
 <main class="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6">
-
-    {{-- Offline Banner --}}
-    <div x-show="!isOnline && hasPendingSync"
-         x-transition
-         class="fixed top-0 inset-x-0 z-50 bg-amber-500 text-white text-sm text-center py-2 px-4 flex items-center justify-center gap-2">
-        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-        Menunggu koneksi untuk mengirim jawaban tersisa...
-    </div>
-
-    {{-- Syncing Banner --}}
-    <div x-show="isSyncing"
-         x-transition
-         class="fixed top-0 inset-x-0 z-50 bg-blue-600 text-white text-sm text-center py-2 px-4 flex items-center justify-center gap-2">
-        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Menyinkronkan jawaban ke server...
-    </div>
-
     <div class="w-full max-w-lg">
         {{-- Card --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -91,10 +130,6 @@
                             <p class="text-xs text-gray-500 mt-1">Kosong</p>
                         </div>
                     </div>
-                    <p x-show="countsFromLocal" x-transition
-                       class="text-xs text-amber-600 text-center mt-1">
-                        * Berdasarkan data lokal — akan diperbarui setelah sinkronisasi
-                    </p>
                 </div>
 
                 {{-- Hasil Nilai (hanya jika tampilkan_hasil aktif di paket) --}}
@@ -114,7 +149,6 @@
 
                         {{-- Nilai ready --}}
                         <div x-show="!nilaiLoading && nilaiAkhir !== null" x-transition class="space-y-3">
-                            {{-- Nilai besar --}}
                             <div class="rounded-xl p-5 text-center"
                                  :class="(() => { const n = parseFloat(nilaiAkhir ?? 0); return n >= 86 ? 'bg-green-50 border border-green-200' : n >= 71 ? 'bg-blue-50 border border-blue-200' : n >= 56 ? 'bg-amber-50 border border-amber-200' : n >= 41 ? 'bg-orange-50 border border-orange-200' : 'bg-red-50 border border-red-200'; })()">
                                 <p class="text-xs font-medium mb-1"
@@ -126,7 +160,6 @@
                                 <p class="text-xs text-gray-500 mt-1">Nilai Akhir</p>
                             </div>
 
-                            {{-- Detail benar/salah/kosong --}}
                             <div class="grid grid-cols-3 gap-2">
                                 <div class="bg-green-50 rounded-lg px-2 py-2 text-center">
                                     <p class="text-lg font-bold text-green-700" x-text="jumlahBenar ?? '-'"></p>
@@ -157,31 +190,15 @@
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500">Status Sinkronisasi</span>
-                        <span class="font-medium flex items-center gap-1.5"
-                              :class="hasPendingSync ? 'text-amber-600' : 'text-green-600'">
-                            <span class="w-2 h-2 rounded-full inline-block"
-                                  :class="hasPendingSync ? 'bg-amber-500' : 'bg-green-500'"></span>
-                            <span x-text="hasPendingSync ? 'Belum tersinkron' : 'Tersinkron'"></span>
+                        <span class="font-medium flex items-center gap-1.5 text-green-600">
+                            <span class="w-2 h-2 rounded-full inline-block bg-green-500"></span>
+                            Tersinkron
                         </span>
                     </div>
                 </div>
 
-                {{-- Pesan Offline Sync --}}
-                <div x-show="hasPendingSync && !isOnline"
-                     x-transition
-                     class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 text-center">
-                    <svg class="w-5 h-5 mx-auto mb-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                    Masih ada jawaban yang belum dikirim ke server. Jangan tutup browser ini.<br>
-                    Jawaban akan otomatis terkirim saat koneksi tersambung kembali.
-                </div>
-
                 {{-- Sukses Sync --}}
-                <div x-show="!hasPendingSync"
-                     x-transition
-                     class="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700 text-center">
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700 text-center">
                     <svg class="w-5 h-5 mx-auto mb-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
@@ -207,49 +224,25 @@
                     </ul>
                 </div>
 
-                {{-- Tombol Sinkronkan Ulang (saat masih pending) --}}
-                <template x-if="hasPendingSync">
-                    <button @click="trySyncPending()"
-                            :disabled="isSyncing"
-                            class="w-full flex items-center justify-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200"
-                            :class="isSyncing
-                                ? 'bg-blue-100 text-blue-400 cursor-wait'
-                                : 'bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-700'">
-                        <template x-if="isSyncing">
-                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </template>
-                        <template x-if="!isSyncing">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                        </template>
-                        <span x-text="isSyncing ? 'Menyinkronkan...' : 'Coba Sinkronkan Ulang'"></span>
-                    </button>
-                </template>
-
                 {{-- Tombol Keluar --}}
                 <form action="{{ route('ujian.logout') }}" method="POST" @submit.prevent="logout($event)">
                     @csrf
                     <button type="submit"
                             class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95
-                                   text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200"
-                            :disabled="isSyncing"
-                            :class="isSyncing ? 'opacity-80 cursor-not-allowed' : ''">
+                                   text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all duration-200">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                         </svg>
-                        <span x-text="isSyncing ? 'Menunggu sinkronisasi...' : 'Keluar'"></span>
+                        Keluar
                     </button>
                 </form>
             </div>
         </div>
     </div>
 </main>
+
+</div>{{-- end syncVerified --}}
 
 </div>{{-- end x-data selesaiApp --}}
 
@@ -274,9 +267,16 @@ function selesaiApp() {
     return {
         isOnline: navigator.onLine,
         isSyncing: false,
-        hasPendingSync: false,
+        syncVerified: false,
+        syncProgress: 0,
+        syncTotalLocal: 0,
+        syncSentCount: 0,
+        syncFailed: false,
+        syncErrorMsg: '',
+        syncStatusTitle: 'Mengirim jawaban ke server...',
+        syncStatusDetail: 'Mohon tunggu, jangan tutup halaman ini.',
         syncRetries: 0,
-        maxRetries: 10,
+        maxRetries: 15,
         _db: null,
         _retryTimer: null,
         _nilaiPollTimer: null,
@@ -284,7 +284,6 @@ function selesaiApp() {
         terjawab: window.SELESAI_CONFIG.serverTerjawab,
         ragu: window.SELESAI_CONFIG.serverRagu,
         kosong: window.SELESAI_CONFIG.serverKosong,
-        countsFromLocal: false,
         tampilkanHasil: window.SELESAI_CONFIG.tampilkanHasil,
         nilaiAkhir: window.SELESAI_CONFIG.nilaiAkhir,
         jumlahBenar: window.SELESAI_CONFIG.jumlahBenar,
@@ -305,11 +304,11 @@ function selesaiApp() {
         },
 
         async init() {
+            // Block back navigation
             history.pushState({ selesaiPage: true }, '', window.location.href);
             window.addEventListener('popstate', () => {
                 history.pushState({ selesaiPage: true }, '', window.location.href);
             });
-
             window.addEventListener('pageshow', (event) => {
                 if (event.persisted) {
                     history.pushState({ selesaiPage: true }, '', window.location.href);
@@ -319,31 +318,293 @@ function selesaiApp() {
             window.addEventListener('online',  () => {
                 this.isOnline = true;
                 this.syncRetries = 0;
-                if (this._onlineSyncTimer) clearTimeout(this._onlineSyncTimer);
-                this._onlineSyncTimer = setTimeout(() => this.trySyncPending(), 1200);
+                if (!this.syncVerified) {
+                    if (this._onlineSyncTimer) clearTimeout(this._onlineSyncTimer);
+                    this._onlineSyncTimer = setTimeout(() => this.runSyncFlow(), 1200);
+                }
             });
             window.addEventListener('offline', () => this.isOnline = false);
 
             // Listen for SW trigger
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.addEventListener('message', (e) => {
-                    if (e.data?.type === 'TRIGGER_SYNC') this.trySyncPending();
+                    if (e.data?.type === 'TRIGGER_SYNC' && !this.syncVerified) this.runSyncFlow();
                 });
             }
 
-            await this.checkPendingSync();
+            // Start sync verification flow
+            await this.runSyncFlow();
+        },
 
-            // If server shows 0 terjawab but we have local answers, use local counts
-            await this.updateCountsFromLocal();
+        async runSyncFlow() {
+            const db = this._getDb();
+            const cfg = window.SELESAI_CONFIG;
 
-            if (this.hasPendingSync && this.isOnline) {
-                this.trySyncPending();
+            // Count local answers
+            let localAnswers = [];
+            try {
+                localAnswers = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .toArray();
+            } catch (e) { /* IDB unavailable */ }
+
+            const state = await db.exam_state.get(cfg.sesiPesertaId).catch(() => null);
+            const pending = localAnswers.filter(a => !a.synced);
+
+            this.syncTotalLocal = localAnswers.length;
+            this.syncSentCount = localAnswers.length - pending.length;
+
+            const hasPendingSubmit = Boolean(state?.pendingSubmit)
+                || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0);
+
+            // If no local data at all AND no pending submit → already clean, skip to result
+            if (localAnswers.length === 0 && !hasPendingSubmit) {
+                this.syncProgress = 100;
+                await this.verifyServerCount();
+                return;
             }
 
-            // Poll for scoring result if tampilkan_hasil is on and nilai not ready yet
+            // If all synced and no pending submit → verify with server
+            if (pending.length === 0 && !hasPendingSubmit) {
+                this.syncProgress = 80;
+                this.syncStatusTitle = 'Memverifikasi dengan server...';
+                await this.verifyServerCount();
+                return;
+            }
+
+            // Need to sync — start the sync process
+            if (!this.isOnline) {
+                this.syncStatusTitle = 'Menunggu koneksi internet...';
+                this.syncStatusDetail = 'Jawaban akan otomatis terkirim saat koneksi tersambung. Jangan tutup halaman.';
+                this.syncProgress = Math.round((this.syncSentCount / Math.max(1, this.syncTotalLocal)) * 60);
+                return; // Will be retried on 'online' event
+            }
+
+            await this.trySyncPending();
+        },
+
+        async trySyncPending() {
+            if (this.isSyncing || !this.isOnline) return;
+            this.isSyncing = true;
+            this.syncFailed = false;
+            this.syncStatusTitle = 'Mengirim jawaban ke server...';
+            this.syncStatusDetail = 'Mohon tunggu, jangan tutup halaman ini.';
+
+            try {
+                const db = this._getDb();
+                const cfg = window.SELESAI_CONFIG;
+
+                const pending = await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .and(a => !a.synced)
+                    .toArray();
+                const state = await db.exam_state.get(cfg.sesiPesertaId);
+
+                if (pending.length === 0 && !state?.pendingSubmit) {
+                    this.syncProgress = 80;
+                    this.syncStatusTitle = 'Memverifikasi dengan server...';
+                    this.isSyncing = false;
+                    await this.verifyServerCount();
+                    return;
+                }
+
+                const formattedAnswers = pending.map(item => ({
+                    soal_id:         item.soalId,
+                    jawaban:         this._formatJawaban(item.jawaban),
+                    idempotency_key: item.idempotencyKey,
+                    client_timestamp: item.updatedAt,
+                }));
+
+                const sesiToken = cfg.sesiToken || state?.sesiToken;
+                if (!sesiToken) {
+                    console.warn('[Selesai] No sesi token');
+                    this.isSyncing = false;
+                    return;
+                }
+
+                this.syncProgress = 20;
+                this.syncStatusDetail = `Mengirim ${formattedAnswers.length} jawaban...`;
+
+                // Step 1: Sync answers
+                if (formattedAnswers.length > 0) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                    const res = await fetch('/api/ujian/sync-jawaban', {
+                        method: 'POST',
+                        signal: controller.signal,
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({
+                            sesi_token: sesiToken,
+                            final_submit: true,
+                            answers: formattedAnswers,
+                            tandai_list: state?.tandaiList ?? [],
+                        }),
+                    });
+                    clearTimeout(timeoutId);
+
+                    const data = await res.json().catch(() => ({}));
+
+                    if (!res.ok || data.accepted === false) {
+                        throw new Error(data.error || data.message || `Server menolak jawaban (${res.status})`);
+                    }
+
+                    await this.markRowsSyncedIfCurrent(pending);
+                    this.syncSentCount = this.syncTotalLocal;
+                    this.syncProgress = 50;
+                }
+
+                // Step 2: Submit if needed
+                if (state?.pendingSubmit) {
+                    this.syncProgress = 60;
+                    this.syncStatusTitle = 'Mengirim submit ujian...';
+                    this.syncStatusDetail = 'Menyelesaikan proses submit...';
+
+                    const submitCtrl = new AbortController();
+                    const submitTimeout = setTimeout(() => submitCtrl.abort(), 20000);
+
+                    const submitRes = await fetch('/api/ujian/submit/' + sesiToken, {
+                        method: 'POST',
+                        signal: submitCtrl.signal,
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ sesi_token: sesiToken }),
+                    });
+                    clearTimeout(submitTimeout);
+
+                    const submitData = await submitRes.json().catch(() => ({}));
+                    if (!submitRes.ok || submitData.error) {
+                        throw new Error(submitData.error || submitData.message || `Submit gagal (${submitRes.status})`);
+                    }
+
+                    await db.exam_state.update(cfg.sesiPesertaId, {
+                        pendingSubmit: false,
+                        pendingSubmitPayload: null,
+                        pendingSubmitQueuedAt: null,
+                    });
+                }
+
+                this.syncProgress = 80;
+                this.syncRetries = 0;
+
+                // Step 3: Verify with server
+                await this.verifyServerCount();
+
+            } catch (e) {
+                console.warn('[Selesai] Sync failed:', e.message);
+                this.syncFailed = true;
+                this.syncErrorMsg = e.message;
+                this.syncStatusTitle = 'Gagal mengirim jawaban';
+                this.syncStatusDetail = 'Periksa koneksi internet dan coba lagi.';
+
+                this.syncRetries++;
+                if (this.syncRetries < this.maxRetries) {
+                    const delay = Math.min(3000 * Math.pow(1.5, this.syncRetries - 1), 30000);
+                    this.syncStatusDetail = `Mencoba ulang dalam ${Math.round(delay/1000)} detik... (percobaan ${this.syncRetries}/${this.maxRetries})`;
+                    this._retryTimer = setTimeout(() => this.trySyncPending(), delay);
+                } else {
+                    this.syncStatusDetail = 'Gagal mengirim setelah banyak percobaan. Tekan tombol di bawah untuk mencoba lagi.';
+                }
+            } finally {
+                this.isSyncing = false;
+            }
+        },
+
+        async verifyServerCount() {
+            const cfg = window.SELESAI_CONFIG;
+            this.syncStatusTitle = 'Memverifikasi dengan server...';
+            this.syncStatusDetail = 'Memastikan semua jawaban tersimpan...';
+            this.syncProgress = 90;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const statusRes = await fetch(cfg.statusUrl, {
+                    signal: controller.signal,
+                    headers: { 'Accept': 'application/json' }
+                });
+                clearTimeout(timeoutId);
+
+                if (statusRes.ok) {
+                    const data = await statusRes.json();
+                    this.terjawab = data.soal_terjawab ?? this.terjawab;
+                    this.kosong = data.jumlah_kosong ?? Math.max(0, cfg.totalSoal - this.terjawab);
+                    this.ragu = 0;
+
+                    if (data.nilai_akhir !== null && data.nilai_akhir !== undefined) {
+                        this.nilaiAkhir = parseFloat(data.nilai_akhir);
+                        this.jumlahBenar = data.jumlah_benar ?? this.jumlahBenar;
+                        this.jumlahSalah = data.jumlah_salah ?? this.jumlahSalah;
+                        this.jumlahKosong = data.jumlah_kosong ?? this.jumlahKosong;
+                        this.nilaiLoading = false;
+                    }
+
+                    // Verify: if local has more answers than server, re-sync
+                    if (this.syncTotalLocal > 0 && data.soal_terjawab < this.syncTotalLocal) {
+                        const db = this._getDb();
+                        const pending = await db.exam_answers
+                            .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                            .and(a => !a.synced)
+                            .count();
+
+                        if (pending > 0 && this.syncRetries < this.maxRetries) {
+                            // Still have unsynced rows — retry
+                            this.syncProgress = 50;
+                            this.syncStatusTitle = 'Beberapa jawaban belum sampai...';
+                            this.syncStatusDetail = 'Mengirim ulang jawaban yang belum tersimpan...';
+                            this.syncRetries++;
+                            setTimeout(() => this.trySyncPending(), 2000);
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[Selesai] Status verification failed:', e.message);
+                // If can't verify but sync seemed OK, proceed anyway
+            }
+
+            // Clean up IDB
+            try {
+                const db = this._getDb();
+                const cfg2 = window.SELESAI_CONFIG;
+                await db.exam_answers.where('sesiPesertaId').equals(cfg2.sesiPesertaId).delete();
+                await db.exam_state.update(cfg2.sesiPesertaId, {
+                    pendingSubmit: false,
+                    pendingSubmitPayload: null,
+                    pendingSubmitQueuedAt: null,
+                    pendingSubmitCount: 0,
+                }).catch(() => {});
+            } catch (e) { /* IDB cleanup non-critical */ }
+
+            // All done — show the result
+            this.syncProgress = 100;
+            this.syncStatusTitle = 'Selesai!';
+            this.syncStatusDetail = '';
+
+            // Small delay for visual feedback
+            await new Promise(r => setTimeout(r, 500));
+            this.syncVerified = true;
+
+            // Start nilai polling if needed
             if (this.tampilkanHasil && this.nilaiAkhir === null) {
                 this.pollNilai();
             }
+        },
+
+        async retrySyncAll() {
+            // Reset all answers to unsynced and retry
+            try {
+                const db = this._getDb();
+                const cfg = window.SELESAI_CONFIG;
+                await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .modify({ synced: false });
+            } catch (e) { /* ignore */ }
+
+            this.syncRetries = 0;
+            this.syncFailed = false;
+            this.syncProgress = 0;
+            this.syncSentCount = 0;
+            await this.runSyncFlow();
         },
 
         async pollNilai() {
@@ -379,203 +640,19 @@ function selesaiApp() {
                 } catch (e) {
                     console.warn('[Selesai] pollNilai error:', e.message);
                 }
-                // Retry with 2s interval
                 this._nilaiPollTimer = setTimeout(poll, 2000);
             };
 
             poll();
         },
 
-        async updateCountsFromLocal() {
-            try {
-                const db = this._getDb();
-                const cfg = window.SELESAI_CONFIG;
-                const localAnswers = await db.exam_answers
-                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                    .toArray();
-
-                // Count local answers that have actual jawaban content
-                const localTerjawab = localAnswers.filter(a => {
-                    const j = a.jawaban;
-                    if (!j) return false;
-                    if (j.terjawab === true) return true;
-                    if (j.pg?.length > 0) return true;
-                    if (j.teks !== undefined && j.teks !== '') return true;
-                    if (j.benarSalah && Object.keys(j.benarSalah).length > 0) return true;
-                    if (j.pasangan && Object.keys(j.pasangan).length > 0) return true;
-                    return false;
-                }).length;
-
-                // Use the higher count between server and local
-                if (localTerjawab > this.terjawab) {
-                    this.terjawab = localTerjawab;
-                    this.kosong = Math.max(0, cfg.totalSoal - localTerjawab);
-                    this.countsFromLocal = true;
-                }
-            } catch (e) {
-                console.warn('[Selesai] updateCountsFromLocal error:', e.message);
-            }
-        },
-
-        async checkPendingSync() {
-            try {
-                const db = this._getDb();
-                const cfg = window.SELESAI_CONFIG;
-                const pending = await db.exam_answers
-                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                    .and(a => !a.synced)
-                    .count();
-                 const state = await db.exam_state.get(cfg.sesiPesertaId);
-                 const hasPendingSubmit = Boolean(state?.pendingSubmit)
-                    || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0);
-                 this.hasPendingSync = pending > 0 || hasPendingSubmit;
-
-            } catch (e) {
-                console.warn('[Selesai] checkPendingSync error:', e.message);
-            }
-        },
-
         async markRowsSyncedIfCurrent(rows) {
             const db = this._getDb();
             await Promise.all(rows.map(async (row) => {
                 const current = await db.exam_answers.get(row.id);
-                if (!current || current.idempotencyKey !== row.idempotencyKey) {
-                    return;
-                }
-
+                if (!current || current.idempotencyKey !== row.idempotencyKey) return;
                 await db.exam_answers.update(row.id, { synced: true });
             }));
-        },
-
-        async trySyncPending() {
-            if (this.isSyncing || !this.isOnline) return;
-            this.isSyncing = true;
-
-            try {
-                const db = this._getDb();
-                const cfg = window.SELESAI_CONFIG;
-
-                // Find pending answers for current session only
-                const pending = await db.exam_answers
-                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                    .and(a => !a.synced)
-                    .toArray();
-                const state = await db.exam_state.get(cfg.sesiPesertaId);
-
-                if (pending.length === 0 && !state?.pendingSubmit) {
-                    this.hasPendingSync = false;
-                    this.isSyncing = false;
-                    return;
-                }
-
-                const formattedAnswers = pending.map(item => ({
-                    soal_id:         item.soalId,
-                    jawaban:         this._formatJawaban(item.jawaban),
-                    idempotency_key: item.idempotencyKey,
-                    client_timestamp: item.updatedAt,
-                }));
-
-                const answersToSync = pending.length > 0 ? formattedAnswers : [];
-
-                const sesiToken = window.SELESAI_CONFIG?.sesiToken || state?.sesiToken;
-                if (!sesiToken) {
-                    console.warn('[Selesai] No sesi token for', cfg.sesiPesertaId);
-                    return;
-                }
-
-                if (answersToSync.length === 0 && !state?.pendingSubmit) {
-                    this.hasPendingSync = false;
-                    return;
-                }
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-                const res = await fetch('/api/ujian/sync-jawaban', {
-                    method: 'POST',
-                    signal: controller.signal,
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({
-                        sesi_token: sesiToken,
-                        final_submit: true,
-                        answers: answersToSync,
-                        tandai_list: state?.tandaiList ?? [],
-                    }),
-                });
-
-                clearTimeout(timeoutId);
-
-                const data = await res.json().catch(() => ({}));
-
-                if (res.ok && data.accepted !== false) {
-                    await this.markRowsSyncedIfCurrent(pending);
-                    this.syncRetries = 0;
-
-                    if (state?.pendingSubmit) {
-                        const submitCtrl = new AbortController();
-                        const submitTimeout = setTimeout(() => submitCtrl.abort(), 20000);
-                        try {
-                            const submitRes = await fetch('/api/ujian/submit/' + sesiToken, {
-                                method: 'POST',
-                                signal: submitCtrl.signal,
-                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                                body: JSON.stringify({ sesi_token: sesiToken }),
-                            });
-                            clearTimeout(submitTimeout);
-
-                            const submitData = await submitRes.json().catch(() => ({}));
-                            if (!submitRes.ok || submitData.error) {
-                                throw new Error(submitData.error || submitData.message || `Submit returned ${submitRes.status}`);
-                            }
-
-                            await db.exam_state.update(cfg.sesiPesertaId, {
-                                pendingSubmit: false,
-                                pendingSubmitPayload: null,
-                                pendingSubmitQueuedAt: null,
-                            });
-                        } catch (submitErr) {
-                            clearTimeout(submitTimeout);
-                            console.warn('[Selesai] Submit fetch failed:', submitErr.message);
-                            throw submitErr;
-                        }
-                    }
-
-                    await this.checkPendingSync();
-
-                    if (!this.hasPendingSync) {
-                        await db.exam_answers.where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                            .and(a => a.synced)
-                            .delete();
-
-                        try {
-                            const statusRes = await fetch(cfg.statusUrl, { headers: { 'Accept': 'application/json' } });
-                            if (statusRes.ok) {
-                                const statusData = await statusRes.json();
-                                if (statusData.soal_terjawab !== undefined) {
-                                    this.terjawab = statusData.soal_terjawab ?? this.terjawab;
-                                    this.kosong = statusData.jumlah_kosong ?? this.kosong;
-                                }
-                            }
-                        } catch (statusErr) {
-                            console.warn('[Selesai] Status refresh failed:', statusErr.message);
-                        }
-
-                        window.location.reload();
-                        return;
-                    }
-                } else {
-                    throw new Error(data.error || data.message || `Server returned ${res.status}`);
-                }
-            } catch (e) {
-                console.warn('[Selesai] Sync failed:', e.message);
-                this.syncRetries++;
-                if (this.syncRetries < this.maxRetries) {
-                    const delay = Math.min(2000 * Math.pow(2, this.syncRetries - 1), 30000);
-                    this._retryTimer = setTimeout(() => this.trySyncPending(), delay);
-                }
-            } finally {
-                this.isSyncing = false;
-            }
         },
 
         _formatJawaban(jawaban) {

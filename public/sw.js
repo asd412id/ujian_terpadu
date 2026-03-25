@@ -59,6 +59,20 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // ---- Halaman selesai: NetworkOnly (jangan cache — data harus segar) ----
+    if (url.pathname.match(/^\/ujian\/[^/]+\/selesai/)) {
+        event.respondWith(
+            fetch(request).catch(async () => {
+                const cache = await caches.open(STATIC_CACHE);
+                return await cache.match('/offline') ||
+                       new Response('<h1>Offline</h1><p>Menunggu koneksi untuk menampilkan hasil ujian.</p>', {
+                           headers: { 'Content-Type': 'text/html' }
+                       });
+            })
+        );
+        return;
+    }
+
     // ---- Halaman ujian: NetworkFirst dengan fallback cache ----
     if (url.pathname.startsWith('/ujian/')) {
         event.respondWith(networkFirst(request, PAGE_CACHE));

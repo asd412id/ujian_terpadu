@@ -1280,12 +1280,7 @@ function ujianApp() {
                             throw new Error(data.error || data.message || 'Submit ditolak server');
                         }
 
-                        // Clear IndexedDB after successful submit
-                        try {
-                            await db.exam_answers
-                                .where('sesiPesertaId').equals(cfg.sesiPesertaId)
-                                .delete();
-                        } catch (e) { /* ignore */ }
+                        // Don't delete IDB — selesai page will verify & clean up
                         clearTimeout(submitSafetyTimer);
                         this.showSubmitModal = false;
                         navigateTo(data.redirect ?? selesaiUrl);
@@ -1323,8 +1318,13 @@ function ujianApp() {
         },
 
         async queueOfflineSubmit(cfg, answersSnapshot = []) {
-            // Tag semua jawaban sebagai perlu submit + simpan ringkasan ringan untuk recovery saat offline/jaringan lambat.
+            // Tag semua jawaban sebagai perlu submit + reset synced flag agar selesai page kirim ulang SEMUA jawaban.
             try {
+                // Reset ALL answer rows to synced:false so selesai page re-sends everything
+                await db.exam_answers
+                    .where('sesiPesertaId').equals(cfg.sesiPesertaId)
+                    .modify({ synced: false });
+
                 await db.exam_state.put({
                     sesiPesertaId:  cfg.sesiPesertaId,
                     currentIndex:   this.currentIndex,

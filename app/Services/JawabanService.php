@@ -251,11 +251,13 @@ class JawabanService
             $token, ['login', 'mengerjakan', 'submit']
         );
 
+        $syncResult = ['synced' => 0, 'skipped' => 0];
+
         if ($sesiPeserta->status === 'submit') {
             // Already auto-submitted by server — sync any late answers and queue re-score
             if (!empty($finalAnswers)) {
                 try {
-                    $this->syncOfflineAnswers($token, $finalAnswers, [], true);
+                    $syncResult = $this->syncOfflineAnswers($token, $finalAnswers, [], true);
                 } catch (\Exception $e) {
                     $this->repository->createLog([
                         'sesi_peserta_id' => $sesiPeserta->id,
@@ -265,15 +267,19 @@ class JawabanService
                     ]);
                 }
             }
+            $sesiPeserta->refresh();
             return [
-                'message'     => 'Sudah disubmit',
-                'nilai_akhir' => $sesiPeserta->fresh()->nilai_akhir,
+                'message'         => 'Sudah disubmit',
+                'nilai_akhir'     => $sesiPeserta->nilai_akhir,
+                'synced'          => $syncResult['synced'] ?? 0,
+                'skipped'         => $syncResult['skipped'] ?? 0,
+                'soal_terjawab'   => $sesiPeserta->soal_terjawab,
             ];
         }
 
         if (!empty($finalAnswers)) {
             try {
-                $this->syncOfflineAnswers($token, $finalAnswers, [], true);
+                $syncResult = $this->syncOfflineAnswers($token, $finalAnswers, [], true);
             } catch (\Exception $e) {
                 $this->repository->createLog([
                     'sesi_peserta_id' => $sesiPeserta->id,
@@ -296,9 +302,13 @@ class JawabanService
         // Dispatch scoring to queue — UI returns immediately
         \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'submit');
 
+        $sesiPeserta->refresh();
         return [
-            'message'     => 'Ujian berhasil disubmit',
-            'redirect'    => route('ujian.selesai', $sesiPeserta),
+            'message'         => 'Ujian berhasil disubmit',
+            'redirect'        => route('ujian.selesai', $sesiPeserta),
+            'synced'          => $syncResult['synced'] ?? 0,
+            'skipped'         => $syncResult['skipped'] ?? 0,
+            'soal_terjawab'   => $sesiPeserta->soal_terjawab,
         ];
     }
 
