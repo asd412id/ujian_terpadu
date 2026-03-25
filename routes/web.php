@@ -197,7 +197,7 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
     Route::get('/peserta/import/template', [PesertaController::class, 'downloadTemplate'])->name('peserta.import.template');
     Route::get('/peserta/import/status/{job}', [PesertaController::class, 'importStatus'])->name('peserta.import.status');
     Route::delete('/peserta/destroy-all', [PesertaController::class, 'destroyAll'])->name('peserta.destroy-all');
-    Route::resource('peserta', PesertaController::class)->only(['index'])->names('peserta')->parameters(['peserta' => 'peserta']);
+    Route::resource('peserta', PesertaController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])->names('peserta')->parameters(['peserta' => 'peserta']);
 
     // Kartu Login
     Route::get('/kartu-login', [KartuLoginController::class, 'index'])->name('kartu.index');

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
+use App\Models\Peserta;
 use App\Services\PesertaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -30,6 +32,86 @@ class PesertaController extends Controller
         $kelasList = $this->pesertaService->getKelasList($user->sekolah_id);
 
         return view('sekolah.peserta.index', compact('peserta', 'kelasList'));
+    }
+
+    public function create()
+    {
+        return view('sekolah.peserta.form');
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'nama'          => 'required|string|max:200',
+            'nis'           => 'nullable|string|max:20',
+            'nisn'          => 'nullable|string|max:20',
+            'kelas'         => 'nullable|string|max:50',
+            'jurusan'       => 'nullable|string|max:100',
+            'jenis_kelamin' => 'nullable|in:L,P',
+            'tanggal_lahir' => 'nullable|date',
+            'tempat_lahir'  => 'nullable|string|max:100',
+            'password_ujian'=> 'nullable|string|min:4|max:30',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        abort_unless($user->sekolah_id, 403);
+
+        $plainPassword = $request->filled('password_ujian') ? $request->input('password_ujian') : null;
+        $this->pesertaService->createForSekolah($data, $user->sekolah_id, $plainPassword);
+
+        return redirect()->route('sekolah.peserta.index')->with('success', 'Peserta berhasil ditambahkan.');
+    }
+
+    public function edit(Peserta $peserta)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        abort_unless($user->sekolah_id && $peserta->sekolah_id === $user->sekolah_id, 403);
+
+        return view('sekolah.peserta.form', compact('peserta'));
+    }
+
+    public function update(Request $request, Peserta $peserta)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        abort_unless($user->sekolah_id && $peserta->sekolah_id === $user->sekolah_id, 403);
+
+        $data = $request->validate([
+            'nama'          => 'required|string|max:200',
+            'nis'           => 'nullable|string|max:20',
+            'nisn'          => 'nullable|string|max:20',
+            'kelas'         => 'nullable|string|max:50',
+            'jurusan'       => 'nullable|string|max:100',
+            'jenis_kelamin' => 'nullable|in:L,P',
+            'tanggal_lahir' => 'nullable|date',
+            'tempat_lahir'  => 'nullable|string|max:100',
+            'password_ujian'=> 'nullable|string|min:4|max:30',
+            'is_active'     => 'nullable|boolean',
+        ]);
+
+        $plainPassword = $request->filled('password_ujian') ? $request->input('password_ujian') : null;
+        $data['is_active'] = $request->boolean('is_active');
+
+        $this->pesertaService->updateForSekolah($peserta->id, $data, $plainPassword);
+
+        return redirect()->route('sekolah.peserta.index')->with('success', 'Data peserta berhasil diperbarui.');
+    }
+
+    public function destroy(Peserta $peserta)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        abort_unless($user->sekolah_id && $peserta->sekolah_id === $user->sekolah_id, 403);
+
+        try {
+            $this->pesertaService->delete($peserta->id);
+        } catch (ValidationException $e) {
+            throw $e;
+        }
+
+        return redirect()->route('sekolah.peserta.index')->with('success', 'Peserta berhasil dihapus.');
     }
 
     public function destroyAll()

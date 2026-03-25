@@ -28,7 +28,7 @@ class PaketUjianTest extends TestCase
             'sekolah_id', 'created_by', 'nama', 'kode',
             'jenis_ujian', 'jenjang', 'deskripsi', 'durasi_menit',
             'jumlah_soal', 'acak_soal', 'acak_opsi',
-            'tampilkan_hasil', 'boleh_kembali', 'max_peserta',
+            'tampilkan_hasil', 'boleh_kembali', 'anti_curang', 'max_peserta',
             'tanggal_mulai', 'tanggal_selesai', 'status',
         ];
         $this->assertEquals($expected, $paket->getFillable());

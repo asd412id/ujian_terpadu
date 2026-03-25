@@ -12,17 +12,30 @@
 
 @section('page-content')
 <form action="{{ isset($peserta) ? route('sekolah.peserta.update', $peserta->id) : route('sekolah.peserta.store') }}"
-      method="POST" class="space-y-5 max-w-xl">
+      method="POST" class="space-y-5 max-w-2xl">
     @csrf
     @if(isset($peserta)) @method('PUT') @endif
 
-    <div class="card space-y-4">
-        <h2 class="font-semibold text-gray-900">Data Peserta</h2>
+    @if($errors->any())
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+        <ul class="list-disc list-inside space-y-1">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    <div class="card space-y-5">
+        <div>
+            <h2 class="font-semibold text-gray-900">Data Peserta</h2>
+            <p class="text-sm text-gray-500 mt-1">Peserta akan otomatis terikat ke sekolah Anda.</p>
+        </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap <span class="text-red-500">*</span></label>
             <input type="text" name="nama" value="{{ old('nama', $peserta->nama ?? '') }}" required
-                   class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('nama') border-red-400 @enderror"
                    placeholder="Nama lengkap peserta">
         </div>
 
@@ -32,7 +45,6 @@
                 <input type="text" name="nis" value="{{ old('nis', $peserta->nis ?? '') }}"
                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="Nomor Induk Siswa">
-                <p class="text-xs text-gray-400 mt-1">Digunakan sebagai username login ujian.</p>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">NISN</label>
@@ -50,6 +62,15 @@
                        placeholder="Misal: XII IPA 1">
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Jurusan</label>
+                <input type="text" name="jurusan" value="{{ old('jurusan', $peserta->jurusan ?? '') }}"
+                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Misal: IPA / IPS">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Jenis Kelamin</label>
                 <select name="jenis_kelamin"
                         class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -58,6 +79,18 @@
                     <option value="P" {{ old('jenis_kelamin', $peserta->jenis_kelamin ?? '') === 'P' ? 'selected' : '' }}>Perempuan</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tempat Lahir</label>
+                <input type="text" name="tempat_lahir" value="{{ old('tempat_lahir', $peserta->tempat_lahir ?? '') }}"
+                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Tempat lahir">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Lahir</label>
+            <input type="date" name="tanggal_lahir" value="{{ old('tanggal_lahir', isset($peserta->tanggal_lahir) ? optional($peserta->tanggal_lahir)->format('Y-m-d') : '') }}"
+                   class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
         <div>
@@ -74,6 +107,7 @@
                    placeholder="{{ isset($peserta) ? '••••••••' : 'Kosongkan untuk generate otomatis' }}">
         </div>
 
+        @if(isset($peserta))
         <div>
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_active" value="1"
@@ -82,6 +116,7 @@
                 <span class="text-sm text-gray-700">Peserta aktif (dapat login ujian)</span>
             </label>
         </div>
+        @endif
     </div>
 
     <div class="flex items-center gap-3">

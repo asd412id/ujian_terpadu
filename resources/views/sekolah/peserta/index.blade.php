@@ -9,10 +9,18 @@
 @section('page-content')
 <div class="space-y-5">
 
-    {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
+        <div>
+            <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
+            <p class="text-sm text-gray-500 mt-1">Kelola peserta sekolah Anda, tambahkan manual, import Excel, atau cetak kartu login.</p>
+        </div>
         <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('sekolah.peserta.create') }}" class="btn-primary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tambah Peserta
+            </a>
             <a href="{{ route('sekolah.peserta.import') }}"
                class="btn-secondary inline-flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,7 +51,6 @@
         </div>
     </div>
 
-    {{-- Filter + Search --}}
     <form method="GET" action="{{ route('sekolah.peserta.index') }}"
           class="card flex flex-col sm:flex-row gap-3 p-4">
         <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama, NIS, NISN..."
@@ -55,15 +62,12 @@
             <option value="{{ $kls }}" {{ request('kelas') === $kls ? 'selected' : '' }}>{{ $kls }}</option>
             @endforeach
         </select>
-        <button type="submit"
-                class="btn-primary">Cari</button>
+        <button type="submit" class="btn-primary">Cari</button>
         @if(request()->hasAny(['q', 'kelas']))
-        <a href="{{ route('sekolah.peserta.index') }}"
-           class="btn-secondary text-center">Reset</a>
+        <a href="{{ route('sekolah.peserta.index') }}" class="btn-secondary text-center">Reset</a>
         @endif
     </form>
 
-    {{-- Tabel --}}
     <div class="card overflow-hidden p-0">
         <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between text-sm text-gray-500">
             <span>{{ $peserta->total() }} peserta</span>
@@ -83,7 +87,7 @@
                         <th class="px-5 py-3 text-left hidden md:table-cell">Kelas</th>
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Username Ujian</th>
                         <th class="px-5 py-3 text-center">Status</th>
-                        <th class="px-5 py-3 text-right">Kartu</th>
+                        <th class="px-5 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -113,10 +117,17 @@
                             @endif
                         </td>
                         <td class="px-5 py-3 text-right">
-                            <a href="{{ route('sekolah.kartu.show', $p->id) }}"
-                               class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">
-                                Cetak Kartu
-                            </a>
+                            <div class="flex items-center justify-end gap-2 flex-wrap">
+                                <a href="{{ route('sekolah.kartu.show', $p->id) }}"
+                                   class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">Cetak Kartu</a>
+                                <a href="{{ route('sekolah.peserta.edit', $p->id) }}"
+                                   class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
+                                <form action="{{ route('sekolah.peserta.destroy', $p->id) }}" method="POST"
+                                      x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Peserta',message:'Hapus peserta {{ addslashes($p->nama) }}?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -124,9 +135,13 @@
                         <td colspan="6" class="px-5 py-12 text-center text-gray-400">
                             <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>
                             </svg>
-                            Belum ada peserta terdaftar. Hubungi Dinas Pendidikan untuk menambah data peserta.
+                            @if(request()->hasAny(['q', 'kelas']))
+                                Tidak ada peserta yang cocok dengan filter.
+                            @else
+                                Belum ada data peserta.
+                            @endif
                         </td>
                     </tr>
                     @endforelse
@@ -134,50 +149,53 @@
             </table>
         </div>
 
-        {{-- Mobile cards --}}
         <div class="sm:hidden divide-y divide-gray-100">
             @forelse($peserta as $p)
-            <div class="px-4 py-4 space-y-2">
-                <div class="flex items-start justify-between gap-2">
-                    <div class="flex items-center gap-3">
+            <div class="px-4 py-3">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <div class="flex items-center gap-2.5 min-w-0">
                         <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <span class="text-blue-700 text-xs font-bold">{{ substr($p->nama, 0, 1) }}</span>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <p class="font-medium text-gray-900 text-sm">{{ $p->nama }}</p>
-                            <p class="text-xs text-gray-500">{{ $p->nis ?: '' }}{{ $p->nis && $p->nisn ? ' / ' : '' }}{{ $p->nisn ?: '' }}</p>
+                            <p class="text-xs text-gray-500">{{ $p->nis ?: $p->nisn ?: '—' }} · {{ $p->kelas ?? '—' }}</p>
                         </div>
                     </div>
                     @if($p->is_active)
-                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex-shrink-0">Aktif</span>
+                        <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
                     @else
-                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex-shrink-0">Nonaktif</span>
+                        <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
                     @endif
                 </div>
-                <div class="flex flex-wrap items-center gap-1.5 text-xs pl-11">
-                    @if($p->kelas)
-                    <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ $p->kelas }}</span>
-                    @endif
-                    @if($p->username_ujian)
+                <div class="ml-10.5 text-xs text-gray-500 mb-2">
                     <code class="bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-600">{{ $p->username_ujian }}</code>
-                    @endif
                 </div>
-                <div class="pl-11">
+                <div class="flex items-center gap-3 ml-10.5 flex-wrap">
                     <a href="{{ route('sekolah.kartu.show', $p->id) }}"
-                       class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">
-                        Cetak Kartu
-                    </a>
+                       class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">Cetak Kartu</a>
+                    <a href="{{ route('sekolah.peserta.edit', $p->id) }}"
+                       class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
+                    <form action="{{ route('sekolah.peserta.destroy', $p->id) }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Peserta',message:'Hapus peserta {{ addslashes($p->nama) }}?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
+                    </form>
                 </div>
             </div>
             @empty
             <div class="py-12 text-center text-gray-400 text-sm">
-                Belum ada peserta terdaftar.
+                @if(request()->hasAny(['q', 'kelas']))
+                    Tidak ada peserta yang cocok dengan filter.
+                @else
+                    Belum ada data peserta.
+                @endif
             </div>
             @endforelse
         </div>
 
         @if($peserta->hasPages())
-        <div class="px-5 py-4 border-t border-gray-100">{{ $peserta->withQueryString()->links() }}</div>
+        <div class="px-5 py-4 border-t border-gray-100">{{ $peserta->withQueryString()->links('components.pagination') }}</div>
         @endif
     </div>
 
