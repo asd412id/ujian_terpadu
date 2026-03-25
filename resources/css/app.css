@@ -58,6 +58,50 @@
         @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-4;
     }
 
+    .auth-shell {
+        @apply min-h-screen flex items-center justify-center px-4 py-8 sm:px-6;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    .auth-panel {
+        @apply w-full max-w-md;
+    }
+
+    .auth-card {
+        @apply rounded-2xl border border-gray-200 bg-white px-6 py-7 shadow-sm sm:px-8 sm:py-8;
+    }
+
+    .auth-logo {
+        @apply flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-700/10 ring-1 ring-blue-100;
+    }
+
+    .auth-title {
+        @apply text-2xl font-semibold tracking-tight text-gray-900;
+    }
+
+    .auth-subtitle {
+        @apply mt-2 text-sm leading-6 text-gray-500;
+    }
+
+    .auth-submit {
+        @apply w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl
+               transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500
+               focus:ring-offset-2 flex items-center justify-center gap-2;
+    }
+
+    .auth-status {
+        @apply flex items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50
+               px-3.5 py-3 text-sm text-blue-700;
+    }
+
+    .auth-footer {
+        @apply text-sm text-gray-500;
+    }
+
+    .auth-link {
+        @apply font-medium text-blue-700 hover:text-blue-800 hover:underline;
+    }
+
     .card-header {
         @apply px-5 py-4 border-b border-gray-100 flex items-center justify-between;
     }

@@ -16,13 +16,26 @@ class LoginControllerTest extends TestCase
         $response = $this->get(route('login'));
         $response->assertStatus(200);
         $response->assertViewIs('auth.login');
+        $response->assertSeeText('Masuk ke Dashboard');
+        $response->assertSeeText('Memverifikasi...');
+        $response->assertSeeText('Sedang memverifikasi akun dan menyiapkan akses dashboard.');
+        $response->assertSeeText('Masuk sebagai peserta');
+    }
+
+    public function test_login_page_shows_flashed_error_message(): void
+    {
+        $response = $this->withSession(['error' => 'Akun Anda tidak aktif.'])
+            ->get(route('login'));
+
+        $response->assertOk();
+        $response->assertSeeText('Akun Anda tidak aktif.');
     }
 
     public function test_authenticated_user_is_redirected_from_login_page(): void
     {
         $user = User::factory()->create(['role' => 'admin_dinas', 'is_active' => true]);
         $response = $this->actingAs($user)->get(route('login'));
-        $response->assertRedirect('/');
+        $response->assertRedirect(route('dinas.dashboard'));
     }
 
     public function test_login_with_valid_credentials(): void
@@ -123,14 +136,22 @@ class LoginControllerTest extends TestCase
         $this->assertNotNull($user->last_login_at);
     }
 
-    public function test_login_validation_fails_without_role(): void
+    public function test_login_with_valid_credentials_without_role(): void
     {
+        $user = User::factory()->create([
+            'email'     => 'admin@test.com',
+            'password'  => bcrypt('password123'),
+            'role'      => 'admin_dinas',
+            'is_active' => true,
+        ]);
+
         $response = $this->post(route('login.post'), [
             'email'    => 'admin@test.com',
             'password' => 'password123',
         ]);
 
-        $response->assertSessionHasErrors('role');
+        $response->assertRedirect(route('dinas.dashboard'));
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_logout(): void

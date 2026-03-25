@@ -17,6 +17,19 @@ class PesertaLoginControllerTest extends TestCase
         $response = $this->get(route('ujian.login'));
         $response->assertStatus(200);
         $response->assertViewIs('auth.peserta-login');
+        $response->assertSeeText('Login Peserta Ujian');
+        $response->assertSeeText('Menyiapkan sesi...');
+        $response->assertSeeText('Sedang memverifikasi akun dan menyiapkan sesi ujian.');
+        $response->assertSeeText('Tidak ada koneksi. Login peserta membutuhkan internet aktif.');
+    }
+
+    public function test_peserta_login_page_shows_flashed_error_message(): void
+    {
+        $response = $this->withSession(['error' => 'Akun Anda telah login di perangkat lain.'])
+            ->get(route('ujian.login'));
+
+        $response->assertOk();
+        $response->assertSeeText('Akun Anda telah login di perangkat lain.');
     }
 
     public function test_authenticated_peserta_redirected_from_login(): void
