@@ -14,9 +14,12 @@
 @php
     $peserta = $sesiPeserta->peserta;
     $paket = $sesiPeserta->sesi->paket;
-    $totalBenar = collect($detail)->where('is_benar', true)->count();
-    $totalTerjawab = collect($detail)->where('is_terjawab', true)->count();
-    $totalSkor = collect($detail)->sum('skor');
+    $detailCollection = collect($detail);
+    $totalTerjawab = $detailCollection->where('is_terjawab', true)->count();
+    $totalBenar = $detailCollection->where('status_jawaban', 'benar')->count();
+    $totalSebagian = $detailCollection->where('status_jawaban', 'sebagian')->count();
+    $totalSalah = $detailCollection->where('status_jawaban', 'salah')->count();
+    $totalSkor = $detailCollection->sum('skor');
 @endphp
 <div class="space-y-6">
 
@@ -31,7 +34,7 @@
     </div>
 
     {{-- Summary --}}
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <div class="card p-4 text-center">
             <p class="text-2xl font-bold text-gray-900">{{ count($detail) }}</p>
             <p class="text-xs text-gray-500 mt-1">Total Soal</p>
@@ -45,7 +48,11 @@
             <p class="text-xs text-gray-500 mt-1">Benar</p>
         </div>
         <div class="card p-4 text-center">
-            <p class="text-2xl font-bold text-red-500">{{ $totalTerjawab - $totalBenar }}</p>
+            <p class="text-2xl font-bold text-amber-600">{{ $totalSebagian }}</p>
+            <p class="text-xs text-gray-500 mt-1">Sebagian Benar</p>
+        </div>
+        <div class="card p-4 text-center">
+            <p class="text-2xl font-bold text-red-500">{{ $totalSalah }}</p>
             <p class="text-xs text-gray-500 mt-1">Salah</p>
         </div>
         <div class="card p-4 text-center">
