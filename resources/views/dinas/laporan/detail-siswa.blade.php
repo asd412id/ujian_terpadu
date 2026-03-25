@@ -49,7 +49,7 @@
             <p class="text-xs text-gray-500 mt-1">Salah</p>
         </div>
         <div class="card p-4 text-center">
-            <p class="text-2xl font-bold {{ ($sesiPeserta->nilai_akhir ?? 0) >= 70 ? 'text-green-600' : 'text-red-600' }}">
+            <p class="text-2xl font-bold {{ \App\Support\NilaiStatus::textClass($sesiPeserta->nilai_akhir) }}">
                 {{ number_format($sesiPeserta->nilai_akhir ?? 0, 1) }}
             </p>
             <p class="text-xs text-gray-500 mt-1">Nilai Akhir</p>

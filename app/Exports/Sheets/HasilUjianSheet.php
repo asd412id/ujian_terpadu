@@ -2,6 +2,7 @@
 
 namespace App\Exports\Sheets;
 
+use App\Support\NilaiStatus;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -153,30 +154,28 @@ class HasilUjianSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvent
                         for ($row = 2; $row <= $totalRows; $row++) {
                             $nilai = $sheet->getCell("J{$row}")->getValue();
                             if (is_numeric($nilai)) {
-                                if ($nilai >= 80) {
-                                    $color = 'FF16A34A';
-                                } elseif ($nilai >= 70) {
-                                    $color = 'FF2563EB';
-                                } elseif ($nilai >= 60) {
-                                    $color = 'FFD97706';
-                                } else {
-                                    $color = 'FFDC2626';
-                                }
+                                $color = match (NilaiStatus::label((float) $nilai)) {
+                                    'Sangat Baik' => 'FF16A34A',
+                                    'Baik' => 'FF2563EB',
+                                    'Cukup' => 'FFD97706',
+                                    'Kurang' => 'FFF97316',
+                                    default => 'FFDC2626',
+                                };
                                 $sheet->getStyle("J{$row}")->applyFromArray([
                                     'font' => ['color' => ['argb' => $color]],
                                 ]);
                             }
 
                             $keterangan = $sheet->getCell("Q{$row}")->getValue();
-                            if ($keterangan === 'Lulus') {
-                                $sheet->getStyle("Q{$row}")->applyFromArray([
-                                    'font' => ['bold' => true, 'color' => ['argb' => 'FF16A34A']],
-                                ]);
-                            } elseif ($keterangan === 'Tidak Lulus') {
-                                $sheet->getStyle("Q{$row}")->applyFromArray([
-                                    'font' => ['bold' => true, 'color' => ['argb' => 'FFDC2626']],
-                                ]);
-                            }
+                            $sheet->getStyle("Q{$row}")->applyFromArray([
+                                'font' => ['bold' => true, 'color' => ['argb' => match ($keterangan) {
+                                    'Sangat Baik' => 'FF16A34A',
+                                    'Baik' => 'FF2563EB',
+                                    'Cukup' => 'FFD97706',
+                                    'Kurang' => 'FFF97316',
+                                    default => 'FFDC2626',
+                                }]],
+                            ]);
                         }
                     }
                 }

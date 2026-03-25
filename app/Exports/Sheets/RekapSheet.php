@@ -2,6 +2,7 @@
 
 namespace App\Exports\Sheets;
 
+use App\Support\NilaiStatus;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -35,8 +36,11 @@ class RekapSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
         $rows[] = ['Paket Ujian', $this->filters['paket_nama'] ?? 'Semua Paket'];
         $rows[] = ['Sekolah', $this->filters['sekolah_nama'] ?? 'Semua Sekolah'];
         $rows[] = ['Status', match ($this->filters['status'] ?? '') {
-            'lulus' => 'Lulus',
-            'tidak_lulus' => 'Tidak Lulus',
+            'sangat_baik' => 'Sangat Baik',
+            'baik' => 'Baik',
+            'cukup' => 'Cukup',
+            'kurang' => 'Kurang',
+            'sangat_kurang' => 'Sangat Kurang',
             default => 'Semua',
         }];
         $rows[] = [];
@@ -44,13 +48,15 @@ class RekapSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
         $rows[] = ['STATISTIK'];
         $rows[] = ['Total Peserta', $this->rekap['total_peserta']];
         $rows[] = ['Sudah Ujian', $this->rekap['sudah_ujian']];
-        $rows[] = ['Lulus (≥ 70)', $this->rekap['lulus']];
-        $rows[] = ['Tidak Lulus (< 70)', $this->rekap['tidak_lulus']];
+        $rows[] = ['Sangat Baik (86 - 100)', $this->rekap['sangat_baik']];
+        $rows[] = ['Baik (71 - 85)', $this->rekap['baik']];
+        $rows[] = ['Cukup (56 - 70)', $this->rekap['cukup']];
+        $rows[] = ['Kurang (41 - 55)', $this->rekap['kurang']];
+        $rows[] = ['Sangat Kurang (0 - 40)', $this->rekap['sangat_kurang']];
         $rows[] = ['Rata-rata Nilai', $this->rekap['rata_rata']];
 
         if ($this->rekap['total_peserta'] > 0) {
-            $pctLulus = round(($this->rekap['lulus'] / $this->rekap['total_peserta']) * 100, 1);
-            $rows[] = ['Persentase Lulus', $pctLulus . '%'];
+            $rows[] = ['Status Dominan', NilaiStatus::label($this->rekap['rata_rata'])];
         }
 
         return $rows;

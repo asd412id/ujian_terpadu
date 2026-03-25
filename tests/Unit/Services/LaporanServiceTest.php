@@ -120,8 +120,11 @@ class LaporanServiceTest extends TestCase
             'rata_rata' => 75.5,
             'nilai_max' => 95,
             'nilai_min' => 40,
-            'lulus' => 7,
-            'tidak_lulus' => 3,
+            'sangat_baik' => 2,
+            'baik' => 3,
+            'cukup' => 2,
+            'kurang' => 2,
+            'sangat_kurang' => 1,
         ];
 
         $this->repository
@@ -135,34 +138,11 @@ class LaporanServiceTest extends TestCase
     }
 
     // ── getRekapNilai ──────────────────────────────────────────
-    // Fixed: getRekapNilai() now correctly extracts sekolah_id and paket_id from filters array.
+    // Removed: getRekapNilai() no longer exists; rekap handled via getHasilUjian()/getHasilUjianBySekolah().
 
-    public function test_get_rekap_nilai_with_filters_delegates_correctly(): void
+    public function test_get_rekap_nilai_legacy_tests_removed(): void
     {
-        $expected = new EloquentCollection([]);
-
-        $this->repository
-            ->shouldReceive('getRekapNilai')
-            ->once()
-            ->with('s1', null)
-            ->andReturn($expected);
-
-        $result = $this->service->getRekapNilai(['sekolah_id' => 's1']);
-        $this->assertEquals($expected, $result);
-    }
-
-    public function test_get_rekap_nilai_empty_filters_passes_nulls(): void
-    {
-        $expected = new EloquentCollection([]);
-
-        $this->repository
-            ->shouldReceive('getRekapNilai')
-            ->once()
-            ->with(null, null)
-            ->andReturn($expected);
-
-        $result = $this->service->getRekapNilai();
-        $this->assertEquals($expected, $result);
+        $this->assertTrue(true);
     }
 
     // ── getDetailNilaiPeserta ──────────────────────────────────

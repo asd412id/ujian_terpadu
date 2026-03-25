@@ -6,6 +6,7 @@ use App\Models\JawabanPeserta;
 use App\Models\PaketUjian;
 use App\Models\SesiPeserta;
 use App\Models\Sekolah;
+use App\Support\NilaiStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -45,8 +46,11 @@ class LaporanRepository
                 ROUND(AVG(nilai_akhir), 1) as rata_rata,
                 MAX(nilai_akhir) as nilai_max,
                 MIN(nilai_akhir) as nilai_min,
-                SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-                SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus
+                SUM(CASE WHEN nilai_akhir >= 86 THEN 1 ELSE 0 END) as sangat_baik,
+                SUM(CASE WHEN nilai_akhir >= 71 AND nilai_akhir < 86 THEN 1 ELSE 0 END) as baik,
+                SUM(CASE WHEN nilai_akhir >= 56 AND nilai_akhir < 71 THEN 1 ELSE 0 END) as cukup,
+                SUM(CASE WHEN nilai_akhir >= 41 AND nilai_akhir < 56 THEN 1 ELSE 0 END) as kurang,
+                SUM(CASE WHEN nilai_akhir < 41 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as sangat_kurang
             ')->first();
 
         return [
@@ -54,8 +58,11 @@ class LaporanRepository
             'rata_rata'     => (float) ($row->rata_rata ?? 0),
             'nilai_max'     => (float) ($row->nilai_max ?? 0),
             'nilai_min'     => (float) ($row->nilai_min ?? 0),
-            'lulus'         => (int) ($row->lulus ?? 0),
-            'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
+            'sangat_baik'   => (int) ($row->sangat_baik ?? 0),
+            'baik'          => (int) ($row->baik ?? 0),
+            'cukup'         => (int) ($row->cukup ?? 0),
+            'kurang'        => (int) ($row->kurang ?? 0),
+            'sangat_kurang' => (int) ($row->sangat_kurang ?? 0),
         ];
     }
 
@@ -111,13 +118,18 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         $perPage = min((int) ($filters['per_page'] ?? 30), 200);
@@ -148,13 +160,18 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         $perPage = min((int) ($filters['per_page'] ?? 30), 200);
@@ -177,27 +194,38 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         $row = $query->selectRaw('
             COUNT(*) as total_peserta,
-            SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-            SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus,
+            SUM(CASE WHEN nilai_akhir >= 86 THEN 1 ELSE 0 END) as sangat_baik,
+            SUM(CASE WHEN nilai_akhir >= 71 AND nilai_akhir < 86 THEN 1 ELSE 0 END) as baik,
+            SUM(CASE WHEN nilai_akhir >= 56 AND nilai_akhir < 71 THEN 1 ELSE 0 END) as cukup,
+            SUM(CASE WHEN nilai_akhir >= 41 AND nilai_akhir < 56 THEN 1 ELSE 0 END) as kurang,
+            SUM(CASE WHEN nilai_akhir < 41 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as sangat_kurang,
             ROUND(AVG(nilai_akhir), 1) as rata_rata
         ')->first();
 
         return [
             'total_peserta' => (int) ($row->total_peserta ?? 0),
             'sudah_ujian'   => (int) ($row->total_peserta ?? 0),
-            'lulus'         => (int) ($row->lulus ?? 0),
-            'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
+            'sangat_baik'   => (int) ($row->sangat_baik ?? 0),
+            'baik'          => (int) ($row->baik ?? 0),
+            'cukup'         => (int) ($row->cukup ?? 0),
+            'kurang'        => (int) ($row->kurang ?? 0),
+            'sangat_kurang' => (int) ($row->sangat_kurang ?? 0),
             'rata_rata'     => (float) ($row->rata_rata ?? 0),
         ];
     }
@@ -225,27 +253,38 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         $row = $query->selectRaw('
             COUNT(*) as total_peserta,
-            SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-            SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus,
+            SUM(CASE WHEN nilai_akhir >= 86 THEN 1 ELSE 0 END) as sangat_baik,
+            SUM(CASE WHEN nilai_akhir >= 71 AND nilai_akhir < 86 THEN 1 ELSE 0 END) as baik,
+            SUM(CASE WHEN nilai_akhir >= 56 AND nilai_akhir < 71 THEN 1 ELSE 0 END) as cukup,
+            SUM(CASE WHEN nilai_akhir >= 41 AND nilai_akhir < 56 THEN 1 ELSE 0 END) as kurang,
+            SUM(CASE WHEN nilai_akhir < 41 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as sangat_kurang,
             ROUND(AVG(nilai_akhir), 1) as rata_rata
         ')->first();
 
         return [
             'total_peserta' => (int) ($row->total_peserta ?? 0),
             'sudah_ujian'   => (int) ($row->total_peserta ?? 0),
-            'lulus'         => (int) ($row->lulus ?? 0),
-            'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
+            'sangat_baik'   => (int) ($row->sangat_baik ?? 0),
+            'baik'          => (int) ($row->baik ?? 0),
+            'cukup'         => (int) ($row->cukup ?? 0),
+            'kurang'        => (int) ($row->kurang ?? 0),
+            'sangat_kurang' => (int) ($row->sangat_kurang ?? 0),
             'rata_rata'     => (float) ($row->rata_rata ?? 0),
         ];
     }
@@ -261,8 +300,11 @@ class LaporanRepository
                 ROUND(AVG(nilai_akhir), 1) as rata_rata,
                 MAX(nilai_akhir) as nilai_max,
                 MIN(nilai_akhir) as nilai_min,
-                SUM(CASE WHEN nilai_akhir >= 70 THEN 1 ELSE 0 END) as lulus,
-                SUM(CASE WHEN nilai_akhir < 70 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as tidak_lulus
+                SUM(CASE WHEN nilai_akhir >= 86 THEN 1 ELSE 0 END) as sangat_baik,
+                SUM(CASE WHEN nilai_akhir >= 71 AND nilai_akhir < 86 THEN 1 ELSE 0 END) as baik,
+                SUM(CASE WHEN nilai_akhir >= 56 AND nilai_akhir < 71 THEN 1 ELSE 0 END) as cukup,
+                SUM(CASE WHEN nilai_akhir >= 41 AND nilai_akhir < 56 THEN 1 ELSE 0 END) as kurang,
+                SUM(CASE WHEN nilai_akhir < 41 OR nilai_akhir IS NULL THEN 1 ELSE 0 END) as sangat_kurang
             ')->first();
 
         return [
@@ -270,8 +312,11 @@ class LaporanRepository
             'rata_rata'     => (float) ($row->rata_rata ?? 0),
             'nilai_max'     => (float) ($row->nilai_max ?? 0),
             'nilai_min'     => (float) ($row->nilai_min ?? 0),
-            'lulus'         => (int) ($row->lulus ?? 0),
-            'tidak_lulus'   => (int) ($row->tidak_lulus ?? 0),
+            'sangat_baik'   => (int) ($row->sangat_baik ?? 0),
+            'baik'          => (int) ($row->baik ?? 0),
+            'cukup'         => (int) ($row->cukup ?? 0),
+            'kurang'        => (int) ($row->kurang ?? 0),
+            'sangat_kurang' => (int) ($row->sangat_kurang ?? 0),
         ];
     }
 
@@ -292,13 +337,18 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         return $query->latest('updated_at')->get();
@@ -321,13 +371,18 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         $query->latest('updated_at')->chunkById($chunkSize, $callback);
@@ -349,13 +404,18 @@ class LaporanRepository
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'lulus') {
-                $query->where('nilai_akhir', '>=', 70);
-            } elseif ($filters['status'] === 'tidak_lulus') {
-                $query->where(function ($q) {
-                    $q->where('nilai_akhir', '<', 70)->orWhereNull('nilai_akhir');
-                });
-            }
+            $query->where(function ($q) use ($filters) {
+                match ($filters['status']) {
+                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
+                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
+                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
+                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
+                    'sangat_kurang' => $q->where(function ($q) {
+                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
+                    }),
+                    default => null,
+                };
+            });
         }
 
         return $query->pluck('id');

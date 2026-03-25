@@ -241,7 +241,7 @@
                     <div class="bg-blue-50 rounded-lg p-1.5">
                         <template x-if="live && ['submit','dinilai'].includes(live.status) && live.nilai_akhir !== null">
                             <div>
-                                <p class="font-bold" :class="live.nilai_akhir >= 70 ? 'text-green-600' : 'text-red-600'" x-text="parseFloat(live.nilai_akhir).toFixed(1)"></p>
+                                <p class="font-bold" :class="(() => { const n = parseFloat(live.nilai_akhir ?? 0); return n >= 86 ? 'text-green-600' : n >= 71 ? 'text-blue-600' : n >= 56 ? 'text-amber-600' : n >= 41 ? 'text-orange-600' : 'text-red-600'; })()" x-text="parseFloat(live.nilai_akhir).toFixed(1)"></p>
                                 <p class="text-gray-500">Nilai</p>
                             </div>
                         </template>

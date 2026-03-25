@@ -116,12 +116,12 @@
                         <div x-show="!nilaiLoading && nilaiAkhir !== null" x-transition class="space-y-3">
                             {{-- Nilai besar --}}
                             <div class="rounded-xl p-5 text-center"
-                                 :class="nilaiAkhir >= 70 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+                                 :class="(() => { const n = parseFloat(nilaiAkhir ?? 0); return n >= 86 ? 'bg-green-50 border border-green-200' : n >= 71 ? 'bg-blue-50 border border-blue-200' : n >= 56 ? 'bg-amber-50 border border-amber-200' : n >= 41 ? 'bg-orange-50 border border-orange-200' : 'bg-red-50 border border-red-200'; })()">
                                 <p class="text-xs font-medium mb-1"
-                                   :class="nilaiAkhir >= 70 ? 'text-green-600' : 'text-red-600'"
-                                   x-text="nilaiAkhir >= 70 ? 'LULUS' : 'TIDAK LULUS'"></p>
+                                   :class="(() => { const n = parseFloat(nilaiAkhir ?? 0); return n >= 86 ? 'text-green-600' : n >= 71 ? 'text-blue-600' : n >= 56 ? 'text-amber-600' : n >= 41 ? 'text-orange-600' : 'text-red-600'; })()"
+                                   x-text="(() => { const n = parseFloat(nilaiAkhir ?? 0); return n >= 86 ? 'SANGAT BAIK' : n >= 71 ? 'BAIK' : n >= 56 ? 'CUKUP' : n >= 41 ? 'KURANG' : 'SANGAT KURANG'; })()"></p>
                                 <p class="text-4xl font-black"
-                                   :class="nilaiAkhir >= 70 ? 'text-green-700' : 'text-red-700'"
+                                   :class="(() => { const n = parseFloat(nilaiAkhir ?? 0); return n >= 86 ? 'text-green-700' : n >= 71 ? 'text-blue-700' : n >= 56 ? 'text-amber-700' : n >= 41 ? 'text-orange-700' : 'text-red-700'; })()"
                                    x-text="parseFloat(nilaiAkhir).toFixed(1)"></p>
                                 <p class="text-xs text-gray-500 mt-1">Nilai Akhir</p>
                             </div>

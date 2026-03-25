@@ -33,8 +33,11 @@
                 <select name="status"
                         class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Semua</option>
-                    <option value="lulus" {{ request('status') === 'lulus' ? 'selected' : '' }}>Lulus</option>
-                    <option value="tidak_lulus" {{ request('status') === 'tidak_lulus' ? 'selected' : '' }}>Tidak Lulus</option>
+                    <option value="sangat_baik" {{ request('status') === 'sangat_baik' ? 'selected' : '' }}>Sangat Baik</option>
+                    <option value="baik" {{ request('status') === 'baik' ? 'selected' : '' }}>Baik</option>
+                    <option value="cukup" {{ request('status') === 'cukup' ? 'selected' : '' }}>Cukup</option>
+                    <option value="kurang" {{ request('status') === 'kurang' ? 'selected' : '' }}>Kurang</option>
+                    <option value="sangat_kurang" {{ request('status') === 'sangat_kurang' ? 'selected' : '' }}>Sangat Kurang</option>
                 </select>
             </div>
         </div>
@@ -53,24 +56,24 @@
     @if(isset($rekap))
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div class="card p-5 text-center">
-            <p class="text-2xl font-bold text-gray-900">{{ $rekap['total_peserta'] }}</p>
-            <p class="text-sm text-gray-500 mt-1">Total Peserta</p>
+            <p class="text-2xl font-bold text-green-600">{{ $rekap['sangat_baik'] ?? 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Sangat Baik</p>
         </div>
         <div class="card p-5 text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ $rekap['sudah_ujian'] }}</p>
-            <p class="text-sm text-gray-500 mt-1">Sudah Ujian</p>
+            <p class="text-2xl font-bold text-blue-600">{{ $rekap['baik'] ?? 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Baik</p>
         </div>
         <div class="card p-5 text-center">
-            <p class="text-2xl font-bold text-green-600">{{ $rekap['lulus'] }}</p>
-            <p class="text-sm text-gray-500 mt-1">Lulus</p>
+            <p class="text-2xl font-bold text-amber-600">{{ $rekap['cukup'] ?? 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Cukup</p>
         </div>
         <div class="card p-5 text-center">
-            <p class="text-2xl font-bold text-red-500">{{ $rekap['tidak_lulus'] }}</p>
-            <p class="text-sm text-gray-500 mt-1">Tidak Lulus</p>
+            <p class="text-2xl font-bold text-orange-600">{{ $rekap['kurang'] ?? 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Kurang</p>
         </div>
         <div class="card p-5 text-center">
-            <p class="text-2xl font-bold text-amber-600">{{ $rekap['rata_rata'] }}</p>
-            <p class="text-sm text-gray-500 mt-1">Rata-rata</p>
+            <p class="text-2xl font-bold text-red-600">{{ $rekap['sangat_kurang'] ?? 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1">Sangat Kurang</p>
         </div>
     </div>
     @endif
@@ -110,17 +113,13 @@
                         <td class="px-5 py-3 text-center text-gray-400 hidden lg:table-cell">{{ $hasil->jumlah_kosong ?? 0 }}</td>
                         <td class="px-5 py-3 text-center">
                             @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
-                            <span class="font-bold {{ $nilai >= 80 ? 'text-green-600' : ($nilai >= 60 ? 'text-amber-600' : 'text-red-600') }}">
+                            <span class="font-bold {{ \App\Support\NilaiStatus::textClass($nilai) }}">
                                 {{ $nilai }}
                             </span>
                         </td>
                         <td class="px-5 py-3 text-center">
                             @if($hasil->nilai_akhir !== null)
-                                @if($hasil->nilai_akhir >= 70)
-                                    <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Lulus</span>
-                                @else
-                                    <span class="text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Tidak Lulus</span>
-                                @endif
+                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full {{ \App\Support\NilaiStatus::badgeClass($hasil->nilai_akhir) }}">{{ \App\Support\NilaiStatus::label($hasil->nilai_akhir) }}</span>
                             @elseif(in_array($hasil->status, ['submit', 'dinilai']))
                                 <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Menghitung...</span>
                             @else
@@ -145,17 +144,13 @@
                         <p class="text-xs text-gray-500">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }}</p>
                     </div>
                     <div class="text-right shrink-0">
-                        <p class="text-lg font-bold {{ $nilai >= 80 ? 'text-green-600' : ($nilai >= 60 ? 'text-amber-600' : 'text-red-600') }}">{{ $nilai }}</p>
+                        <p class="text-lg font-bold {{ \App\Support\NilaiStatus::textClass($nilai) }}">{{ $nilai }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-xs text-gray-500">{{ $hasil->peserta->kelas ?? '—' }}</span>
                     @if($hasil->nilai_akhir !== null)
-                        @if($hasil->nilai_akhir >= 70)
-                            <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Lulus</span>
-                        @else
-                            <span class="text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Tidak Lulus</span>
-                        @endif
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full {{ \App\Support\NilaiStatus::badgeClass($hasil->nilai_akhir) }}">{{ \App\Support\NilaiStatus::label($hasil->nilai_akhir) }}</span>
                     @elseif(in_array($hasil->status, ['submit', 'dinilai']))
                         <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Menghitung...</span>
                     @else

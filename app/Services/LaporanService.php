@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\LaporanRepository;
+use App\Support\NilaiStatus;
 
 class LaporanService
 {
@@ -96,7 +97,7 @@ class LaporanService
                     'total_soal'     => (int) ($sp->jumlah_benar ?? 0) + (int) ($sp->jumlah_salah ?? 0) + (int) ($sp->jumlah_kosong ?? 0),
                     'durasi_menit'   => $sp->durasi_aktual_detik ? round(abs($sp->durasi_aktual_detik) / 60, 1) : 0,
                     'status'         => ucfirst($sp->status),
-                    'keterangan'     => ($sp->nilai_akhir ?? 0) >= 70 ? 'Lulus' : 'Tidak Lulus',
+                    'keterangan'     => NilaiStatus::label($sp->nilai_akhir),
                     'mulai_at'       => $sp->mulai_at?->format('Y-m-d H:i:s') ?? '-',
                     'submit_at'      => $sp->submit_at?->format('Y-m-d H:i:s') ?? '-',
                 ];
