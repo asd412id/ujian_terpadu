@@ -119,11 +119,13 @@ async function cacheFirst(request, cacheName, maxAgeSeconds) {
 
     try {
         const response = await fetch(request);
-        if (response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && (cacheName !== IMAGE_CACHE || contentType.startsWith('image/'))) {
             cache.put(request, response.clone());
         }
         return response;
     } catch {
+
         return cached || new Response('Gambar tidak tersedia offline', { status: 503 });
     }
 }
@@ -323,7 +325,13 @@ self.addEventListener('message', event => {
             caches.open(IMAGE_CACHE).then(cache =>
                 Promise.all(
                     urls.map(url =>
-                        fetch(url).then(r => cache.put(url, r)).catch(() => {})
+                        fetch(url)
+                            .then(r => {
+                                const contentType = r.headers.get('content-type') || '';
+                                if (!r.ok || !contentType.startsWith('image/')) return null;
+                                return cache.put(url, r.clone());
+                            })
+                            .catch(() => {})
                     )
                 )
             )

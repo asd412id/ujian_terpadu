@@ -101,20 +101,119 @@ describe('ujian offline and slow-network submit flow', () => {
         await db.close();
     });
 
-    it('keeps the selesai page transaction-based row sync guard in source', () => {
-        const selesaiPath = path.resolve('resources/views/ujian/selesai.blade.php');
-        const source = fs.readFileSync(selesaiPath, 'utf8');
+    it('restores pending submit state without wiping current-session answers', async () => {
+        const db = new Dexie('UjianTerpaduDB');
+        db.version(1).stores({
+            exam_answers: '++id, sesiPesertaId, soalId, jawaban, synced, idempotencyKey, updatedAt',
+            exam_state: 'sesiPesertaId, currentIndex, tandaiList, lastSyncAt',
+            image_status: 'url, cached, error',
+        });
 
-        expect(source).toContain("await db.transaction('rw', db.exam_answers, async () => {");
-        expect(source).toContain('const answersToSync = formattedAnswers.length > 0 ? formattedAnswers : pendingSubmitSnapshot;');
-        expect(source).not.toContain('await Promise.all(rows.map(async (row) => {');
+        await db.table('exam_answers').add({
+            sesiPesertaId: 'sesi-1',
+            soalId: 'soal-1',
+            jawaban: { pg: ['A'], terjawab: true },
+            synced: false,
+            idempotencyKey: 'k-1',
+            updatedAt: Date.now(),
+        });
+        await db.table('exam_state').put({
+            sesiPesertaId: 'sesi-1',
+            currentIndex: 0,
+            tandaiList: [],
+            lastSyncAt: Date.now(),
+            pendingSubmit: true,
+            pendingSubmitPayload: [{ soal_id: 'soal-1', jawaban: ['A'] }],
+            pendingSubmitCount: 1,
+        });
+
+        window.UJIAN_CONFIG = {
+            ...window.UJIAN_CONFIG,
+            jawabanExisting: [],
+        };
+
+        const app = ujianApp();
+        await app.restoreState('sesi-1');
+
+        expect(app.answers['soal-1']?.pg).toEqual(['A']);
+        expect(app.pendingSync).toBe(1);
+        expect(await db.table('exam_answers').count()).toBe(1);
+
+        await db.close();
     });
 
-    it('keeps the soal offline banner safe-area spacing in source', () => {
-        const soalPath = path.resolve('resources/views/ujian/soal.blade.php');
-        const source = fs.readFileSync(soalPath, 'utf8');
+    it('merges memory fallback answers into final submit payload', async () => {
+        const app = ujianApp();
+        app._navigateOverride = vi.fn();
+        app._memoryFallbackAnswers = {
+            'soal-mem': { jawaban: { pg: ['B'], terjawab: true }, idempotencyKey: 'mem-1', updatedAt: 1 },
+        };
+        app.answers = {
+            'soal-idb': { pg: ['A'], terjawab: true },
+            'soal-mem': { pg: ['B'], terjawab: true },
+        };
 
-        expect(source).toContain('class="offline-banner fixed inset-x-0 top-0 z-50 safe-area-top"');
-        expect(source).toContain("'pt-[calc(4rem+env(safe-area-inset-top,0px))] sm:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]' ");
+        const db = new Dexie('UjianTerpaduDB');
+        db.version(1).stores({
+            exam_answers: '++id, sesiPesertaId, soalId, jawaban, synced, idempotencyKey, updatedAt',
+            exam_state: 'sesiPesertaId, currentIndex, tandaiList, lastSyncAt',
+            image_status: 'url, cached, error',
+        });
+
+        Object.defineProperty(window.navigator, 'onLine', {
+            configurable: true,
+            value: false,
+        });
+
+        await db.table('exam_answers').add({
+            sesiPesertaId: 'sesi-1',
+            soalId: 'soal-idb',
+            jawaban: { pg: ['A'], terjawab: true },
+            synced: false,
+            idempotencyKey: 'k-idb',
+            updatedAt: Date.now(),
+        });
+        await db.table('exam_state').put({
+            sesiPesertaId: 'sesi-1',
+            currentIndex: 0,
+            tandaiList: [],
+            lastSyncAt: Date.now(),
+            pendingSubmit: true,
+            pendingSubmitPayload: [
+                { soal_id: 'soal-idb', jawaban: ['A'] },
+                { soal_id: 'soal-mem', jawaban: ['B'] },
+            ],
+            pendingSubmitCount: 2,
+        });
+
+        await app.doSubmit();
+
+        const state = await db.table('exam_state').get('sesi-1');
+        expect(state.pendingSubmitPayload).toEqual([
+            expect.objectContaining({ soal_id: 'soal-idb' }),
+            expect.objectContaining({ soal_id: 'soal-mem' }),
+        ]);
+
+        await db.close();
+    });
+
+    it('keeps selesai submission using locked status transition and safe image caching', () => {
+        const selesaiPath = path.resolve('resources/views/ujian/selesai.blade.php');
+        const selesaiSource = fs.readFileSync(selesaiPath, 'utf8');
+        const swPath = path.resolve('public/sw.js');
+        const swSource = fs.readFileSync(swPath, 'utf8');
+        const jawabanServicePath = path.resolve('app/Services/JawabanService.php');
+        const jawabanServiceSource = fs.readFileSync(jawabanServicePath, 'utf8');
+        const ujianSource = fs.readFileSync(path.resolve('resources/js/ujian.js'), 'utf8');
+
+        expect(selesaiSource).toContain('const answersBySoalId = new Map();');
+        expect(selesaiSource).toContain('const answersToSync = Array.from(answersBySoalId.values());');
+        expect(selesaiSource).not.toContain('await Promise.all(rows.map(async (row) => {');
+        expect(swSource).toContain("if (!r.ok || !contentType.startsWith('image/')) return null;");
+        expect(swSource).toContain("if (response.ok && (cacheName !== IMAGE_CACHE || contentType.startsWith('image/'))) {");
+        expect(jawabanServiceSource).toContain("SesiPeserta::whereKey($sesiPeserta->id)->lockForUpdate()->firstOrFail();");
+        expect(jawabanServiceSource).toContain("'message'         => $wasNewSubmit ? 'Ujian berhasil disubmit' : 'Sudah disubmit'");
+        expect(ujianSource).toContain("if (!resp.ok || !contentType.startsWith('image/')) {");
+        expect(ujianSource).toContain('const answersBySoalId = new Map(allAnswers.map(item => [String(item.soal_id), item]));');
     });
 });

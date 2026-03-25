@@ -290,21 +290,32 @@ class JawabanService
             }
         }
 
-        $durasi = $sesiPeserta->mulai_at
-            ? (int) $sesiPeserta->mulai_at->diffInSeconds(now(), false) : 0;
+        $wasNewSubmit = false;
+        DB::transaction(function () use (&$sesiPeserta, &$wasNewSubmit) {
+            $locked = SesiPeserta::whereKey($sesiPeserta->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'submit') {
+                $durasi = $locked->mulai_at
+                    ? (int) $locked->mulai_at->diffInSeconds(now(), false) : 0;
 
-        $sesiPeserta->update([
-            'status'              => 'submit',
-            'submit_at'           => now(),
-            'durasi_aktual_detik' => $durasi,
-        ]);
+                $locked->update([
+                    'status'              => 'submit',
+                    'submit_at'           => now(),
+                    'durasi_aktual_detik' => $durasi,
+                ]);
+                $wasNewSubmit = true;
+            }
 
-        // Dispatch scoring to queue — UI returns immediately
-        \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'submit');
+            $sesiPeserta = $locked->refresh();
+        });
+
+        // Dispatch scoring once for the initial submit transition.
+        if ($wasNewSubmit) {
+            \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'submit');
+        }
 
         $sesiPeserta->refresh();
         return [
-            'message'         => 'Ujian berhasil disubmit',
+            'message'         => $wasNewSubmit ? 'Ujian berhasil disubmit' : 'Sudah disubmit',
             'redirect'        => route('ujian.selesai', $sesiPeserta),
             'synced'          => $syncResult['synced'] ?? 0,
             'skipped'         => $syncResult['skipped'] ?? 0,

@@ -416,7 +416,15 @@ function selesaiApp() {
                 const pendingSubmitSnapshot = Array.isArray(state?.pendingSubmitPayload)
                     ? state.pendingSubmitPayload.filter(item => item?.soal_id && item?.jawaban !== null)
                     : [];
-                const answersToSync = formattedAnswers.length > 0 ? formattedAnswers : pendingSubmitSnapshot;
+                const answersBySoalId = new Map();
+                formattedAnswers.forEach(item => answersBySoalId.set(String(item.soal_id), item));
+                pendingSubmitSnapshot.forEach(item => {
+                    const key = String(item.soal_id);
+                    if (!answersBySoalId.has(key)) {
+                        answersBySoalId.set(key, item);
+                    }
+                });
+                const answersToSync = Array.from(answersBySoalId.values());
 
                 const sesiToken = cfg.sesiToken || state?.sesiToken;
                 if (!sesiToken) {

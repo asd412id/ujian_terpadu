@@ -561,6 +561,13 @@ function ujianApp() {
         async restoreState(sesiPesertaId) {
             const cfg = window.UJIAN_CONFIG;
 
+            let state = null;
+            try {
+                state = await db.exam_state.get(sesiPesertaId);
+            } catch (e) {
+                console.warn('[Restore] IndexedDB state read failed:', e.message);
+            }
+
             // Muat jawaban dari IndexedDB (graceful fallback if IDB unavailable)
             let localAnswers = [];
             try {
@@ -571,10 +578,13 @@ function ujianApp() {
                 console.warn('[Restore] IndexedDB read failed, using server data only:', e.message);
             }
 
-            // Detect exam reset: server has no answers but IDB has old data
-            // This means admin reset the exam — clear stale IDB data for this session
+            // Detect exam reset: server has no answers but IDB has old data.
+            // Do not wipe the current session if a pending submit snapshot still exists.
             const serverAnswerCount = cfg.jawabanExisting?.length ?? 0;
-            if (localAnswers.length > 0 && serverAnswerCount === 0) {
+            const hasPendingSubmit = Boolean(state?.pendingSubmit)
+                || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0)
+                || (Array.isArray(state?.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
+            if (localAnswers.length > 0 && serverAnswerCount === 0 && !hasPendingSubmit) {
                 console.log(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} — exam was reset, clearing IDB`);
                 try {
                     await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId).delete();
@@ -1269,7 +1279,24 @@ function ujianApp() {
                     console.warn('[Submit] Could not read IndexedDB, using in-memory answers:', e.message);
                 }
 
-                // Fallback: if IDB failed or returned empty, gather from in-memory state
+                // Merge memory fallback answers so partial IDB failures do not lose unsent answers.
+                const answersBySoalId = new Map(allAnswers.map(item => [String(item.soal_id), item]));
+                Object.entries(this._memoryFallbackAnswers || {}).forEach(([soalId, ans]) => {
+                    const formatted = this.formatJawabanForApi(ans.jawaban);
+                    if (formatted === null || answersBySoalId.has(String(soalId))) {
+                        return;
+                    }
+
+                    answersBySoalId.set(String(soalId), {
+                        soal_id: soalId,
+                        jawaban: formatted,
+                        idempotency_key: ans.idempotencyKey || `mem-${cfg.sesiPesertaId}-${soalId}-${Date.now()}`,
+                        client_timestamp: ans.updatedAt || Date.now(),
+                    });
+                });
+                allAnswers = Array.from(answersBySoalId.values());
+
+                // Fallback: if IDB failed and we still have no answers, gather from in-memory state.
                 if (allAnswers.length === 0 && Object.keys(this.answers).length > 0) {
                     Object.entries(this.answers).forEach(([soalId, ans]) => {
                         const formatted = this.formatJawabanForApi(ans);
@@ -1497,7 +1524,14 @@ function ujianApp() {
                 await Promise.all(batch.map(async url => {
                     try {
                         const resp = await fetch(url);
-                        await cache.put(url, resp);
+                        const contentType = resp.headers.get('content-type') || '';
+                        if (!resp.ok || !contentType.startsWith('image/')) {
+                            await db.image_status.put({ url, cached: false, error: true });
+                            this.cacheDone++;
+                            return;
+                        }
+
+                        await cache.put(url, resp.clone());
                         await db.image_status.put({ url, cached: true, error: false });
                     } catch {
                         await db.image_status.put({ url, cached: false, error: true });
