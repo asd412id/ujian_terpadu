@@ -53,6 +53,20 @@ class SoalService
     }
 
     /**
+     * Get filtered soal accessible by a pembuat soal (own + assigned).
+     */
+    public function getAccessibleSoal(
+        string $userId,
+        ?string $kategoriId = null,
+        ?string $tipe = null,
+        ?string $kesulitan = null,
+        ?string $search = null,
+        int $perPage = 20
+    ): mixed {
+        return $this->repository->getAccessibleSoal($userId, $kategoriId, $tipe, $kesulitan, $search, $perPage);
+    }
+
+    /**
      * Get a single soal by ID with relations.
      */
     public function getSoalById(string $id): ?Soal

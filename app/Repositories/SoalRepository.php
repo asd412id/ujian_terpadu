@@ -42,6 +42,42 @@ class SoalRepository
     }
 
     /**
+     * Get filtered soal accessible by a pembuat soal (own + assigned).
+     */
+    public function getAccessibleSoal(
+        string $userId,
+        ?string $kategoriId = null,
+        ?string $tipe = null,
+        ?string $kesulitan = null,
+        ?string $search = null,
+        int $perPage = 20
+    ): LengthAwarePaginator {
+        return $this->model
+            ->with(['kategori', 'sekolah', 'pembuat'])
+            ->where(function ($q) use ($userId) {
+                $q->where('created_by', $userId)
+                  ->orWhereIn('soal.id', function ($sub) use ($userId) {
+                      $sub->select('soal_id')
+                          ->from('soal_user')
+                          ->where('user_id', $userId);
+                  })
+                  ->orWhereIn('soal.kategori_id', function ($sub) use ($userId) {
+                      $sub->select('kategori_soal_id')
+                          ->from('kategori_soal_user')
+                          ->where('user_id', $userId);
+                  });
+            })
+            ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
+            ->when($tipe, fn ($q) => $q->where('tipe_soal', $tipe))
+            ->when($kesulitan, fn ($q) => $q->where('tingkat_kesulitan', $kesulitan))
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
      * Find a single soal by ID.
      */
     public function findById(string $id): ?Soal

@@ -43,6 +43,20 @@ class User extends Authenticatable
         return $this->belongsTo(Sekolah::class);
     }
 
+    public function assignedKategoriSoal()
+    {
+        return $this->belongsToMany(KategoriSoal::class, 'kategori_soal_user', 'user_id', 'kategori_soal_id')
+                     ->withPivot('assigned_by')
+                     ->withTimestamps();
+    }
+
+    public function assignedSoal()
+    {
+        return $this->belongsToMany(Soal::class, 'soal_user', 'user_id', 'soal_id')
+                     ->withPivot('assigned_by')
+                     ->withTimestamps();
+    }
+
     public function isSuperAdmin(): bool   { return $this->role === self::ROLE_SUPER_ADMIN; }
     public function isAdminDinas(): bool   { return $this->role === self::ROLE_ADMIN_DINAS; }
     public function isAdminSekolah(): bool { return $this->role === self::ROLE_ADMIN_SEKOLAH; }

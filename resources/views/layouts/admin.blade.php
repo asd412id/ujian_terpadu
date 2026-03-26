@@ -57,6 +57,7 @@
                         ['route' => 'dinas.grading',           'icon' => 'star',     'label' => 'Penilaian Essay'],
                         ['route' => 'dinas.laporan',           'icon' => 'chart',    'label' => 'Laporan'],
                         ['route' => 'dinas.users.index',       'icon' => 'users',    'label' => 'Pengguna'],
+                        ['route' => 'dinas.penugasan.index',   'icon' => 'clipboard','label' => 'Penugasan Soal'],
                     ];
                 }
             @endphp

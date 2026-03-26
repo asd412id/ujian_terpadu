@@ -25,4 +25,11 @@ class KategoriSoal extends Model
     {
         return $this->hasMany(Soal::class, 'kategori_id');
     }
+
+    public function assignedUsers()
+    {
+        return $this->belongsToMany(User::class, 'kategori_soal_user', 'kategori_soal_id', 'user_id')
+                     ->withPivot('assigned_by')
+                     ->withTimestamps();
+    }
 }

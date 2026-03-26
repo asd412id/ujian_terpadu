@@ -64,6 +64,23 @@
         </div>
     </div>
 
+    {{-- Soal Ditugaskan --}}
+    @if($soalDitugaskan > 0)
+    <div class="card bg-teal-50 border border-teal-200">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+            </div>
+            <div>
+                <p class="font-semibold text-teal-800">{{ $soalDitugaskan }} soal ditugaskan kepada Anda</p>
+                <p class="text-xs text-teal-600">Soal dari admin yang bisa Anda akses dan kelola di Bank Soal</p>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Per Kategori & Per Tipe --}}
     <div class="grid lg:grid-cols-2 gap-5">
 

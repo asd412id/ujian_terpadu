@@ -66,6 +66,29 @@ class Soal extends Model
         return $this->opsiJawaban->firstWhere('label', 'KUNCI')?->teks;
     }
 
+    public function assignedUsers()
+    {
+        return $this->belongsToMany(User::class, 'soal_user', 'soal_id', 'user_id')
+                     ->withPivot('assigned_by')
+                     ->withTimestamps();
+    }
+
+    public function isAccessibleBy(string $userId): bool
+    {
+        if ($this->created_by === $userId) {
+            return true;
+        }
+
+        if ($this->assignedUsers()->where('user_id', $userId)->exists()) {
+            return true;
+        }
+
+        return \DB::table('kategori_soal_user')
+            ->where('user_id', $userId)
+            ->where('kategori_soal_id', $this->kategori_id)
+            ->exists();
+    }
+
     public function paketSoal()
     {
         return $this->hasMany(PaketSoal::class);

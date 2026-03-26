@@ -174,6 +174,15 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     // User management
     Route::resource('users', \App\Http\Controllers\Dinas\UserController::class)->names('users');
 
+    // Penugasan Soal ke Pembuat Soal
+    Route::get('/penugasan', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'index'])->name('penugasan.index');
+    Route::get('/penugasan/api/search-soal', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'apiSearchSoal'])->name('penugasan.api.search-soal');
+    Route::get('/penugasan/{user}', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'show'])->name('penugasan.show');
+    Route::put('/penugasan/{user}/kategori', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'updateKategori'])->name('penugasan.update-kategori');
+    Route::put('/penugasan/{user}/soal', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'updateSoal'])->name('penugasan.update-soal');
+    Route::post('/penugasan/{user}/soal/add', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'addSoal'])->name('penugasan.add-soal');
+    Route::post('/penugasan/{user}/soal/remove', [\App\Http\Controllers\Dinas\PenugasanSoalController::class, 'removeSoal'])->name('penugasan.remove-soal');
+
     // Peserta management (dinas kelola semua peserta lintas sekolah)
     // Import routes HARUS sebelum resource agar tidak konflik dengan {peserta}
     Route::get('/peserta/import', [\App\Http\Controllers\Dinas\PesertaController::class, 'showImport'])->name('peserta.import');

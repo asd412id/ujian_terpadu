@@ -27,13 +27,13 @@ class SoalController extends Controller
 
     public function index(Request $request)
     {
-        $soal = $this->soalService->getFilteredSoal(
+        $soal = $this->soalService->getAccessibleSoal(
+            userId: Auth::id(),
             kategoriId: $request->kategori,
             tipe: $request->tipe,
             kesulitan: $request->kesulitan,
             search: $request->search,
-            perPage: 20,
-            createdBy: Auth::id()
+            perPage: 20
         );
 
         $kategori = $this->soalService->getActiveKategori();
@@ -88,7 +88,7 @@ class SoalController extends Controller
 
     public function show(Soal $soal)
     {
-        abort_unless($soal->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke soal ini.');
+        abort_unless($soal->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke soal ini.');
 
         $soal->load(['opsiJawaban', 'pasangan', 'kategori', 'narasi']);
 
@@ -124,7 +124,7 @@ class SoalController extends Controller
 
     public function edit(Soal $soal)
     {
-        abort_unless($soal->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke soal ini.');
+        abort_unless($soal->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke soal ini.');
 
         $soal->load(['opsiJawaban', 'pasangan']);
         $kategoris = $this->soalService->getActiveKategori();
@@ -140,7 +140,7 @@ class SoalController extends Controller
 
     public function update(Request $request, Soal $soal)
     {
-        abort_unless($soal->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke soal ini.');
+        abort_unless($soal->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke soal ini.');
 
         $validated = $request->validate([
             'kategori_soal_id'     => 'required|exists:kategori_soal,id',
@@ -168,7 +168,7 @@ class SoalController extends Controller
 
     public function destroy(Soal $soal)
     {
-        abort_unless($soal->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke soal ini.');
+        abort_unless($soal->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke soal ini.');
 
         if ($soal->is_verified) {
             return redirect()->route('pembuat-soal.soal.index')
@@ -185,8 +185,17 @@ class SoalController extends Controller
     {
         $kategori = $this->soalService->getActiveKategori();
 
+        $userId = Auth::id();
         $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori', 'narasi'])
-            ->where('created_by', Auth::id())
+            ->where(function ($q) use ($userId) {
+                $q->where('created_by', $userId)
+                  ->orWhereIn('soal.id', function ($sub) use ($userId) {
+                      $sub->select('soal_id')->from('soal_user')->where('user_id', $userId);
+                  })
+                  ->orWhereIn('soal.kategori_id', function ($sub) use ($userId) {
+                      $sub->select('kategori_soal_id')->from('kategori_soal_user')->where('user_id', $userId);
+                  });
+            })
             ->orderBy('kategori_id')
             ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
             ->orderBy('id');
