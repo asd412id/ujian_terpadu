@@ -24,6 +24,14 @@ class ExampleTest extends TestCase
         $this->assertStringNotContainsString('&quot;', $html);
     }
 
+    public function test_html_display_keeps_attribute_entities_escaped_while_decoding_text_nodes(): void
+    {
+        $html = HtmlDisplay::render('<p><img src="https://example.com/x.png" alt="He said &quot;hi&quot;">Petani berkata &quot;halo&quot;.</p>')->toHtml();
+
+        $this->assertStringContainsString('alt="He said &quot;hi&quot;"', $html);
+        $this->assertStringContainsString('Petani berkata "halo".', $html);
+    }
+
     public function test_html_display_preserves_literal_encoded_tags_and_media_as_text(): void
     {
         $tagHtml = HtmlDisplay::render('Apa fungsi tag &lt;option&gt;?')->toHtml();

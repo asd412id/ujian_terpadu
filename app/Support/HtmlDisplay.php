@@ -46,11 +46,11 @@ class HtmlDisplay
         }
 
         if (static::containsHtml($value)) {
-            return new HtmlString(static::decodeSafeTextEntities(Purifier::clean($value, 'tiptap')));
+            return new HtmlString(static::decodeSafeTextEntitiesInTextNodes(Purifier::clean($value, 'tiptap')));
         }
 
         if (static::isEncodedRichText($value)) {
-            return new HtmlString(static::decodeSafeTextEntities(Purifier::clean(static::decode($value), 'tiptap')));
+            return new HtmlString(static::decodeSafeTextEntitiesInTextNodes(Purifier::clean(static::decode($value), 'tiptap')));
         }
 
         return new HtmlString(nl2br(htmlspecialchars(static::normalizeTextForRender(static::decode($value)), ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8')));
@@ -110,13 +110,27 @@ class HtmlDisplay
         return trim($normalized);
     }
 
-    private static function decodeSafeTextEntities(string $value): string
+    private static function decodeSafeTextEntitiesInTextNodes(string $value): string
     {
-        return str_replace(
-            ['&quot;', '&#34;', '&apos;', '&#39;', '&#039;', '&nbsp;'],
-            ['"', '"', "'", "'", "'", ' '],
-            $value,
-        );
+        $parts = preg_split('/(<[^>]+>)/u', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        if ($parts === false) {
+            return $value;
+        }
+
+        foreach ($parts as $index => $part) {
+            if ($part === '' || str_starts_with($part, '<')) {
+                continue;
+            }
+
+            $parts[$index] = str_replace(
+                ['&quot;', '&#34;', '&apos;', '&#39;', '&#039;', '&nbsp;'],
+                ['"', '"', "'", "'", "'", ' '],
+                $part,
+            );
+        }
+
+        return implode('', $parts);
     }
 
     private static function startsWithEncodedRichTextTag(string $value): bool
