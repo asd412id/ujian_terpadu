@@ -90,7 +90,7 @@ class SoalController extends Controller
     {
         abort_unless($soal->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke soal ini.');
 
-        $soal->load(['opsiJawaban', 'pasangan', 'kategori', 'narasi']);
+        $soal->load(['opsiJawaban', 'pasangan', 'kategori', 'narasi', 'pembuat']);
 
         if (request()->ajax() || request()->wantsJson()) {
             $hasInlineImage = str_contains($soal->pertanyaan ?? '', '<img ');
@@ -104,6 +104,13 @@ class SoalController extends Controller
                 'bobot'             => $soal->bobot,
                 'kunci_jawaban'     => $soal->kunci_jawaban,
                 'pembahasan'        => $soal->pembahasan,
+                'sumber'            => $soal->sumber,
+                'tahun_soal'        => $soal->tahun_soal,
+                'pembuat'           => $soal->pembuat->name ?? null,
+                'narasi'            => $soal->narasi ? [
+                    'judul'  => $soal->narasi->judul,
+                    'konten' => (string) HtmlDisplay::render($soal->narasi->konten),
+                ] : null,
                 'opsi'              => $soal->opsiJawaban->sortBy('urutan')->values()->map(fn($o) => [
                     'label'    => $o->label,
                     'teks'     => $o->teks,

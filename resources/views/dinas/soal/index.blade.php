@@ -541,7 +541,7 @@
                 <template x-if="previewData && !previewLoading">
                     <div class="space-y-5">
                         {{-- Meta --}}
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 rounded-xl p-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 bg-gray-50 rounded-xl p-4">
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wide">Jenis</p>
                                 <span class="inline-block mt-1 text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -559,7 +559,36 @@
                                 <p class="text-xs text-gray-400 uppercase tracking-wide">Bobot</p>
                                 <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.bobot"></p>
                             </div>
+                            <template x-if="previewData.pembuat">
+                                <div>
+                                    <p class="text-xs text-gray-400 uppercase tracking-wide">Pembuat</p>
+                                    <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.pembuat"></p>
+                                </div>
+                            </template>
+                            <template x-if="previewData.sumber">
+                                <div>
+                                    <p class="text-xs text-gray-400 uppercase tracking-wide">Sumber</p>
+                                    <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.sumber"></p>
+                                </div>
+                            </template>
+                            <template x-if="previewData.tahun_soal">
+                                <div>
+                                    <p class="text-xs text-gray-400 uppercase tracking-wide">Tahun</p>
+                                    <p class="mt-1 text-sm font-medium text-gray-900" x-text="previewData.tahun_soal"></p>
+                                </div>
+                            </template>
                         </div>
+
+                        {{-- Narasi --}}
+                        <template x-if="previewData.narasi">
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <h3 class="text-sm font-semibold text-indigo-700" x-text="'Narasi: ' + previewData.narasi.judul"></h3>
+                                </div>
+                                <div class="formatted-content ck-content text-sm text-gray-800 mathjax-process" x-safe-html="previewData.narasi.konten"></div>
+                            </div>
+                        </template>
 
                         {{-- Pertanyaan --}}
                         <div>
@@ -664,14 +693,16 @@
                                 <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
                                     <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.kunci_jawaban || '—'"></div>
                                 </div>
-                                <template x-if="previewData.pembahasan">
-                                    <div class="mt-4">
-                                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pembahasan</h3>
-                                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                            <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.pembahasan"></div>
-                                        </div>
-                                    </div>
-                                </template>
+                            </div>
+                        </template>
+
+                        {{-- Pembahasan (semua tipe) --}}
+                        <template x-if="previewData.pembahasan">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pembahasan</h3>
+                                <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.pembahasan"></div>
+                                </div>
                             </div>
                         </template>
                     </div>
