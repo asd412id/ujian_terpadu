@@ -5,6 +5,9 @@ namespace Tests\Feature\Auth;
 use App\Models\Sekolah;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class LoginControllerTest extends TestCase
@@ -20,6 +23,10 @@ class LoginControllerTest extends TestCase
         $response->assertSeeText('Memverifikasi...');
         $response->assertSeeText('Sedang memverifikasi akun dan menyiapkan akses dashboard.');
         $response->assertSeeText('Masuk sebagai peserta');
+        $response->assertSee('role="status"', false);
+        $response->assertSee('aria-live="polite"', false);
+        $response->assertDontSee('aria-describedby="login-email-error"', false);
+        $response->assertDontSee('aria-describedby="login-password-error"', false);
     }
 
     public function test_login_page_shows_flashed_error_message(): void
@@ -29,6 +36,25 @@ class LoginControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Akun Anda tidak aktif.');
+        $response->assertSee('role="alert"', false);
+        $response->assertSee('aria-live="assertive"', false);
+    }
+
+    public function test_login_page_adds_error_descriptions_when_validation_errors_exist(): void
+    {
+        $errors = (new ViewErrorBag())->put('default', new MessageBag([
+            'email' => ['Email wajib diisi.'],
+            'password' => ['Password wajib diisi.'],
+        ]));
+
+        $response = $this->withSession(['errors' => $errors])
+            ->get(route('login'));
+
+        $response->assertOk();
+        $response->assertSee('aria-describedby="login-email-error"', false);
+        $response->assertSee('aria-describedby="login-password-error"', false);
+        $response->assertSeeText('Email wajib diisi.');
+        $response->assertSeeText('Password wajib diisi.');
     }
 
     public function test_authenticated_user_is_redirected_from_login_page(): void
@@ -42,11 +68,11 @@ class LoginControllerTest extends TestCase
     {
         $sekolah = Sekolah::factory()->create();
         $user = User::factory()->create([
-            'email'     => 'admin@test.com',
-            'password'  => bcrypt('password123'),
-            'role'      => 'admin_sekolah',
+            'email'      => 'admin@test.com',
+            'password'   => bcrypt('password123'),
+            'role'       => 'admin_sekolah',
             'sekolah_id' => $sekolah->id,
-            'is_active' => true,
+            'is_active'  => true,
         ]);
 
         $response = $this->post(route('login.post'), [
@@ -57,6 +83,29 @@ class LoginControllerTest extends TestCase
 
         $response->assertRedirect(route('sekolah.dashboard'));
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_login_with_remember_me_sets_recaller_cookie(): void
+    {
+        $user = User::factory()->create([
+            'email'          => 'admin@test.com',
+            'password'       => bcrypt('password123'),
+            'role'           => 'admin_dinas',
+            'is_active'      => true,
+            'remember_token' => null,
+        ]);
+
+        $response = $this->post(route('login.post'), [
+            'email'    => 'admin@test.com',
+            'password' => 'password123',
+            'remember' => '1',
+        ]);
+
+        $response->assertRedirect(route('dinas.dashboard'));
+        $response->assertCookie(Auth::guard('web')->getRecallerName());
+
+        $user->refresh();
+        $this->assertNotNull($user->remember_token);
     }
 
     public function test_login_with_invalid_password(): void

@@ -18,7 +18,10 @@
             </div>
 
             <div id="offline-notice"
-                 class="hidden mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                 class="hidden mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                 role="status"
+                 aria-live="polite"
+                 aria-atomic="true">
                 <div class="flex items-start gap-2.5">
                     <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93a10 10 0 0114.14 14.14M9.88 9.88a3 3 0 014.24 4.24M1 1l22 22"/>
@@ -28,7 +31,9 @@
             </div>
 
             @if(session('error'))
-            <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                 role="alert"
+                 aria-live="assertive">
                 {{ session('error') }}
             </div>
             @endif
@@ -49,7 +54,7 @@
                                class="form-input pl-10"
                                placeholder="Contoh: 12345 atau 0012345678"
                                required autocomplete="username" inputmode="text"
-                               aria-describedby="peserta-username-error"
+                               @if($errors->has('username')) aria-describedby="peserta-username-error" @endif
                                aria-invalid="{{ $errors->has('username') ? 'true' : 'false' }}">
                     </div>
                     @error('username')
@@ -70,7 +75,7 @@
                                class="form-input pl-10 pr-10"
                                placeholder="Password dari kartu ujian"
                                required autocomplete="current-password"
-                               aria-describedby="peserta-password-error"
+                               @if($errors->has('password')) aria-describedby="peserta-password-error" @endif
                                aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}">
                         <button x-cloak x-show="!submitting" type="button" @click="showPassword = !showPassword"
                                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -102,7 +107,7 @@
                         <span x-cloak x-show="submitting">Menyiapkan sesi...</span>
                     </button>
 
-                    <div x-cloak x-show="submitting" x-transition class="auth-status mt-3" aria-live="polite">
+                    <div x-cloak x-show="submitting" x-transition class="auth-status mt-3" role="status" aria-live="polite" aria-atomic="true">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>

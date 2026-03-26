@@ -6,6 +6,8 @@ use App\Models\Peserta;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class PesertaLoginControllerTest extends TestCase
@@ -21,6 +23,10 @@ class PesertaLoginControllerTest extends TestCase
         $response->assertSeeText('Menyiapkan sesi...');
         $response->assertSeeText('Sedang memverifikasi akun dan menyiapkan sesi ujian.');
         $response->assertSeeText('Tidak ada koneksi. Login peserta membutuhkan internet aktif.');
+        $response->assertSee('role="status"', false);
+        $response->assertSee('aria-live="polite"', false);
+        $response->assertDontSee('aria-describedby="peserta-username-error"', false);
+        $response->assertDontSee('aria-describedby="peserta-password-error"', false);
     }
 
     public function test_peserta_login_page_shows_flashed_error_message(): void
@@ -30,6 +36,25 @@ class PesertaLoginControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Akun Anda telah login di perangkat lain.');
+        $response->assertSee('role="alert"', false);
+        $response->assertSee('aria-live="assertive"', false);
+    }
+
+    public function test_peserta_login_page_adds_error_descriptions_when_validation_errors_exist(): void
+    {
+        $errors = (new ViewErrorBag())->put('default', new MessageBag([
+            'username' => ['Username wajib diisi.'],
+            'password' => ['Password wajib diisi.'],
+        ]));
+
+        $response = $this->withSession(['errors' => $errors])
+            ->get(route('ujian.login'));
+
+        $response->assertOk();
+        $response->assertSee('aria-describedby="peserta-username-error"', false);
+        $response->assertSee('aria-describedby="peserta-password-error"', false);
+        $response->assertSeeText('Username wajib diisi.');
+        $response->assertSeeText('Password wajib diisi.');
     }
 
     public function test_authenticated_peserta_redirected_from_login(): void

@@ -18,7 +18,9 @@
             </div>
 
             @if(session('error'))
-            <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                 role="alert"
+                 aria-live="assertive">
                 {{ session('error') }}
             </div>
             @endif
@@ -39,7 +41,7 @@
                                class="form-input pl-10"
                                placeholder="nama@email.com"
                                required autofocus autocomplete="email"
-                               aria-describedby="login-email-error"
+                               @if($errors->has('email')) aria-describedby="login-email-error" @endif
                                aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}">
                     </div>
                     @error('email')
@@ -60,7 +62,7 @@
                                class="form-input pl-10 pr-10"
                                placeholder="Masukkan password"
                                required autocomplete="current-password"
-                               aria-describedby="login-password-error"
+                               @if($errors->has('password')) aria-describedby="login-password-error" @endif
                                aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}">
                         <button x-cloak x-show="!submitting" type="button" @click="showPassword = !showPassword"
                                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -103,7 +105,7 @@
                         <span x-cloak x-show="submitting">Memverifikasi...</span>
                     </button>
 
-                    <div x-cloak x-show="submitting" x-transition class="auth-status mt-3" aria-live="polite">
+                    <div x-cloak x-show="submitting" x-transition class="auth-status mt-3" role="status" aria-live="polite" aria-atomic="true">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
