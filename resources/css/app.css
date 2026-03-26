@@ -171,6 +171,43 @@
 /* Smooth transitions */
 * { -webkit-tap-highlight-color: transparent; }
 
+.formatted-content {
+    line-height: 1.7;
+}
+
+.formatted-content p,
+.formatted-content ul,
+.formatted-content ol,
+.formatted-content blockquote,
+.formatted-content table {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.formatted-content p + p,
+.formatted-content p + ul,
+.formatted-content p + ol,
+.formatted-content ul + p,
+.formatted-content ol + p,
+.formatted-content blockquote + p,
+.formatted-content p + blockquote,
+.formatted-content table + p,
+.formatted-content p + table,
+.formatted-content ul + ul,
+.formatted-content ol + ol,
+.formatted-content ul + ol,
+.formatted-content ol + ul {
+    margin-top: 0.9em;
+}
+
+.formatted-content li + li {
+    margin-top: 0.35em;
+}
+
+.formatted-content img {
+    border-radius: 0.5rem;
+}
+
 /* ========================================
    CKEditor 5 Override Styles
    ======================================== */
@@ -273,6 +310,7 @@
 
 /* Tighter spacing for exam context */
 .ck-content p { margin: 0.25em 0; }
+.formatted-content.ck-content p { margin-top: 0; margin-bottom: 0; }
 .ck-content img { border-radius: 0.375rem; }
 
 /* Inline code styling in both editor and display */

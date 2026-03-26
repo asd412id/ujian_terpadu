@@ -51,9 +51,7 @@
             jawabanExisting: @json($jawabanExistingJs),
         };
     </script>
-    <style>
-        .ck-content p { margin-top: 0.25em; margin-bottom: 0.25em; }
-    </style>
+
 </head>
 
 <body class="h-full bg-gray-50 font-['Inter'] overflow-hidden select-none"
@@ -228,7 +226,7 @@
                                 </svg>
                                 <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">{{ $soal['narasi']['judul'] ?? 'Teks Bacaan' }}</span>
                             </div>
-                            <div class="prose prose-sm max-w-none text-gray-800">
+                            <div class="formatted-content prose prose-sm max-w-none text-gray-800">
                                 @if(!empty($soal['narasi']['gambar']))
                                 <div class="mb-3 rounded-lg overflow-hidden border border-indigo-200">
                                     <img src="{{ asset('storage/'.$soal['narasi']['gambar']) }}" alt="Gambar Narasi" class="max-h-60 w-auto">
@@ -251,7 +249,7 @@
                             </div>
                             @endif
 
-                            <div class="ck-content text-gray-800 leading-relaxed mathjax-process">
+                            <div class="formatted-content ck-content text-gray-800 leading-relaxed mathjax-process">
                                 {!! \App\Support\HtmlDisplay::render($soal['pertanyaan'] ?? null) !!}
                             </div>
 
@@ -297,7 +295,7 @@
                                 @endif
                                 <div class="flex-1 min-w-0">
                                     @if($opsi['teks'])
-                                    <span class="text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</span>
+                                    <span class="formatted-content text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</span>
                                     @endif
                                     @if($opsi['gambar'])
                                     <img src="{{ asset('storage/'.$opsi['gambar']) }}"
@@ -424,7 +422,7 @@
                                             <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full flex items-center justify-center text-xs font-bold"
                                                   :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'">{{ chr(96 + $loop->iteration) }}.</span>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</p>
+                                                <p class="formatted-content text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</p>
                                                 @if(!empty($opsi['gambar']))
                                                 <img src="{{ asset('storage/'.$opsi['gambar']) }}" class="mt-1 max-h-20 object-contain rounded border" alt="">
                                                 @endif

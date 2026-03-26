@@ -39,7 +39,7 @@
     {{-- Narasi Content --}}
     <div class="card">
         <h2 class="font-semibold text-gray-900 mb-3">Teks Narasi</h2>
-        <div class="prose prose-sm max-w-none text-gray-700 bg-gray-50 rounded-xl p-5 border border-gray-200">
+        <div class="formatted-content prose prose-sm max-w-none text-gray-700 bg-gray-50 rounded-xl p-5 border border-gray-200">
             {!! \App\Support\HtmlDisplay::render($narasi->konten) !!}
         </div>
     </div>

@@ -46,11 +46,11 @@ class HtmlDisplay
         }
 
         if (static::containsHtml($value)) {
-            return new HtmlString(Purifier::clean($value, 'tiptap'));
+            return new HtmlString(static::decodeSafeTextEntities(Purifier::clean($value, 'tiptap')));
         }
 
         if (static::isEncodedRichText($value)) {
-            return new HtmlString(Purifier::clean(static::decode($value), 'tiptap'));
+            return new HtmlString(static::decodeSafeTextEntities(Purifier::clean(static::decode($value), 'tiptap')));
         }
 
         return new HtmlString(nl2br(htmlspecialchars(static::normalizeTextForRender(static::decode($value)), ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8')));
@@ -108,6 +108,15 @@ class HtmlDisplay
         $normalized = preg_replace('/\n{3,}/u', "\n\n", $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    private static function decodeSafeTextEntities(string $value): string
+    {
+        return str_replace(
+            ['&quot;', '&#34;', '&apos;', '&#39;', '&#039;', '&nbsp;'],
+            ['"', '"', "'", "'", "'", ' '],
+            $value,
+        );
     }
 
     private static function startsWithEncodedRichTextTag(string $value): bool
