@@ -63,7 +63,7 @@
                         <a href="{{ route('dinas.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600">
                             {{ $narasi->judul }}
                         </a>
-                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
                     </td>
                     <td class="px-5 py-3 hidden md:table-cell">
                         @if($narasi->kategori)
@@ -110,7 +110,7 @@
                         <a href="{{ route('dinas.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 text-sm hover:text-blue-600">
                             {{ $narasi->judul }}
                         </a>
-                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                        <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
                     </div>
                     @if($narasi->is_active)
                         <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex-shrink-0">Aktif</span>

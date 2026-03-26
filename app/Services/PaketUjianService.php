@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\HtmlDisplay;
 use App\Models\PaketUjian;
 use App\Repositories\PaketUjianRepository;
 use App\Repositories\KategoriSoalRepository;
@@ -330,7 +331,7 @@ class PaketUjianService
     {
         return [
             'id'         => $s->id,
-            'pertanyaan' => strip_tags($s->pertanyaan),
+            'pertanyaan' => HtmlDisplay::plainText($s->pertanyaan),
             'tipe_soal'  => $s->tipe_soal,
             'bobot'      => $s->bobot,
             'kategori'   => $s->kategori->nama ?? 'Tanpa Kategori',

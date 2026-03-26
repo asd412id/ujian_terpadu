@@ -35,8 +35,9 @@ return new class extends Migration
 
     private function normalizeText(?string $konten): string
     {
-        $normalized = preg_replace('/<(\/?(p|div|li|ul|ol|h[1-6]|blockquote|section|article|tr|td|th))\b[^>]*>|<br\s*\/?\s*>/iu', ' ', $konten ?? '') ?? ($konten ?? '');
-        $normalized = html_entity_decode(strip_tags($normalized), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decoded = html_entity_decode($konten ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $normalized = preg_replace('/<(\/?(p|div|li|ul|ol|h[1-6]|blockquote|section|article|tr|td|th))\b[^>]*>|<br\s*\/?\s*>/iu', ' ', $decoded) ?? $decoded;
+        $normalized = strip_tags($normalized);
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);

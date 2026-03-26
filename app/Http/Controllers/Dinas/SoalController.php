@@ -9,6 +9,7 @@ use App\Models\Soal;
 use App\Jobs\ImportSoalWordJob;
 use App\Repositories\KategoriSoalRepository;
 use App\Services\SoalService;
+use App\Support\HtmlDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -111,7 +112,7 @@ class SoalController extends Controller
 
     public function show(Soal $soal)
     {
-        $soal->load(['opsiJawaban', 'pasangan', 'kategori']);
+        $soal->load(['opsiJawaban', 'pasangan', 'kategori', 'narasi']);
 
         if (request()->ajax() || request()->wantsJson()) {
             $hasInlineImage = str_contains($soal->pertanyaan ?? '', '<img ');
@@ -132,9 +133,9 @@ class SoalController extends Controller
                     'is_benar' => (bool) $o->is_benar,
                 ]),
                 'pasangan'          => $soal->pasangan->values()->map(fn($p) => [
-                    'kiri'         => $p->kiri_teks,
+                    'kiri'         => HtmlDisplay::plainText($p->kiri_teks),
                     'kiri_gambar'  => $p->kiri_gambar ? asset('storage/' . $p->kiri_gambar) : null,
-                    'kanan'        => $p->kanan_teks,
+                    'kanan'        => HtmlDisplay::plainText($p->kanan_teks),
                     'kanan_gambar' => $p->kanan_gambar ? asset('storage/' . $p->kanan_gambar) : null,
                 ]),
             ]);

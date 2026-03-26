@@ -10,6 +10,7 @@ use App\Models\Soal;
 use App\Jobs\ImportSoalWordJob;
 use App\Services\SoalService;
 use App\Repositories\KategoriSoalRepository;
+use App\Support\HtmlDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -83,7 +84,7 @@ class SoalController extends Controller
     {
         abort_unless($soal->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke soal ini.');
 
-        $soal->load(['opsiJawaban', 'pasangan', 'kategori']);
+        $soal->load(['opsiJawaban', 'pasangan', 'kategori', 'narasi']);
 
         if (request()->ajax() || request()->wantsJson()) {
             $hasInlineImage = str_contains($soal->pertanyaan ?? '', '<img ');
@@ -104,9 +105,9 @@ class SoalController extends Controller
                     'is_benar' => (bool) $o->is_benar,
                 ]),
                 'pasangan'          => $soal->pasangan->values()->map(fn($p) => [
-                    'kiri'         => $p->kiri_teks,
+                    'kiri'         => HtmlDisplay::plainText($p->kiri_teks),
                     'kiri_gambar'  => $p->kiri_gambar ? asset('storage/' . $p->kiri_gambar) : null,
-                    'kanan'        => $p->kanan_teks,
+                    'kanan'        => HtmlDisplay::plainText($p->kanan_teks),
                     'kanan_gambar' => $p->kanan_gambar ? asset('storage/' . $p->kanan_gambar) : null,
                 ]),
             ]);

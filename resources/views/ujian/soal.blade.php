@@ -234,7 +234,7 @@
                                     <img src="{{ asset('storage/'.$soal['narasi']['gambar']) }}" alt="Gambar Narasi" class="max-h-60 w-auto">
                                 </div>
                                 @endif
-                                {!! $soal['narasi']['konten'] !!}
+                                {!! \App\Support\HtmlDisplay::render($soal['narasi']['konten'] ?? null) !!}
                             </div>
                         </div>
                         @endif
@@ -252,7 +252,7 @@
                             @endif
 
                             <div class="ck-content text-gray-800 leading-relaxed mathjax-process">
-                                {!! $soal['pertanyaan'] !!}
+                                {!! \App\Support\HtmlDisplay::render($soal['pertanyaan'] ?? null) !!}
                             </div>
 
                             @if(!$hasInlineImg && $soal['gambar_soal'] && $soal['posisi_gambar'] !== 'atas')
@@ -297,7 +297,7 @@
                                 @endif
                                 <div class="flex-1 min-w-0">
                                     @if($opsi['teks'])
-                                    <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</span>
+                                    <span class="text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</span>
                                     @endif
                                     @if($opsi['gambar'])
                                     <img src="{{ asset('storage/'.$opsi['gambar']) }}"
@@ -358,7 +358,7 @@
                                             <img src="{{ asset('storage/'.$pas['kiri_gambar']) }}"
                                                  class="max-h-20 object-contain mb-1" alt="">
                                             @endif
-                                            {{ $pas['kiri_teks'] }}
+                                            {{ \App\Support\HtmlDisplay::plainText($pas['kiri_teks']) }}
                                         </div>
                                         <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
@@ -370,7 +370,7 @@
                                                 @foreach($soal['pasangan'] as $opt)
                                                 <option value="{{ $opt['id'] }}"
                                                         :selected="getPasanganJawaban('{{ $soal['id'] }}', '{{ $pas['id'] }}') === '{{ $opt['id'] }}'">
-                                                    {{ $opt['kanan_teks'] }}
+                                                    {{ \App\Support\HtmlDisplay::plainText($opt['kanan_teks']) }}
                                                 </option>
                                                 @endforeach
                                             </select>
@@ -424,7 +424,7 @@
                                             <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full flex items-center justify-center text-xs font-bold"
                                                   :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'">{{ chr(96 + $loop->iteration) }}.</span>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! $opsi['teks'] === strip_tags($opsi['teks']) ? e($opsi['teks']) : $opsi['teks'] !!}</p>
+                                                <p class="text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</p>
                                                 @if(!empty($opsi['gambar']))
                                                 <img src="{{ asset('storage/'.$opsi['gambar']) }}" class="mt-1 max-h-20 object-contain rounded border" alt="">
                                                 @endif

@@ -205,7 +205,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-5 py-3 text-gray-400 text-xs">{{ $soal->firstItem() + $loop->index }}</td>
                             <td class="px-5 py-3 max-w-xs">
-                                <p class="text-gray-900 line-clamp-2">{{ strip_tags($item->pertanyaan) }}</p>
+                                <p class="text-gray-900 line-clamp-2">{{ \App\Support\HtmlDisplay::plainText($item->pertanyaan) }}</p>
                                 @if($item->narasi_id)
                                 <span class="text-xs text-indigo-500 mt-0.5 inline-flex items-center gap-1">
                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -285,7 +285,7 @@
                         </div>
                         <span class="text-xs text-gray-500 shrink-0">Bobot: {{ $item->bobot }}</span>
                     </div>
-                    <p class="text-xs text-gray-700 line-clamp-2 mb-2">{{ strip_tags($item->pertanyaan) }}</p>
+                    <p class="text-xs text-gray-700 line-clamp-2 mb-2">{{ \App\Support\HtmlDisplay::plainText($item->pertanyaan) }}</p>
                     <div class="flex items-center gap-2 flex-wrap text-xs">
                         <span class="text-gray-500">{{ $item->kategori->nama ?? '—' }} · {{ ucfirst($item->tingkat_kesulitan ?? '—') }}</span>
                         <span class="ml-auto"></span>
@@ -367,7 +367,7 @@
                                 <a href="{{ route('dinas.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600">
                                     {{ $narasi->judul }}
                                 </a>
-                                <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                                <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
                             </td>
                             <td class="px-5 py-3 hidden md:table-cell">
                                 @if($narasi->kategori)
@@ -423,7 +423,7 @@
                             <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
                         @endif
                     </div>
-                    <p class="text-xs text-gray-500 line-clamp-1 mb-1.5">{!! Str::limit(strip_tags($narasi->konten), 80) !!}</p>
+                    <p class="text-xs text-gray-500 line-clamp-1 mb-1.5">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
                     <div class="flex items-center gap-2 flex-wrap text-xs">
                         @if($narasi->kategori)
                             <span class="font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $narasi->kategori->nama }}</span>
@@ -624,13 +624,13 @@
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Kunci Jawaban</h3>
                                 <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <p class="text-sm text-gray-800" x-text="previewData.kunci_jawaban || '—'"></p>
+                                    <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.kunci_jawaban || '—'"></div>
                                 </div>
                                 <template x-if="previewData.pembahasan">
                                     <div class="mt-4">
                                         <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pembahasan</h3>
                                         <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                            <p class="text-sm text-gray-800 whitespace-pre-line" x-text="previewData.pembahasan"></p>
+                                            <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.pembahasan"></div>
                                         </div>
                                     </div>
                                 </template>

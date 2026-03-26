@@ -40,7 +40,7 @@
     <div class="card">
         <h2 class="font-semibold text-gray-900 mb-3">Teks Narasi</h2>
         <div class="prose prose-sm max-w-none text-gray-700 bg-gray-50 rounded-xl p-5 border border-gray-200">
-            {!! $narasi->konten !!}
+            {!! \App\Support\HtmlDisplay::render($narasi->konten) !!}
         </div>
     </div>
 
@@ -65,12 +65,12 @@
                             <span class="text-xs text-gray-500">{{ $soal->tingkat_kesulitan }}</span>
                             @endif
                         </div>
-                        <div class="text-sm text-gray-800 line-clamp-2">{!! Str::limit(strip_tags($soal->pertanyaan), 150) !!}</div>
+                        <div class="text-sm text-gray-800 line-clamp-2">{{ \App\Support\HtmlDisplay::plainText($soal->pertanyaan, 150) }}</div>
                         @if($soal->opsiJawaban->count() > 0)
                         <div class="mt-2 grid grid-cols-2 gap-1">
                             @foreach($soal->opsiJawaban as $opsi)
                             <div class="text-xs {{ $opsi->is_correct ? 'text-green-700 font-semibold' : 'text-gray-500' }}">
-                                {{ $opsi->label }}. {!! Str::limit(strip_tags($opsi->teks), 50) !!}
+                                {{ $opsi->label }}. {{ \App\Support\HtmlDisplay::plainText($opsi->teks, 50) }}
                                 @if($opsi->is_correct) ✓ @endif
                             </div>
                             @endforeach

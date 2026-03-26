@@ -154,7 +154,7 @@
                     @forelse($recentSoal as $item)
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-2.5 max-w-xs">
-                            <p class="text-gray-900 line-clamp-1">{{ Str::limit(strip_tags($item->pertanyaan), 80) }}</p>
+                            <p class="text-gray-900 line-clamp-1">{{ \App\Support\HtmlDisplay::plainText($item->pertanyaan, 80) }}</p>
                         </td>
                         <td class="px-5 py-2.5 hidden md:table-cell text-gray-600 text-xs">
                             {{ $item->kategori->nama ?? '—' }}

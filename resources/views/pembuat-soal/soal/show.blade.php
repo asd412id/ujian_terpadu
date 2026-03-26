@@ -80,16 +80,20 @@
         </div>
     </div>
 
+    @if($soal->narasi)
+    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5">
+        <div class="flex items-center gap-2 mb-3">
+            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <h2 class="text-sm font-semibold text-indigo-700">Narasi: {{ $soal->narasi->judul }}</h2>
+        </div>
+        <div class="ck-content text-gray-800 mathjax-process">{!! \App\Support\HtmlDisplay::render($soal->narasi->konten) !!}</div>
+    </div>
+    @endif
+
     {{-- Pertanyaan --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Pertanyaan</h2>
-        <div class="ck-content text-gray-800 mathjax-process">
-            @if($soal->pertanyaan === strip_tags($soal->pertanyaan))
-                {!! nl2br(e($soal->pertanyaan)) !!}
-            @else
-                {!! $soal->pertanyaan !!}
-            @endif
-        </div>
+        <div class="ck-content text-gray-800 mathjax-process">{!! \App\Support\HtmlDisplay::render($soal->pertanyaan) !!}</div>
         @if($soal->gambar_soal && !str_contains($soal->pertanyaan ?? '', '<img '))
         <div class="mt-4">
             <img src="{{ asset('storage/' . $soal->gambar_soal) }}" alt="Gambar soal" class="max-h-64 rounded-lg border">
@@ -122,7 +126,7 @@
                 @endif
                 <div class="flex-1">
                     @if($opsi->teks)
-                    <p class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</p>
+                    <p class="text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi->teks) !!}</p>
                     @endif
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar opsi {{ $opsi->label }}" class="{{ $opsi->teks ? 'mt-2' : '' }} max-h-32 rounded border">
@@ -154,7 +158,7 @@
                     @if($p->kiri_gambar)
                     <img src="{{ asset('storage/' . $p->kiri_gambar) }}" alt="Gambar kiri" class="max-h-20 rounded border mb-1">
                     @endif
-                    <span class="text-sm text-gray-800">{{ $p->kiri_teks }}</span>
+                    <span class="text-sm text-gray-800">{{ \App\Support\HtmlDisplay::plainText($p->kiri_teks) }}</span>
                 </div>
                 <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
@@ -163,7 +167,7 @@
                     @if($p->kanan_gambar)
                     <img src="{{ asset('storage/' . $p->kanan_gambar) }}" alt="Gambar kanan" class="max-h-20 rounded border mb-1">
                     @endif
-                    <span class="text-sm text-gray-800">{{ $p->kanan_teks }}</span>
+                    <span class="text-sm text-gray-800">{{ \App\Support\HtmlDisplay::plainText($p->kanan_teks) }}</span>
                 </div>
             </div>
             @endforeach
@@ -180,7 +184,7 @@
             <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <span class="flex-shrink-0 w-auto min-w-[1.75rem] h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold px-1.5">{{ chr(96 + $loop->iteration) }}.</span>
                 <div class="flex-1">
-                    <span class="text-sm text-gray-800 ck-content mathjax-process">{!! $opsi->teks === strip_tags($opsi->teks) ? e($opsi->teks) : $opsi->teks !!}</span>
+                    <span class="text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi->teks) !!}</span>
                     @if($opsi->gambar)
                     <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar pernyataan" class="mt-1 max-h-24 rounded border">
                     @endif
@@ -201,12 +205,12 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Kunci Jawaban</h2>
         <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div class="text-sm text-gray-800 ck-content mathjax-process">{!! $soal->kunci_jawaban ?? '—' !!}</div>
+            <div class="text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($soal->kunci_jawaban ?? '—') !!}</div>
         </div>
         @if($soal->pembahasan)
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-4 mb-2">Pembahasan / Panduan Penilaian</h2>
         <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div class="text-sm text-gray-800 ck-content mathjax-process">{!! $soal->pembahasan !!}</div>
+            <div class="text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($soal->pembahasan) !!}</div>
         </div>
         @endif
     </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dinas;
 
 use App\Http\Controllers\Controller;
+use App\Support\HtmlDisplay;
 use App\Models\PaketUjian;
 use App\Models\Soal;
 use App\Services\PaketUjianService;
@@ -70,7 +71,7 @@ class PaketUjianController extends Controller
         // Only load details of SELECTED soal — not the entire bank
         $terpilihSoalJson = $paket->paketSoal->map(fn ($ps) => [
             'id'         => $ps->soal->id,
-            'pertanyaan' => strip_tags($ps->soal->pertanyaan),
+            'pertanyaan' => HtmlDisplay::plainText($ps->soal->pertanyaan),
             'tipe_soal'  => $ps->soal->tipe_soal,
             'bobot'      => $ps->soal->bobot,
             'kategori'   => $ps->soal->kategori->nama ?? 'Tanpa Kategori',

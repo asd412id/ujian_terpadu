@@ -4,8 +4,10 @@ namespace Tests\Feature\Dinas;
 
 use App\Models\KategoriSoal;
 use App\Models\NarasiSoal;
+use App\Models\OpsiJawaban;
 use App\Models\Soal;
 use App\Models\User;
+use App\Support\HtmlDisplay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -177,6 +179,49 @@ class SoalControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertViewHas('narasis', fn ($narasis) => $narasis->total() === 1
             && $narasis->getCollection()->contains(fn ($narasi) => $narasi->id === $matchingNarasi->id));
+    }
+
+    public function test_show_decodes_html_entities_in_soal_and_narasi_rendering(): void
+    {
+        $user = $this->dinasUser();
+        $kategori = KategoriSoal::factory()->create();
+        $narasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi quote',
+            'konten' => '&lt;p&gt;Narasi &quot;penting&quot; untuk siswa.&lt;/p&gt;',
+            'is_active' => true,
+        ]);
+        $soal = Soal::factory()->essay()->create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'narasi_id' => $narasi->id,
+            'pertanyaan' => 'Apa arti &quot;adil&quot;?',
+            'pembahasan' => 'Bahas &quot;adil&quot; dengan contoh.',
+        ]);
+        OpsiJawaban::create([
+            'soal_id' => $soal->id,
+            'label' => 'KUNCI',
+            'teks' => 'Makna &quot;adil&quot; adalah seimbang.',
+            'urutan' => 1,
+            'is_benar' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dinas.soal.show', $soal));
+
+        $response->assertStatus(200);
+        $response->assertSee('Narasi "penting" untuk siswa.', false);
+        $response->assertSee('Apa arti "adil"?', false);
+        $response->assertSee('Makna "adil" adalah seimbang.', false);
+        $response->assertSee('Bahas "adil" dengan contoh.', false);
+        $response->assertDontSee('&lt;p&gt;Narasi &quot;penting&quot; untuk siswa.&lt;/p&gt;', false);
+        $response->assertDontSee('Apa arti &quot;adil&quot;?', false);
+    }
+
+    public function test_plain_text_keeps_literal_encoded_tags_visible(): void
+    {
+        $this->assertSame('Gunakan <div> dan <span>', HtmlDisplay::plainText('Gunakan &lt;div&gt; dan &lt;span&gt;'));
+        $this->assertSame('Apa fungsi tag <option>?', HtmlDisplay::plainText('<p>Apa fungsi tag &lt;option&gt;?</p>'));
     }
 
     public function test_destroy_deactivates_soal(): void

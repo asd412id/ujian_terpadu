@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Ujian;
 
+use App\Models\KategoriSoal;
+use App\Models\NarasiSoal;
+use App\Models\OpsiJawaban;
 use App\Models\PaketSoal;
 use App\Models\PaketUjian;
 use App\Models\Peserta;
 use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
 use App\Models\Soal;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -94,6 +98,91 @@ class UjianControllerTest extends TestCase
             ->get(route('ujian.konfirmasi', $setup['sp']));
 
         $response->assertRedirect(route('ujian.selesai', $setup['sp']));
+    }
+
+    public function test_mengerjakan_decodes_html_entities_for_narasi_soal_and_opsi(): void
+    {
+        $peserta = Peserta::factory()->create();
+        $paket = PaketUjian::factory()->aktif()->create(['durasi_menit' => 90]);
+        $kategori = KategoriSoal::factory()->create();
+        $narasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => User::factory()->create()->id,
+            'judul' => 'Narasi ujian',
+            'konten' => '&lt;p&gt;Narasi &quot;ujian&quot; untuk peserta.&lt;/p&gt;',
+            'is_active' => true,
+        ]);
+        $soal = Soal::factory()->pg()->create([
+            'kategori_id' => $kategori->id,
+            'narasi_id' => $narasi->id,
+            'pertanyaan' => 'Pilih arti &quot;tepat&quot;.',
+        ]);
+        OpsiJawaban::create([
+            'soal_id' => $soal->id,
+            'label' => 'A',
+            'teks' => 'Jawaban &quot;benar&quot;.',
+            'urutan' => 1,
+            'is_benar' => true,
+        ]);
+        OpsiJawaban::create([
+            'soal_id' => $soal->id,
+            'label' => 'B',
+            'teks' => 'Jawaban lain',
+            'urutan' => 2,
+            'is_benar' => false,
+        ]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
+        $sp = SesiPeserta::factory()->create([
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $peserta->id,
+            'status' => 'login',
+        ]);
+
+        $response = $this->actingAs($peserta, 'peserta')
+            ->get(route('ujian.mengerjakan', $sp));
+
+        $response->assertOk();
+        $response->assertViewIs('ujian.soal');
+        $response->assertSee('Narasi "ujian" untuk peserta.', false);
+        $response->assertSee('Pilih arti "tepat".', false);
+        $response->assertSee('Jawaban "benar".', false);
+        $response->assertDontSee('&lt;p&gt;Narasi &quot;ujian&quot; untuk peserta.&lt;/p&gt;', false);
+        $response->assertDontSee('Pilih arti &quot;tepat&quot;.', false);
+    }
+
+    public function test_mengerjakan_keeps_literal_encoded_tags_visible_as_text(): void
+    {
+        $peserta = Peserta::factory()->create();
+        $paket = PaketUjian::factory()->aktif()->create(['durasi_menit' => 90]);
+        $kategori = KategoriSoal::factory()->create();
+        $soal = Soal::factory()->pg()->create([
+            'kategori_id' => $kategori->id,
+            'pertanyaan' => '<p>Apa fungsi tag &lt;option&gt;?</p>',
+        ]);
+        OpsiJawaban::create([
+            'soal_id' => $soal->id,
+            'label' => 'A',
+            'teks' => 'Contoh literal &lt;img src="https://example.com/pixel.png"&gt;.',
+            'urutan' => 1,
+            'is_benar' => true,
+        ]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
+        $sp = SesiPeserta::factory()->create([
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $peserta->id,
+            'status' => 'login',
+        ]);
+
+        $response = $this->actingAs($peserta, 'peserta')
+            ->get(route('ujian.mengerjakan', $sp));
+
+        $response->assertOk();
+        $response->assertSee('Apa fungsi tag &lt;option&gt;?', false);
+        $response->assertSee('Contoh literal &lt;img src="https://example.com/pixel.png"&gt;.', false);
+        $response->assertDontSee('<option>', false);
+        $response->assertDontSee('<img src="https://example.com/pixel.png">', false);
     }
 
     public function test_submit_ujian(): void
