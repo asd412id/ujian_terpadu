@@ -7,6 +7,7 @@ use App\Models\KategoriSoal;
 use App\Models\Soal;
 use App\Models\User;
 use App\Services\SoalAssignmentService;
+use App\Support\HtmlDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -131,6 +132,21 @@ class PenugasanSoalController extends Controller
             kategoriId: $request->input('kategori_id'),
             perPage: 20
         );
+
+        $tipeLabels = [
+            'pg' => 'Pilihan Ganda', 'pilihan_ganda' => 'Pilihan Ganda',
+            'pg_kompleks' => 'PG Kompleks', 'pilihan_ganda_kompleks' => 'PG Kompleks',
+            'benar_salah' => 'Benar / Salah',
+            'isian' => 'Isian Singkat', 'essay' => 'Essay', 'menjodohkan' => 'Menjodohkan',
+        ];
+
+        $soal->getCollection()->transform(function ($item) use ($tipeLabels) {
+            $item->pertanyaan_plain = HtmlDisplay::plainText($item->pertanyaan, 150);
+            $item->tipe_soal_label = $tipeLabels[$item->tipe_soal] ?? $item->tipe_soal;
+            $item->kategori_nama = $item->kategori->nama ?? "\u{2014}";
+            $item->pembuat_nama = $item->pembuat->name ?? "\u{2014}";
+            return $item;
+        });
 
         return response()->json($soal);
     }

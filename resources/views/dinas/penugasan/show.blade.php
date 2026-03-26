@@ -108,6 +108,16 @@
             </button>
         </div>
 
+        @php
+            $tipeLabel = [
+                'pg' => ['Pilihan Ganda', 'blue'], 'pilihan_ganda' => ['Pilihan Ganda', 'blue'],
+                'pg_kompleks' => ['PG Kompleks', 'purple'], 'pilihan_ganda_kompleks' => ['PG Kompleks', 'purple'],
+                'benar_salah' => ['Benar / Salah', 'indigo'],
+                'isian' => ['Isian Singkat', 'green'], 'essay' => ['Essay', 'amber'],
+                'menjodohkan' => ['Menjodohkan', 'pink'],
+            ];
+        @endphp
+
         @if($assignments['soal']->isEmpty())
             <p class="text-sm text-gray-400 py-6 text-center">Belum ada soal individual yang ditugaskan.</p>
         @else
@@ -123,13 +133,18 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach($assignments['soal'] as $soal)
+                        @php [$tLabel, $tColor] = $tipeLabel[$soal->tipe_soal] ?? [$soal->tipe_soal, 'gray']; @endphp
                         <tr class="hover:bg-gray-50" id="soal-row-{{ $soal->id }}">
                             <td class="px-4 sm:px-5 py-3">
-                                <p class="text-gray-900 text-sm line-clamp-2">{!! strip_tags($soal->pertanyaan) !!}</p>
+                                <p class="text-gray-900 text-sm line-clamp-2">{{ \App\Support\HtmlDisplay::plainText($soal->pertanyaan, 150) }}</p>
+                                <div class="flex items-center gap-2 mt-1 sm:hidden">
+                                    <span class="text-xs text-gray-500">{{ $soal->kategori->nama ?? '—' }}</span>
+                                    <span class="text-xs font-semibold bg-{{ $tColor }}-100 text-{{ $tColor }}-700 px-1.5 py-0.5 rounded-full">{{ $tLabel }}</span>
+                                </div>
                             </td>
                             <td class="px-4 sm:px-5 py-3 hidden sm:table-cell text-gray-600 text-xs">{{ $soal->kategori->nama ?? '—' }}</td>
                             <td class="px-4 sm:px-5 py-3 text-center hidden sm:table-cell">
-                                <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ strtoupper($soal->tipe_soal) }}</span>
+                                <span class="text-xs font-semibold bg-{{ $tColor }}-100 text-{{ $tColor }}-700 px-2 py-0.5 rounded-full">{{ $tLabel }}</span>
                             </td>
                             <td class="px-4 sm:px-5 py-3 text-right">
                                 <button type="button" @click="removeSoal('{{ $soal->id }}')"
@@ -204,10 +219,13 @@
                     <template x-for="soal in searchResults" :key="soal.id">
                         <div class="flex items-start gap-3 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm text-gray-900 line-clamp-2" x-html="soal.pertanyaan_clean"></p>
-                                <div class="flex items-center gap-2 mt-1">
+                                <p class="text-sm text-gray-900 line-clamp-2" x-text="soal.pertanyaan_plain"></p>
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
                                     <span class="text-xs text-gray-500" x-text="soal.kategori_nama"></span>
-                                    <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded" x-text="soal.tipe_soal?.toUpperCase()"></span>
+                                    <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                                          :class="tipeClass(soal.tipe_soal)"
+                                          x-text="soal.tipe_soal_label"></span>
+                                    <span class="text-xs text-gray-400" x-show="soal.pembuat_nama" x-text="'oleh ' + soal.pembuat_nama"></span>
                                 </div>
                             </div>
                             <button type="button" @click="addSoal(soal.id)"
@@ -234,6 +252,17 @@ function penugasanApp() {
         searchLoading: false,
         addedSoalIds: @json($assignments['soal']->pluck('id')),
 
+        tipeClass(tipe) {
+            const map = {
+                'pg': 'bg-blue-100 text-blue-700', 'pilihan_ganda': 'bg-blue-100 text-blue-700',
+                'pg_kompleks': 'bg-purple-100 text-purple-700', 'pilihan_ganda_kompleks': 'bg-purple-100 text-purple-700',
+                'benar_salah': 'bg-indigo-100 text-indigo-700',
+                'isian': 'bg-green-100 text-green-700', 'essay': 'bg-amber-100 text-amber-700',
+                'menjodohkan': 'bg-pink-100 text-pink-700',
+            };
+            return map[tipe] || 'bg-gray-100 text-gray-600';
+        },
+
         async searchSoal() {
             if (!this.searchQuery && !this.searchKategori) {
                 this.searchResults = [];
@@ -247,12 +276,7 @@ function penugasanApp() {
 
                 const res = await fetch(`{{ route('dinas.penugasan.api.search-soal') }}?${params}`);
                 const json = await res.json();
-
-                this.searchResults = (json.data || []).map(s => ({
-                    ...s,
-                    pertanyaan_clean: this.stripHtml(s.pertanyaan || ''),
-                    kategori_nama: s.kategori?.nama || '—',
-                }));
+                this.searchResults = json.data || [];
             } catch (e) {
                 console.error(e);
             } finally {
@@ -306,12 +330,6 @@ function penugasanApp() {
                 console.error(e);
             }
         },
-
-        stripHtml(html) {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            return tmp.textContent?.substring(0, 150) || '';
-        }
     };
 }
 </script>
