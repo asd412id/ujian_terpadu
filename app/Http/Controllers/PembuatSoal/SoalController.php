@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use ZipArchive;
 
 class SoalController extends Controller
@@ -70,7 +71,12 @@ class SoalController extends Controller
             'pembahasan'           => 'nullable|string',
             'sumber'               => 'nullable|string|max:200',
             'tahun_soal'           => 'nullable|integer|min:2000|max:2099',
-            'narasi_id'            => 'nullable|exists:narasi_soal,id',
+            'narasi_id'            => [
+                'nullable',
+                Rule::exists('narasi_soal', 'id')->where(fn ($query) => $query
+                    ->where('created_by', Auth::id())
+                    ->whereNull('deleted_at')),
+            ],
             'urutan_dalam_narasi'  => 'nullable|integer|min:1',
         ]);
 
@@ -145,7 +151,12 @@ class SoalController extends Controller
             'tingkat_kesulitan'    => 'required|in:mudah,sedang,sulit',
             'bobot'                => 'required|numeric|min:0|max:100',
             'pembahasan'           => 'nullable|string',
-            'narasi_id'            => 'nullable|exists:narasi_soal,id',
+            'narasi_id'            => [
+                'nullable',
+                Rule::exists('narasi_soal', 'id')->where(fn ($query) => $query
+                    ->where('created_by', Auth::id())
+                    ->whereNull('deleted_at')),
+            ],
             'urutan_dalam_narasi'  => 'nullable|integer|min:1',
         ]);
 

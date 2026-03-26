@@ -14,6 +14,15 @@ class SesiUjianController extends Controller
         protected SesiUjianService $service
     ) {}
 
+    private function ensurePersiapanSesi(SesiUjian $sesi)
+    {
+        if ($sesi->status !== 'persiapan') {
+            return back()->with('error', 'Peserta hanya bisa diubah saat sesi masih berstatus persiapan.');
+        }
+
+        return null;
+    }
+
     public function store(Request $request, PaketUjian $paket)
     {
         $request->validate([
@@ -23,11 +32,17 @@ class SesiUjianController extends Controller
             'waktu_mulai'   => 'nullable|date',
             'waktu_selesai' => 'nullable|date|after_or_equal:waktu_mulai',
             'kapasitas'     => 'nullable|integer|min:1|max:999',
+            'peserta_mode'  => 'required|in:manual,all',
         ]);
 
-        $this->service->createSesi($paket, $request->only([
-            'nama_sesi', 'ruangan', 'pengawas_id', 'waktu_mulai', 'waktu_selesai', 'kapasitas',
+        $sesi = $this->service->createSesi($paket, $request->only([
+            'nama_sesi', 'ruangan', 'pengawas_id', 'waktu_mulai', 'waktu_selesai', 'kapasitas', 'peserta_mode',
         ]));
+
+        if ($request->input('peserta_mode') === 'manual') {
+            return redirect()->route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id])
+                ->with('success', 'Sesi ujian berhasil ditambahkan. Pilih peserta satu per satu, cari peserta, atau gunakan tombol tambah semua peserta.');
+        }
 
         return back()->with('success', 'Sesi ujian berhasil ditambahkan.');
     }
@@ -111,35 +126,97 @@ class SesiUjianController extends Controller
     {
         abort_unless($sesi->paket_id === $paket->id, 404);
 
+        if ($response = $this->ensurePersiapanSesi($sesi)) {
+            return $response;
+        }
+
         $request->validate([
             'peserta_ids'   => 'required|array|min:1',
-            'peserta_ids.*' => 'exists:peserta,id',
+            'peserta_ids.*' => 'distinct|exists:peserta,id',
         ]);
 
-        $count = $this->service->addPesertaToSesi($sesi, $request->peserta_ids);
+        try {
+            $count = $this->service->addPesertaToSesi($sesi, $request->peserta_ids);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-        return back()->with('success', "{$count} peserta berhasil ditambahkan.");
+        if ($count > 0) {
+            return back()->with('success', "{$count} peserta berhasil ditambahkan.");
+        }
+
+        return back()->with('info', 'Tidak ada peserta valid yang bisa ditambahkan ke sesi ini.');
+    }
+
+    public function addAllPeserta(Request $request, PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        if ($response = $this->ensurePersiapanSesi($sesi)) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'search'     => 'nullable|string|max:100',
+            'sekolah_id' => 'nullable|exists:sekolah,id',
+        ]);
+
+        try {
+            $count = $this->service->addAllAvailablePeserta(
+                $sesi,
+                $validated['search'] ?? null,
+                $validated['sekolah_id'] ?? null,
+            );
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        if ($count > 0) {
+            return back()->with('success', "{$count} peserta berhasil ditambahkan ke sesi.");
+        }
+
+        return back()->with('info', 'Tidak ada peserta tersedia yang bisa ditambahkan.');
     }
 
     public function removePeserta(Request $request, PaketUjian $paket, SesiUjian $sesi)
     {
         abort_unless($sesi->paket_id === $paket->id, 404);
 
+        if ($response = $this->ensurePersiapanSesi($sesi)) {
+            return $response;
+        }
+
         $request->validate([
             'peserta_ids'   => 'required|array|min:1',
-            'peserta_ids.*' => 'exists:peserta,id',
+            'peserta_ids.*' => 'distinct|exists:peserta,id',
         ]);
 
-        $count = $this->service->removePesertaFromSesi($sesi, $request->peserta_ids);
+        try {
+            $count = $this->service->removePesertaFromSesi($sesi, $request->peserta_ids);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-        return back()->with('success', "{$count} peserta berhasil dihapus dari sesi.");
+        if ($count > 0) {
+            return back()->with('success', "{$count} peserta berhasil dihapus dari sesi.");
+        }
+
+        return back()->with('info', 'Tidak ada peserta terdaftar yang bisa dihapus dari sesi ini.');
     }
 
     public function resetPeserta(PaketUjian $paket, SesiUjian $sesi)
     {
         abort_unless($sesi->paket_id === $paket->id, 404);
 
-        $count = $this->service->resetToAutoSync($sesi);
+        if ($response = $this->ensurePersiapanSesi($sesi)) {
+            return $response;
+        }
+
+        try {
+            $count = $this->service->resetToAutoSync($sesi);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', "Peserta direset ke auto-sync. {$count} peserta terdaftar.");
     }
@@ -148,7 +225,15 @@ class SesiUjianController extends Controller
     {
         abort_unless($sesi->paket_id === $paket->id, 404);
 
-        $count = $this->service->syncNewPeserta($sesi);
+        if ($response = $this->ensurePersiapanSesi($sesi)) {
+            return $response;
+        }
+
+        try {
+            $count = $this->service->syncNewPeserta($sesi);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         if ($count > 0) {
             return back()->with('success', "{$count} peserta baru berhasil disinkronkan ke sesi.");

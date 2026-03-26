@@ -106,6 +106,18 @@
                                placeholder="Kosongkan = tidak terbatas"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs text-gray-600 mb-1">Pengaturan Peserta Saat Sesi Dibuat</label>
+                        <select name="peserta_mode"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 @error('peserta_mode') border-red-400 @enderror">
+                            <option value="manual" @selected(old('peserta_mode', 'manual') === 'manual')>Mulai tanpa peserta, lalu pilih manual</option>
+                            <option value="all" @selected(old('peserta_mode') === 'all')>Masukkan semua peserta sesuai filter paket</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Setelah sesi dibuat, Anda bisa tambah semua peserta, pilih satu per satu, atau cari peserta dari halaman kelola peserta.
+                        </p>
+                        @error('peserta_mode') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                    </div>
                 </div>
                 <div class="flex gap-2 pt-1">
                     <button type="submit"

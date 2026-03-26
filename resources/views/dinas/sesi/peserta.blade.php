@@ -26,9 +26,10 @@
                 @if($paket->sekolah) · {{ $paket->sekolah->nama }} @else · Semua Sekolah @endif
             </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
             @if($sesi->is_peserta_override)
             <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">Override Manual</span>
+            @if($sesi->status === 'persiapan')
             <form action="{{ route('dinas.paket.sesi.peserta.reset', [$paket->id, $sesi->id]) }}" method="POST"
                   x-data @submit.prevent="if(await $store.confirmModal.open({title:'Reset Auto-Sync',message:'Reset ke auto-sync? Semua peserta yang di-override akan diganti sesuai filter paket.',confirmText:'Ya, Reset',danger:true})) $el.submit()">
                 @csrf
@@ -37,11 +38,25 @@
                     Reset Auto-Sync
                 </button>
             </form>
+            @endif
             @else
             <span class="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Auto-Sync Aktif</span>
             @endif
 
-            @if($totalAvailable > 0)
+            @if($available->total() > 0 && $sesi->status === 'persiapan')
+            <form action="{{ route('dinas.paket.sesi.peserta.add-all', [$paket->id, $sesi->id]) }}" method="POST"
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Tambah Semua Peserta',message:'Tambahkan {{ $available->total() }} peserta {{ ($search || $sekolahFilter) ? 'sesuai filter saat ini' : 'yang tersedia' }} ke sesi ini? Aksi ini akan mengubah sesi ke override manual.',confirmText:'Ya, Tambahkan'})) $el.submit()">
+                @csrf
+                <input type="hidden" name="search" value="{{ $search }}">
+                <input type="hidden" name="sekolah_id" value="{{ $sekolahFilter }}">
+                <button type="submit"
+                        class="text-sm text-blue-700 hover:text-blue-900 font-medium border border-blue-300 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                    {{ ($search || $sekolahFilter) ? 'Tambah Semua Hasil Filter' : 'Tambah Semua Peserta' }}
+                </button>
+            </form>
+            @endif
+
+            @if($totalAvailable > 0 && $sesi->status === 'persiapan')
             <form action="{{ route('dinas.paket.sesi.peserta.sync', [$paket->id, $sesi->id]) }}" method="POST"
                   x-data @submit.prevent="if(await $store.confirmModal.open({title:'Sinkron Peserta Baru',message:'Daftarkan {{ $totalAvailable }} peserta baru yang belum terdaftar ke sesi ini?',confirmText:'Ya, Sinkronkan'})) $el.submit()">
                 @csrf
@@ -82,13 +97,23 @@
         </div>
     </div>
 
+    @if($sesi->status !== 'persiapan')
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p class="text-sm text-amber-700">
+            <strong>Sesi terkunci untuk perubahan peserta.</strong>
+            Status sesi saat ini adalah <strong>{{ ucfirst($sesi->status) }}</strong>, sehingga tambah/hapus/reset peserta dinonaktifkan.
+        </p>
+    </div>
+    @endif
+
     {{-- Search & Filter --}}
     <form method="GET" action="{{ route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id]) }}"
           class="flex flex-wrap gap-2 items-end">
         <div class="flex-1 min-w-[200px]">
             <label class="block text-xs text-gray-600 mb-1">Cari Peserta</label>
-            <input type="text" name="search" value="{{ $search }}" placeholder="Nama atau NISN..."
+            <input type="text" name="search" value="{{ $search }}" placeholder="Nama, NISN, NIS, kelas, jurusan, atau sekolah..."
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <p class="text-[11px] text-gray-500 mt-1">Pencarian berlaku untuk daftar peserta terdaftar dan peserta tersedia.</p>
         </div>
         @if(!$paket->sekolah_id && $sekolahList->count() > 1)
         <div class="min-w-[180px]">
@@ -115,7 +140,7 @@
         <div class="card">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="font-semibold text-gray-900">Peserta Terdaftar ({{ $totalEnrolled }})</h2>
-                @if($enrolled->where('pivot.status', 'terdaftar')->count() > 0)
+                @if($enrolled->where('pivot.status', 'terdaftar')->count() > 0 && $sesi->status === 'persiapan')
                 <button type="button" @click="selectAllEnrolled()" class="text-xs text-red-600 hover:text-red-800 font-medium">
                     <span x-text="allEnrolledSelected ? 'Batal Pilih' : 'Pilih Semua'"></span>
                 </button>
@@ -132,7 +157,7 @@
                     @foreach($enrolled as $p)
                     @php $canRemove = $p->pivot->status === 'terdaftar'; @endphp
                     <label class="flex items-center gap-3 rounded-xl px-3 py-2.5 {{ $canRemove ? 'hover:bg-red-50 cursor-pointer' : 'bg-gray-50' }}">
-                        @if($canRemove)
+                        @if($canRemove && $sesi->status === 'persiapan')
                         <input type="checkbox" name="peserta_ids[]" value="{{ $p->id }}"
                                x-model="enrolledSelected"
                                class="rounded border-gray-300 text-red-600 focus:ring-red-500">
@@ -165,12 +190,14 @@
                     </label>
                     @endforeach
                 </div>
+                @if($sesi->status === 'persiapan')
                 <div x-show="enrolledSelected.length > 0" x-transition class="mt-3 pt-3 border-t">
                     <button type="submit"
                             class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                         Hapus <span x-text="enrolledSelected.length"></span> Peserta dari Sesi
                     </button>
                 </div>
+                @endif
             </form>
             @if($enrolled->hasPages())
             <div class="mt-3 pt-3 border-t">
@@ -184,7 +211,7 @@
         <div class="card">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="font-semibold text-gray-900">Peserta Tersedia ({{ $totalAvailable }})</h2>
-                @if($available->count() > 0)
+                @if($available->count() > 0 && $sesi->status === 'persiapan')
                 <button type="button" @click="selectAllAvailable()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
                     <span x-text="allAvailableSelected ? 'Batal Pilih' : 'Pilih Semua'"></span>
                 </button>
@@ -204,10 +231,14 @@
                 @csrf
                 <div class="space-y-1.5 max-h-[500px] overflow-y-auto">
                     @foreach($available as $p)
-                    <label class="flex items-center gap-3 hover:bg-blue-50 rounded-xl px-3 py-2.5 cursor-pointer">
+                    <label class="flex items-center gap-3 {{ $sesi->status === 'persiapan' ? 'hover:bg-blue-50 cursor-pointer' : 'bg-gray-50' }} rounded-xl px-3 py-2.5">
+                        @if($sesi->status === 'persiapan')
                         <input type="checkbox" name="peserta_ids[]" value="{{ $p->id }}"
                                x-model="availableSelected"
                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        @else
+                        <span class="w-4 h-4 flex items-center justify-center text-gray-400">•</span>
+                        @endif
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-medium text-gray-900 truncate">{{ $p->nama }}</p>
                             <p class="text-xs text-gray-500">{{ $p->nisn ?? $p->nis }} · {{ $p->sekolah->nama ?? '-' }}</p>
@@ -216,12 +247,14 @@
                     </label>
                     @endforeach
                 </div>
+                @if($sesi->status === 'persiapan')
                 <div x-show="availableSelected.length > 0" x-transition class="mt-3 pt-3 border-t">
                     <button type="submit"
                             class="btn-primary w-full">
                         Tambah <span x-text="availableSelected.length"></span> Peserta ke Sesi
                     </button>
                 </div>
+                @endif
             </form>
             @if($available->hasPages())
             <div class="mt-3 pt-3 border-t">

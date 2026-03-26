@@ -140,4 +140,140 @@ class SoalControllerTest extends TestCase
         $response->assertDontSee('&lt;p&gt;Narasi &quot;pemilik&quot; untuk soal.&lt;/p&gt;', false);
         $response->assertDontSee('Apa arti &quot;jujur&quot;?', false);
     }
+
+    public function test_destroy_all_only_affects_current_owner_and_detaches_their_soal(): void
+    {
+        $user = $this->pembuatSoalUser();
+        $otherUser = $this->pembuatSoalUser();
+        $kategori = KategoriSoal::factory()->create();
+
+        $ownNarasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi saya',
+            'konten' => '<p>Milik saya</p>',
+            'is_active' => true,
+        ]);
+        $otherNarasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $otherUser->id,
+            'judul' => 'Narasi user lain',
+            'konten' => '<p>Milik orang lain</p>',
+            'is_active' => true,
+        ]);
+
+        $ownSoal = Soal::factory()->create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'narasi_id' => $ownNarasi->id,
+            'urutan_dalam_narasi' => 3,
+        ]);
+        $otherSoal = Soal::factory()->create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $otherUser->id,
+            'narasi_id' => $otherNarasi->id,
+            'urutan_dalam_narasi' => 2,
+        ]);
+        $crossOwnerSoal = Soal::factory()->create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $otherUser->id,
+            'narasi_id' => $ownNarasi->id,
+            'urutan_dalam_narasi' => 4,
+        ]);
+
+        $response = $this->actingAs($user)->delete(route('pembuat-soal.narasi.destroy-all'));
+
+        $response->assertRedirect(route('pembuat-soal.soal.index', ['tab' => 'narasi']));
+        $this->assertSoftDeleted('narasi_soal', ['id' => $ownNarasi->id]);
+        $this->assertDatabaseHas('narasi_soal', ['id' => $otherNarasi->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('soal', [
+            'id' => $ownSoal->id,
+            'narasi_id' => null,
+            'urutan_dalam_narasi' => 0,
+        ]);
+        $this->assertDatabaseHas('soal', [
+            'id' => $otherSoal->id,
+            'narasi_id' => $otherNarasi->id,
+            'urutan_dalam_narasi' => 2,
+        ]);
+        $this->assertDatabaseHas('soal', [
+            'id' => $crossOwnerSoal->id,
+            'narasi_id' => $ownNarasi->id,
+            'urutan_dalam_narasi' => 4,
+        ]);
+    }
+
+    public function test_store_rejects_other_users_narasi(): void
+    {
+        $user = $this->pembuatSoalUser();
+        $otherUser = $this->pembuatSoalUser();
+        $kategori = KategoriSoal::factory()->create();
+        $narasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $otherUser->id,
+            'judul' => 'Narasi user lain',
+            'konten' => '<p>Tidak boleh dipakai</p>',
+            'is_active' => true,
+        ]);
+
+        $response = $this->from(route('pembuat-soal.soal.create'))
+            ->actingAs($user)
+            ->post(route('pembuat-soal.soal.store'), [
+                'kategori_soal_id' => $kategori->id,
+                'jenis_soal' => 'essay',
+                'pertanyaan' => 'Pertanyaan saya',
+                'tingkat_kesulitan' => 'mudah',
+                'bobot' => 5,
+                'narasi_id' => $narasi->id,
+                'urutan_dalam_narasi' => 1,
+            ]);
+
+        $response->assertRedirect(route('pembuat-soal.soal.create'));
+        $response->assertSessionHasErrors('narasi_id');
+        $this->assertDatabaseCount('soal', 0);
+    }
+
+    public function test_update_rejects_other_users_narasi(): void
+    {
+        $user = $this->pembuatSoalUser();
+        $otherUser = $this->pembuatSoalUser();
+        $kategori = KategoriSoal::factory()->create();
+        $soal = Soal::factory()->essay()->create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+        ]);
+        OpsiJawaban::create([
+            'soal_id' => $soal->id,
+            'label' => 'KUNCI',
+            'teks' => 'Jawaban awal',
+            'urutan' => 1,
+            'is_benar' => true,
+        ]);
+        $narasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $otherUser->id,
+            'judul' => 'Narasi user lain',
+            'konten' => '<p>Tidak boleh dipakai</p>',
+            'is_active' => true,
+        ]);
+
+        $response = $this->from(route('pembuat-soal.soal.edit', $soal))
+            ->actingAs($user)
+            ->put(route('pembuat-soal.soal.update', $soal), [
+                'kategori_soal_id' => $kategori->id,
+                'jenis_soal' => 'essay',
+                'pertanyaan' => 'Pertanyaan revisi',
+                'tingkat_kesulitan' => 'sedang',
+                'bobot' => 10,
+                'narasi_id' => $narasi->id,
+                'urutan_dalam_narasi' => 1,
+            ]);
+
+        $response->assertRedirect(route('pembuat-soal.soal.edit', $soal));
+        $response->assertSessionHasErrors('narasi_id');
+        $this->assertDatabaseHas('soal', [
+            'id' => $soal->id,
+            'narasi_id' => null,
+        ]);
+    }
 }

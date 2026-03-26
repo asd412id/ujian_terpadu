@@ -25,6 +25,7 @@ class SesiUjianTest extends TestCase
         $expected = [
             'paket_id', 'nama_sesi', 'ruangan', 'pengawas_id',
             'waktu_mulai', 'waktu_selesai', 'status', 'kapasitas',
+            'is_peserta_override',
         ];
         $this->assertEquals($expected, $sesi->getFillable());
     }
@@ -34,6 +35,13 @@ class SesiUjianTest extends TestCase
         $sesi = SesiUjian::factory()->create();
         $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $sesi->waktu_mulai);
         $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $sesi->waktu_selesai);
+    }
+
+    public function test_is_peserta_override_casts_to_boolean(): void
+    {
+        $sesi = SesiUjian::factory()->create(['is_peserta_override' => 1]);
+
+        $this->assertTrue($sesi->is_peserta_override);
     }
 
     public function test_paket_ujian_relationship(): void

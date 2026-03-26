@@ -5,10 +5,15 @@ namespace Tests\Feature\Dinas;
 use App\Models\KategoriSoal;
 use App\Models\NarasiSoal;
 use App\Models\OpsiJawaban;
+use App\Models\PaketUjian;
+use App\Models\Peserta;
+use App\Models\SesiUjian;
+use App\Models\Sekolah;
 use App\Models\Soal;
 use App\Models\User;
 use App\Support\HtmlDisplay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SoalControllerTest extends TestCase
@@ -232,5 +237,500 @@ class SoalControllerTest extends TestCase
         $response = $this->actingAs($user)->delete(route('dinas.soal.destroy', $soal));
 
         $response->assertRedirect(route('dinas.soal.index'));
+    }
+
+    public function test_destroy_detaches_related_soal_before_soft_deleting_narasi(): void
+    {
+        $user = $this->dinasUser();
+        $kategori = KategoriSoal::factory()->create();
+        $narasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi utama',
+            'konten' => '<p>Isi narasi utama</p>',
+            'is_active' => true,
+        ]);
+        $soal = Soal::factory()->create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'narasi_id' => $narasi->id,
+            'urutan_dalam_narasi' => 2,
+        ]);
+
+        $response = $this->actingAs($user)->delete(route('dinas.narasi.destroy', $narasi));
+
+        $response->assertRedirect(route('dinas.soal.index', ['tab' => 'narasi']));
+        $this->assertSoftDeleted('narasi_soal', ['id' => $narasi->id]);
+        $this->assertDatabaseHas('soal', [
+            'id' => $soal->id,
+            'narasi_id' => null,
+            'urutan_dalam_narasi' => 0,
+        ]);
+    }
+
+    public function test_destroy_all_narasi_by_kategori_only_removes_target_narasi_and_detaches_related_soal(): void
+    {
+        $user = $this->dinasUser();
+        $targetKategori = KategoriSoal::factory()->create();
+        $otherKategori = KategoriSoal::factory()->create();
+
+        $targetNarasi = NarasiSoal::create([
+            'kategori_id' => $targetKategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi target',
+            'konten' => '<p>Target</p>',
+            'is_active' => true,
+        ]);
+        $otherNarasi = NarasiSoal::create([
+            'kategori_id' => $otherKategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi lain',
+            'konten' => '<p>Lain</p>',
+            'is_active' => true,
+        ]);
+
+        $targetSoal = Soal::factory()->create([
+            'kategori_id' => $targetKategori->id,
+            'created_by' => $user->id,
+            'narasi_id' => $targetNarasi->id,
+            'urutan_dalam_narasi' => 1,
+        ]);
+        $otherSoal = Soal::factory()->create([
+            'kategori_id' => $otherKategori->id,
+            'created_by' => $user->id,
+            'narasi_id' => $otherNarasi->id,
+            'urutan_dalam_narasi' => 1,
+        ]);
+
+        $response = $this->actingAs($user)->delete(route('dinas.narasi.destroy-all'), [
+            'kategori' => $targetKategori->id,
+        ]);
+
+        $response->assertRedirect(route('dinas.soal.index', ['tab' => 'narasi']));
+        $this->assertSoftDeleted('narasi_soal', ['id' => $targetNarasi->id]);
+        $this->assertDatabaseHas('narasi_soal', ['id' => $otherNarasi->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('soal', [
+            'id' => $targetSoal->id,
+            'narasi_id' => null,
+            'urutan_dalam_narasi' => 0,
+        ]);
+        $this->assertDatabaseHas('soal', [
+            'id' => $otherSoal->id,
+            'narasi_id' => $otherNarasi->id,
+            'urutan_dalam_narasi' => 1,
+        ]);
+    }
+
+    public function test_delete_narasi_removes_soal_gambar_assets_after_commit(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->dinasUser();
+        $kategori = KategoriSoal::factory()->create();
+        Storage::disk('public')->put('soal/gambar/narasi-test.png', 'dummy image');
+        $narasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi bergambar',
+            'konten' => '<p><img src="/storage/soal/gambar/narasi-test.png" alt="narasi"></p>',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->delete(route('dinas.narasi.destroy', $narasi));
+
+        $response->assertRedirect(route('dinas.soal.index', ['tab' => 'narasi']));
+        Storage::disk('public')->assertMissing('soal/gambar/narasi-test.png');
+    }
+
+    public function test_store_manual_mode_redirects_to_peserta_page_without_auto_enrolling(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+
+        Peserta::factory()->count(2)->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.store', $paket), [
+            'nama_sesi' => 'Sesi Manual',
+            'peserta_mode' => 'manual',
+        ]);
+
+        $sesi = SesiUjian::query()->where('paket_id', $paket->id)->where('nama_sesi', 'Sesi Manual')->firstOrFail();
+
+        $response->assertRedirect(route('dinas.paket.sesi.peserta', [$paket, $sesi]));
+        $this->assertTrue($sesi->is_peserta_override);
+        $this->assertDatabaseCount('sesi_peserta', 0);
+    }
+
+    public function test_store_all_mode_enrolls_matching_peserta_only(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $otherSekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+
+        $eligible = Peserta::factory()->count(2)->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        Peserta::factory()->create([
+            'sekolah_id' => $otherSekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.store', $paket), [
+            'nama_sesi' => 'Sesi Semua',
+            'peserta_mode' => 'all',
+        ]);
+
+        $sesi = SesiUjian::query()->where('paket_id', $paket->id)->where('nama_sesi', 'Sesi Semua')->firstOrFail();
+
+        $response->assertRedirect();
+        $this->assertFalse($sesi->is_peserta_override);
+        $this->assertCount(2, $sesi->fresh()->sesiPeserta);
+        $this->assertEqualsCanonicalizing(
+            $eligible->pluck('id')->all(),
+            $sesi->fresh()->sesiPeserta->pluck('peserta_id')->all(),
+        );
+    }
+
+    public function test_store_all_mode_with_kapasitas_uses_alphabetical_peserta_order(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+
+        $charlie = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'nama' => 'Charlie',
+            'is_active' => true,
+        ]);
+        $alpha = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'nama' => 'Alpha',
+            'is_active' => true,
+        ]);
+        $bravo = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'nama' => 'Bravo',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->post(route('dinas.paket.sesi.store', $paket), [
+            'nama_sesi' => 'Sesi Semua Kapasitas',
+            'peserta_mode' => 'all',
+            'kapasitas' => 2,
+        ])->assertRedirect();
+
+        $sesi = SesiUjian::query()->where('paket_id', $paket->id)->where('nama_sesi', 'Sesi Semua Kapasitas')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            [$alpha->id, $bravo->id],
+            $sesi->fresh()->sesiPeserta->pluck('peserta_id')->all(),
+        );
+        $this->assertDatabaseMissing('sesi_peserta', [
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $charlie->id,
+        ]);
+    }
+
+    public function test_add_all_peserta_uses_search_filter_and_switches_to_manual_override(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMK']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMK',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'persiapan',
+            'is_peserta_override' => true,
+        ]);
+
+        $target = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'jurusan' => 'Teknik Mesin',
+            'is_active' => true,
+        ]);
+
+        Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'jurusan' => 'Akuntansi',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add-all', [$paket, $sesi]), [
+            'search' => 'Mesin',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertTrue($sesi->fresh()->is_peserta_override);
+        $this->assertDatabaseHas('sesi_peserta', [
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $target->id,
+        ]);
+        $this->assertDatabaseCount('sesi_peserta', 1);
+    }
+
+    public function test_add_all_peserta_keeps_auto_mode_when_no_matching_peserta_found(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMK']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMK',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'persiapan',
+            'is_peserta_override' => false,
+        ]);
+
+        Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'jurusan' => 'Akuntansi',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add-all', [$paket, $sesi]), [
+            'search' => 'Mesin',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertFalse($sesi->fresh()->is_peserta_override);
+        $this->assertDatabaseCount('sesi_peserta', 0);
+    }
+
+    public function test_add_all_peserta_respects_kapasitas_limit(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'persiapan',
+            'kapasitas' => 2,
+            'is_peserta_override' => true,
+        ]);
+
+        Peserta::factory()->count(3)->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add-all', [$paket, $sesi]));
+
+        $response->assertRedirect();
+        $this->assertDatabaseCount('sesi_peserta', 2);
+    }
+
+    public function test_add_all_peserta_rejects_non_persiapan_sesi(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'berlangsung',
+            'is_peserta_override' => true,
+        ]);
+
+        Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add-all', [$paket, $sesi]));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+        $this->assertDatabaseCount('sesi_peserta', 0);
+    }
+
+    public function test_manual_add_only_accepts_peserta_from_available_scope(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $otherSekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'persiapan',
+            'is_peserta_override' => true,
+        ]);
+
+        $validPeserta = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+        $invalidPeserta = Peserta::factory()->create([
+            'sekolah_id' => $otherSekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add', [$paket, $sesi]), [
+            'peserta_ids' => [$validPeserta->id, $invalidPeserta->id],
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('sesi_peserta', [
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $validPeserta->id,
+        ]);
+        $this->assertDatabaseMissing('sesi_peserta', [
+            'sesi_id' => $sesi->id,
+            'peserta_id' => $invalidPeserta->id,
+        ]);
+    }
+
+    public function test_manual_add_rejects_non_persiapan_sesi(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'selesai',
+            'is_peserta_override' => true,
+        ]);
+        $peserta = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add', [$paket, $sesi]), [
+            'peserta_ids' => [$peserta->id],
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+        $this->assertDatabaseCount('sesi_peserta', 0);
+    }
+
+    public function test_manual_add_rejects_duplicate_peserta_ids(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'persiapan',
+            'is_peserta_override' => true,
+        ]);
+        $peserta = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->from(route('dinas.paket.sesi.peserta', [$paket, $sesi]))
+            ->actingAs($user)
+            ->post(route('dinas.paket.sesi.peserta.add', [$paket, $sesi]), [
+                'peserta_ids' => [$peserta->id, $peserta->id],
+            ]);
+
+        $response->assertRedirect(route('dinas.paket.sesi.peserta', [$paket, $sesi]));
+        $response->assertSessionHasErrors('peserta_ids.1');
+        $this->assertDatabaseCount('sesi_peserta', 0);
+    }
+
+    public function test_remove_without_removable_peserta_keeps_auto_mode(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'persiapan',
+            'is_peserta_override' => false,
+        ]);
+        $peserta = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.remove', [$paket, $sesi]), [
+            'peserta_ids' => [$peserta->id],
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info');
+        $this->assertFalse($sesi->fresh()->is_peserta_override);
+    }
+
+    public function test_remove_reset_and_sync_reject_non_persiapan_sesi(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->create([
+            'created_by' => $user->id,
+            'sekolah_id' => $sekolah->id,
+            'jenjang' => 'SMA',
+        ]);
+        $sesi = SesiUjian::factory()->create([
+            'paket_id' => $paket->id,
+            'status' => 'berlangsung',
+            'is_peserta_override' => true,
+        ]);
+        $peserta = Peserta::factory()->create([
+            'sekolah_id' => $sekolah->id,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.add', [$paket, $sesi]), [
+            'peserta_ids' => [$peserta->id],
+        ]);
+
+        $removeResponse = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.remove', [$paket, $sesi]), [
+            'peserta_ids' => [$peserta->id],
+        ]);
+        $resetResponse = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.reset', [$paket, $sesi]));
+        $syncResponse = $this->actingAs($user)->post(route('dinas.paket.sesi.peserta.sync', [$paket, $sesi]));
+
+        $removeResponse->assertSessionHas('error');
+        $resetResponse->assertSessionHas('error');
+        $syncResponse->assertSessionHas('error');
     }
 }

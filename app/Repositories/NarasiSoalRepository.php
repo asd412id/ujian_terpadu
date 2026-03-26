@@ -3,6 +3,8 @@
 namespace App\Repositories;
 
 use App\Models\NarasiSoal;
+use App\Models\Soal;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -20,14 +22,23 @@ class NarasiSoalRepository
         ?string $search = null,
         int $perPage = 20
     ): LengthAwarePaginator {
-        return $this->model
+        return $this->filteredQuery($kategoriId, $search)
             ->with(['kategori', 'pembuat'])
             ->withCount('soalList')
-            ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
-            ->search($search)
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    public function filteredQuery(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null,
+    ): Builder {
+        return $this->model->newQuery()
+            ->when($createdBy, fn (Builder $query) => $query->where('created_by', $createdBy))
+            ->when($kategoriId, fn (Builder $query) => $query->where('kategori_id', $kategoriId))
+            ->search($search);
     }
 
     /**
@@ -80,6 +91,42 @@ class NarasiSoalRepository
     public function delete(NarasiSoal $narasi): ?bool
     {
         return $narasi->delete();
+    }
+
+    public function getForBulkDelete(?string $kategoriId = null, ?string $createdBy = null): Collection
+    {
+        return $this->filteredQuery($kategoriId, null, $createdBy)
+            ->with('soalList')
+            ->get();
+    }
+
+    public function detachSoalFromNarasiIds(iterable $narasiIds, ?string $createdBy = null): int
+    {
+        $narasiIds = collect($narasiIds)->filter()->values();
+
+        if ($narasiIds->isEmpty()) {
+            return 0;
+        }
+
+        return Soal::withTrashed()
+            ->whereIn('narasi_id', $narasiIds)
+            ->when($createdBy, fn (Builder $query) => $query->where('created_by', $createdBy))
+            ->update([
+                'narasi_id' => null,
+                'urutan_dalam_narasi' => 0,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function deleteByIds(iterable $ids): int
+    {
+        $ids = collect($ids)->filter()->values();
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return $this->model->newQuery()->whereIn('id', $ids)->delete();
     }
 
     /**

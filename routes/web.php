@@ -135,6 +135,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 
     // Narasi Soal
     Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
+    Route::delete('/narasi/destroy-all', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'destroyAll'])->name('narasi.destroy-all');
     Route::post('/narasi/upload-image', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'uploadImage'])->name('narasi.upload-image');
     Route::resource('narasi', \App\Http\Controllers\Dinas\NarasiSoalController::class)->names('narasi');
 
@@ -161,6 +162,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     // Peserta Sesi
     Route::get('/paket/{paket}/sesi/{sesi}/peserta', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'peserta'])->name('paket.sesi.peserta');
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/add', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'addPeserta'])->name('paket.sesi.peserta.add');
+    Route::post('/paket/{paket}/sesi/{sesi}/peserta/add-all', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'addAllPeserta'])->name('paket.sesi.peserta.add-all');
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/remove', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'removePeserta'])->name('paket.sesi.peserta.remove');
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/reset', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'resetPeserta'])->name('paket.sesi.peserta.reset');
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/sync', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'syncPesertaBaru'])->name('paket.sesi.peserta.sync');
@@ -249,6 +251,7 @@ Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:
 
     // Narasi Soal (CRUD, scoped to own)
     Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
+    Route::delete('/narasi/destroy-all', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'destroyAll'])->name('narasi.destroy-all');
     Route::post('/narasi/upload-image', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'uploadImage'])->name('narasi.upload-image');
     Route::resource('narasi', \App\Http\Controllers\PembuatSoal\NarasiSoalController::class)->names('narasi');
 

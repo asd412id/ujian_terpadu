@@ -84,10 +84,33 @@ class NarasiSoalController extends Controller
     {
         abort_unless($narasi->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke narasi ini.');
 
-        $this->narasiSoalService->deleteNarasi($narasi);
+        $this->narasiSoalService->deleteNarasi($narasi, Auth::id());
 
         return redirect()->route('pembuat-soal.soal.index', ['tab' => 'narasi'])
                          ->with('success', 'Narasi berhasil dihapus.');
+    }
+
+    public function destroyAll(Request $request)
+    {
+        $validated = $request->validate([
+            'kategori' => 'nullable|exists:kategori_soal,id',
+        ]);
+
+        $count = $this->narasiSoalService->deleteAllNarasi($validated['kategori'] ?? null, Auth::id());
+
+        if (!empty($validated['kategori'])) {
+            $kategori = \App\Models\KategoriSoal::findOrFail($validated['kategori']);
+            $message = $count > 0
+                ? "{$count} narasi kategori \"{$kategori->nama}\" berhasil dihapus."
+                : "Tidak ada narasi kategori \"{$kategori->nama}\" yang perlu dihapus.";
+        } else {
+            $message = $count > 0
+                ? "{$count} narasi berhasil dihapus."
+                : 'Tidak ada narasi yang perlu dihapus.';
+        }
+
+        return redirect()->route('pembuat-soal.soal.index', ['tab' => 'narasi'])
+            ->with($count > 0 ? 'success' : 'info', $message);
     }
 
     public function apiByKategori(Request $request)

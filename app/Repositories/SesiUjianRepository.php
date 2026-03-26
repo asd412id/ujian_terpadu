@@ -7,6 +7,7 @@ use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
 use App\Models\User;
 use App\Models\LogAktivitasUjian;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -38,15 +39,20 @@ class SesiUjianRepository
      */
     public function getEligiblePesertaIds(string $jenjang = null, ?string $sekolahId = null): \Illuminate\Support\Collection
     {
-        return Peserta::where('is_active', true)
-            ->whereHas('sekolah', function ($q) use ($jenjang, $sekolahId) {
-                if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
-                    $q->where('jenjang', $jenjang);
-                }
-                if ($sekolahId) {
-                    $q->where('id', $sekolahId);
-                }
-            })
+        return $this->eligiblePesertaQuery($jenjang, $sekolahId)
+            ->orderBy('nama')
+            ->pluck('id');
+    }
+
+    public function getAvailablePesertaIds(
+        SesiUjian $sesi,
+        ?string $jenjang,
+        ?string $paketSekolahId,
+        ?string $filterSekolahId,
+        ?string $search
+    ): \Illuminate\Support\Collection {
+        return $this->eligiblePesertaQuery($jenjang, $paketSekolahId, $filterSekolahId, $search, $sesi)
+            ->orderBy('nama')
             ->pluck('id');
     }
 
@@ -61,10 +67,31 @@ class SesiUjianRepository
         ?string $search,
         int $perPage = 50
     ) {
-        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
+        return $this->eligiblePesertaQuery($jenjang, $paketSekolahId, $filterSekolahId, $search, $sesi)
+            ->with('sekolah')
+            ->orderBy('nama')
+            ->paginate($perPage, ['*'], 'available_page');
+    }
 
-        return Peserta::where('is_active', true)
-            ->whereNotIn('id', $existingIds)
+    /**
+     * Count available peserta (not enrolled in sesi).
+     */
+    public function countAvailablePeserta(SesiUjian $sesi, ?string $jenjang, ?string $paketSekolahId): int
+    {
+        return $this->eligiblePesertaQuery($jenjang, $paketSekolahId, null, null, $sesi)
+            ->count();
+    }
+
+    private function eligiblePesertaQuery(
+        ?string $jenjang = null,
+        ?string $paketSekolahId = null,
+        ?string $filterSekolahId = null,
+        ?string $search = null,
+        ?SesiUjian $excludeSesi = null,
+    ): Builder {
+        return Peserta::query()
+            ->where('is_active', true)
+            ->when($excludeSesi, fn (Builder $query) => $query->whereNotIn('id', $excludeSesi->sesiPeserta()->pluck('peserta_id')))
             ->whereHas('sekolah', function ($q) use ($jenjang, $paketSekolahId, $filterSekolahId) {
                 if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
                     $q->where('jenjang', $jenjang);
@@ -76,33 +103,23 @@ class SesiUjianRepository
                     $q->where('id', $filterSekolahId);
                 }
             })
-            ->when($search, fn($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nisn', 'like', "%{$search}%");
-            }))
-            ->with('sekolah')
-            ->orderBy('nama')
-            ->paginate($perPage, ['*'], 'available_page');
+            ->when($search, function (Builder $query) use ($search) {
+                $query->where(function (Builder $searchQuery) use ($search) {
+                    $searchQuery->where('nama', 'like', "%{$search}%")
+                        ->orWhere('nisn', 'like', "%{$search}%")
+                        ->orWhere('nis', 'like', "%{$search}%")
+                        ->orWhere('kelas', 'like', "%{$search}%")
+                        ->orWhere('jurusan', 'like', "%{$search}%")
+                        ->orWhereHas('sekolah', fn (Builder $sekolahQuery) => $sekolahQuery->where('nama', 'like', "%{$search}%"));
+                });
+            });
     }
 
-    /**
-     * Count available peserta (not enrolled in sesi).
-     */
-    public function countAvailablePeserta(SesiUjian $sesi, ?string $jenjang, ?string $paketSekolahId): int
+    public function lockSesi(string $sesiId): SesiUjian
     {
-        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
-
-        return Peserta::where('is_active', true)
-            ->whereNotIn('id', $existingIds)
-            ->whereHas('sekolah', function ($q) use ($jenjang, $paketSekolahId) {
-                if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
-                    $q->where('jenjang', $jenjang);
-                }
-                if ($paketSekolahId) {
-                    $q->where('id', $paketSekolahId);
-                }
-            })
-            ->count();
+        return SesiUjian::with('paket')
+            ->lockForUpdate()
+            ->findOrFail($sesiId);
     }
 
     /**
@@ -123,9 +140,7 @@ class SesiUjianRepository
             'updated_at' => now(),
         ])->toArray();
 
-        SesiPeserta::insert($records);
-
-        return count($records);
+        return SesiPeserta::query()->insertOrIgnore($records);
     }
 
     /**

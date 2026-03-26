@@ -6,6 +6,7 @@ use App\Models\PaketUjian;
 use App\Models\SesiUjian;
 use App\Repositories\SesiUjianRepository;
 use App\Repositories\SekolahRepository;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class SesiUjianService
@@ -18,12 +19,18 @@ class SesiUjianService
 
     public function createSesi(PaketUjian $paket, array $data): SesiUjian
     {
+        $pesertaMode = $data['peserta_mode'] ?? 'manual';
+        unset($data['peserta_mode']);
+
         $data['paket_id'] = $paket->id;
         $data['status']   = $data['status'] ?? 'persiapan';
+        $data['is_peserta_override'] = $pesertaMode !== 'all';
 
         $sesi = $this->repository->createSesi($data);
 
-        $this->autoSyncPeserta($sesi);
+        if ($pesertaMode === 'all') {
+            $this->autoSyncPeserta($sesi);
+        }
 
         return $sesi;
     }
@@ -196,7 +203,11 @@ class SesiUjianService
         return $sesi->peserta()
             ->when($search, fn($q) => $q->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nisn', 'like', "%{$search}%");
+                  ->orWhere('nisn', 'like', "%{$search}%")
+                  ->orWhere('nis', 'like', "%{$search}%")
+                  ->orWhere('kelas', 'like', "%{$search}%")
+                  ->orWhere('jurusan', 'like', "%{$search}%")
+                  ->orWhereHas('sekolah', fn ($sekolahQuery) => $sekolahQuery->where('nama', 'like', "%{$search}%"));
             }))
             ->with('sekolah')
             ->orderBy('nama')
@@ -251,13 +262,13 @@ class SesiUjianService
      */
     public function syncNewPeserta(SesiUjian $sesi): int
     {
-        $paket = $sesi->paket;
+        return $this->insertPesertaWithSesiLock($sesi, function (SesiUjian $lockedSesi) {
+            $paket = $lockedSesi->paket;
+            $pesertaIds = $this->repository->getEligiblePesertaIds($paket->jenjang, $paket->sekolah_id);
+            $existingIds = $lockedSesi->sesiPeserta()->pluck('peserta_id');
 
-        $pesertaIds = $this->repository->getEligiblePesertaIds($paket->jenjang, $paket->sekolah_id);
-        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
-        $newIds = $pesertaIds->diff($existingIds);
-
-        return $this->repository->insertSesiPeserta($sesi->id, $newIds);
+            return $pesertaIds->diff($existingIds);
+        });
     }
 
     /**
@@ -281,12 +292,71 @@ class SesiUjianService
      */
     public function addPesertaToSesi(SesiUjian $sesi, array $pesertaIds): int
     {
-        $sesi->update(['is_peserta_override' => true]);
+        return $this->insertPesertaWithSesiLock($sesi, function (SesiUjian $lockedSesi) use ($pesertaIds) {
+            $paket = $lockedSesi->paket;
+            $allowedIds = $this->repository->getAvailablePesertaIds(
+                $lockedSesi,
+                $paket->jenjang,
+                $paket->sekolah_id,
+                null,
+                null,
+            );
 
-        $existingIds = $sesi->sesiPeserta()->pluck('peserta_id');
-        $newIds = collect($pesertaIds)->diff($existingIds);
+            return collect($pesertaIds)
+                ->filter()
+                ->unique()
+                ->intersect($allowedIds)
+                ->values();
+        }, true);
+    }
 
-        return $this->repository->insertSesiPeserta($sesi->id, $newIds);
+    public function addAllAvailablePeserta(SesiUjian $sesi, ?string $search = null, ?string $sekolahId = null): int
+    {
+        return $this->insertPesertaWithSesiLock($sesi, function (SesiUjian $lockedSesi) use ($search, $sekolahId) {
+            $paket = $lockedSesi->paket;
+
+            return $this->repository->getAvailablePesertaIds(
+                $lockedSesi,
+                $paket->jenjang,
+                $paket->sekolah_id,
+                $sekolahId,
+                $search,
+            );
+        }, true);
+    }
+
+    private function insertPesertaWithSesiLock(SesiUjian $sesi, callable $resolvePesertaIds, bool $markOverride = false): int
+    {
+        return $this->withPersiapanSesiLock($sesi, function (SesiUjian $lockedSesi) use ($resolvePesertaIds, $markOverride) {
+            $newIds = $this->limitPesertaByCapacity($lockedSesi, $resolvePesertaIds($lockedSesi));
+
+            if ($newIds->isEmpty()) {
+                return 0;
+            }
+
+            $inserted = $this->repository->insertSesiPeserta($lockedSesi->id, $newIds);
+
+            if ($markOverride && $inserted > 0) {
+                $lockedSesi->update(['is_peserta_override' => true]);
+            }
+
+            return $inserted;
+        });
+    }
+
+    private function limitPesertaByCapacity(SesiUjian $sesi, Collection $pesertaIds): Collection
+    {
+        if ($pesertaIds->isEmpty() || !$sesi->kapasitas) {
+            return $pesertaIds->values();
+        }
+
+        $remainingCapacity = max($sesi->kapasitas - $sesi->sesiPeserta()->count(), 0);
+
+        if ($remainingCapacity === 0) {
+            return collect();
+        }
+
+        return $pesertaIds->values()->take($remainingCapacity);
     }
 
     /**
@@ -294,12 +364,18 @@ class SesiUjianService
      */
     public function removePesertaFromSesi(SesiUjian $sesi, array $pesertaIds): int
     {
-        $sesi->update(['is_peserta_override' => true]);
+        return $this->withPersiapanSesiLock($sesi, function (SesiUjian $lockedSesi) use ($pesertaIds) {
+            $count = $lockedSesi->sesiPeserta()
+                ->whereIn('peserta_id', collect($pesertaIds)->filter()->unique()->values())
+                ->where('status', 'terdaftar')
+                ->delete();
 
-        return $sesi->sesiPeserta()
-            ->whereIn('peserta_id', $pesertaIds)
-            ->where('status', 'terdaftar')
-            ->delete();
+            if ($count > 0) {
+                $lockedSesi->update(['is_peserta_override' => true]);
+            }
+
+            return $count;
+        });
     }
 
     /**
@@ -307,10 +383,12 @@ class SesiUjianService
      */
     public function resetToAutoSync(SesiUjian $sesi): int
     {
-        $sesi->sesiPeserta()->where('status', 'terdaftar')->delete();
-        $sesi->update(['is_peserta_override' => false]);
+        return $this->withPersiapanSesiLock($sesi, function (SesiUjian $lockedSesi) {
+            $lockedSesi->sesiPeserta()->where('status', 'terdaftar')->delete();
+            $lockedSesi->update(['is_peserta_override' => false]);
 
-        return $this->autoSyncPeserta($sesi);
+            return $this->syncNewPeserta($lockedSesi);
+        });
     }
 
     /**
@@ -327,5 +405,22 @@ class SesiUjianService
     public function getSekolahListForPaket(PaketUjian $paket): mixed
     {
         return $this->sekolahRepository->getForPaket($paket->jenjang, $paket->sekolah_id);
+    }
+
+    private function withPersiapanSesiLock(SesiUjian $sesi, callable $callback): mixed
+    {
+        return DB::transaction(function () use ($sesi, $callback) {
+            $lockedSesi = $this->repository->lockSesi($sesi->id);
+            $this->ensurePersiapanStatus($lockedSesi);
+
+            return $callback($lockedSesi);
+        });
+    }
+
+    private function ensurePersiapanStatus(SesiUjian $sesi): void
+    {
+        if ($sesi->status !== 'persiapan') {
+            throw new \RuntimeException('Peserta hanya bisa diubah saat sesi masih berstatus persiapan.');
+        }
     }
 }

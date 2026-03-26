@@ -45,13 +45,51 @@
                 </div>
             </template>
             <template x-if="activeTab === 'narasi'">
-                <a href="{{ route('pembuat-soal.narasi.create') }}"
-                   class="btn-primary inline-flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Tambah Narasi
-                </a>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if($narasis->total() > 0)
+                    <div x-data="{ openDel: false }" class="relative">
+                        <button @click="openDel = !openDel" type="button"
+                                class="btn-danger-outline inline-flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Hapus Narasi
+                            <svg class="w-3 h-3 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="openDel" x-cloak @click.outside="openDel = false" x-transition
+                             class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 py-2">
+                            <form action="{{ route('pembuat-soal.narasi.destroy-all') }}" method="POST"
+                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Narasi',message:'Yakin ingin menghapus SEMUA narasi Anda? Soal terkait hanya akan dilepas dari narasi, tidak ikut dihapus.',confirmText:'Ya, Hapus Semua',danger:true})) { openDel=false; $el.submit() }">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold">
+                                    Hapus Semua Narasi
+                                </button>
+                            </form>
+                            <div class="border-t border-gray-100 my-1"></div>
+                            <p class="px-4 py-1 text-xs text-gray-400 uppercase tracking-wider">Per Kategori</p>
+                            @foreach($kategori as $kat)
+                            <form action="{{ route('pembuat-soal.narasi.destroy-all') }}" method="POST"
+                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi Kategori',message:'Yakin ingin menghapus semua narasi kategori &quot;{{ e($kat->nama) }}&quot; milik Anda? Soal terkait akan dilepas dari narasi.',confirmText:'Ya, Hapus',danger:true})) { openDel=false; $el.submit() }">
+                                @csrf @method('DELETE')
+                                <input type="hidden" name="kategori" value="{{ $kat->id }}">
+                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors">
+                                    {{ $kat->nama }}
+                                </button>
+                            </form>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    <a href="{{ route('pembuat-soal.narasi.create') }}"
+                       class="btn-primary inline-flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Tambah Narasi
+                    </a>
+                </div>
             </template>
         </div>
     </div>
@@ -375,7 +413,7 @@
                                     <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}"
                                        class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                     <form action="{{ route('pembuat-soal.narasi.destroy', $narasi->id) }}" method="POST"
-                                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini? Soal yang terkait akan dilepas dari narasi.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini? Soal terkait akan dilepas otomatis dari narasi, tetapi tidak ikut dihapus.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                                     </form>
@@ -420,7 +458,7 @@
                         <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="text-gray-500 hover:text-blue-600 font-medium">Lihat</a>
                         <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}" class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
                         <form action="{{ route('pembuat-soal.narasi.destroy', $narasi->id) }}" method="POST"
-                              x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                               x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini? Soal terkait akan dilepas otomatis dari narasi, tetapi tidak ikut dihapus.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-red-500 hover:text-red-700 font-medium">Hapus</button>
                         </form>

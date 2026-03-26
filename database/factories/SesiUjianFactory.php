@@ -22,6 +22,7 @@ class SesiUjianFactory extends Factory
             'waktu_selesai'  => now()->addMinutes(90),
             'status'         => 'persiapan',
             'kapasitas'      => 40,
+            'is_peserta_override' => false,
         ];
     }
 
