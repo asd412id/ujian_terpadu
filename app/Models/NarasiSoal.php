@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,12 +17,45 @@ class NarasiSoal extends Model
 
     protected $fillable = [
         'kategori_id', 'sekolah_id', 'created_by',
-        'judul', 'konten', 'gambar', 'is_active',
+        'judul', 'konten', 'konten_plain', 'gambar', 'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public static function normalizeSearchText(?string $text): string
+    {
+        $normalized = preg_replace('/<(\/?(p|div|li|ul|ol|h[1-6]|blockquote|section|article|tr|td|th))\b[^>]*>|<br\s*\/?\s*>/iu', ' ', (string) $text) ?? (string) $text;
+        $normalized = html_entity_decode(strip_tags($normalized), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
+    }
+
+    public function scopeSearch(Builder $query, ?string $search): Builder
+    {
+        $search = static::normalizeSearchText($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $narasiQuery) use ($search) {
+            $narasiQuery->where('judul', 'like', "%{$search}%")
+                ->orWhere('konten_plain', 'like', "%{$search}%");
+        });
+    }
+
+    protected function konten(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => [
+                'konten' => $value,
+                'konten_plain' => $value === null ? null : static::normalizeSearchText($value),
+            ],
+        );
+    }
 
     public function kategori()
     {

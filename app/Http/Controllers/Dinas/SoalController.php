@@ -36,11 +36,11 @@ class SoalController extends Controller
 
         $kategori = $this->soalService->getActiveKategori();
 
-        $narasiQuery = NarasiSoal::with('kategori')->withCount('soalList');
-        if ($request->narasi_search) {
-            $narasiQuery->where('judul', 'like', '%' . $request->narasi_search . '%');
-        }
-        if ($request->narasi_kategori) {
+        $narasiQuery = NarasiSoal::with('kategori')
+            ->withCount('soalList')
+            ->search($request->input('narasi_search'));
+
+        if ($request->filled('narasi_kategori')) {
             $narasiQuery->where('kategori_id', $request->narasi_kategori);
         }
         $narasis = $narasiQuery->latest()->paginate(20, ['*'], 'narasi_page');

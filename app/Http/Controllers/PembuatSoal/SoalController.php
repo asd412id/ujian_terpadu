@@ -40,8 +40,8 @@ class SoalController extends Controller
         $narasis = NarasiSoal::with('kategori')
             ->withCount('soalList')
             ->where('created_by', Auth::id())
-            ->when($request->narasi_kategori, fn ($q) => $q->where('kategori_id', $request->narasi_kategori))
-            ->when($request->narasi_search, fn ($q) => $q->where('judul', 'like', "%{$request->narasi_search}%"))
+            ->when($request->filled('narasi_kategori'), fn ($q) => $q->where('kategori_id', $request->narasi_kategori))
+            ->search($request->input('narasi_search'))
             ->latest()
             ->paginate(20, ['*'], 'narasi_page')
             ->withQueryString();

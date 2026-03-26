@@ -319,7 +319,7 @@
         <form method="GET" action="{{ route('dinas.soal.index') }}"
               class="card flex flex-col sm:flex-row gap-3 p-4">
             <input type="hidden" name="tab" value="narasi">
-            <input type="text" name="narasi_search" value="{{ request('narasi_search') }}" placeholder="Cari judul narasi..."
+            <input type="text" name="narasi_search" value="{{ request('narasi_search') }}" placeholder="Cari judul atau isi narasi..."
                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <select name="narasi_kategori"
                     class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">

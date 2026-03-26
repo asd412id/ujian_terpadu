@@ -24,10 +24,7 @@ class NarasiSoalRepository
             ->with(['kategori', 'pembuat'])
             ->withCount('soalList')
             ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
-            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
-                $q2->where('judul', 'like', "%{$search}%")
-                   ->orWhere('konten', 'like', "%{$search}%");
-            }))
+            ->search($search)
             ->latest()
             ->paginate($perPage)
             ->withQueryString();

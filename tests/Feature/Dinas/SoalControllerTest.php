@@ -3,6 +3,7 @@
 namespace Tests\Feature\Dinas;
 
 use App\Models\KategoriSoal;
+use App\Models\NarasiSoal;
 use App\Models\Soal;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,6 +115,68 @@ class SoalControllerTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('dinas.soal.edit', $soal));
         $response->assertStatus(200);
+    }
+
+    public function test_index_filters_narasi_by_formatted_konten(): void
+    {
+        $user = $this->dinasUser();
+        $kategori = KategoriSoal::factory()->create();
+
+        $matchingNarasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi cocok isi',
+            'konten' => '<p>kata</p><p><strong>kunci</strong> isi narasi</p>',
+            'is_active' => true,
+        ]);
+
+        NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi tidak cocok',
+            'konten' => '<p>isi lain</p>',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dinas.soal.index', [
+            'tab' => 'narasi',
+            'narasi_search' => 'kata kunci isi narasi',
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertViewHas('narasis', fn ($narasis) => $narasis->total() === 1
+            && $narasis->getCollection()->contains(fn ($narasi) => $narasi->id === $matchingNarasi->id));
+    }
+
+    public function test_index_filters_narasi_by_zero_keyword(): void
+    {
+        $user = $this->dinasUser();
+        $kategori = KategoriSoal::factory()->create();
+
+        $matchingNarasi = NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi angka nol',
+            'konten' => '<p>Bab 0 dimulai dari sini</p>',
+            'is_active' => true,
+        ]);
+
+        NarasiSoal::create([
+            'kategori_id' => $kategori->id,
+            'created_by' => $user->id,
+            'judul' => 'Narasi angka lain',
+            'konten' => '<p>Bab 1 dimulai dari sini</p>',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dinas.soal.index', [
+            'tab' => 'narasi',
+            'narasi_search' => '0',
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertViewHas('narasis', fn ($narasis) => $narasis->total() === 1
+            && $narasis->getCollection()->contains(fn ($narasi) => $narasi->id === $matchingNarasi->id));
     }
 
     public function test_destroy_deactivates_soal(): void
