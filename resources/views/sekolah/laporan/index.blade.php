@@ -91,6 +91,7 @@
                     <tr>
                         <th class="px-5 py-3 text-left">#</th>
                         <th class="px-5 py-3 text-left">Peserta</th>
+                        <th class="px-5 py-3 text-left hidden md:table-cell">Paket / Sesi</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Kelas</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Benar</th>
                         <th class="px-5 py-3 text-center hidden md:table-cell">Salah</th>
@@ -106,6 +107,10 @@
                         <td class="px-5 py-3">
                             <p class="font-medium text-gray-900">{{ $hasil->peserta->nama }}</p>
                             <p class="text-xs text-gray-400">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }}</p>
+                        </td>
+                        <td class="px-5 py-3 hidden md:table-cell">
+                            <p class="font-medium text-gray-900 text-xs">{{ $hasil->sesi->paket->nama ?? '—' }}</p>
+                            <p class="text-xs text-gray-400">{{ $hasil->sesi->nama_sesi ?? '—' }}</p>
                         </td>
                         <td class="px-5 py-3 text-center hidden md:table-cell text-gray-600">{{ $hasil->peserta->kelas ?? '—' }}</td>
                         <td class="px-5 py-3 text-center font-bold text-green-600 hidden md:table-cell">{{ $hasil->jumlah_benar ?? 0 }}</td>
@@ -142,6 +147,7 @@
                     <div class="min-w-0">
                         <p class="font-medium text-gray-900 text-sm">{{ $hasil->peserta->nama }}</p>
                         <p class="text-xs text-gray-500">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ $hasil->sesi->paket->nama ?? '' }}{{ $hasil->sesi->nama_sesi ? ' · ' . $hasil->sesi->nama_sesi : '' }}</p>
                     </div>
                     <div class="text-right shrink-0">
                         <p class="text-lg font-bold {{ \App\Support\NilaiStatus::textClass($nilai) }}">{{ $nilai }}</p>
