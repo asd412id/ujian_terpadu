@@ -8,16 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Drop the uuid id column and use composite PK instead.
-        // Laravel's belongsToMany sync/attach doesn't auto-generate UUIDs for pivot rows.
+        if (Schema::hasColumn('kategori_soal_user', 'id')) {
+            Schema::table('kategori_soal_user', function (Blueprint $table) {
+                $table->dropColumn('id');
+            });
+        }
 
-        Schema::table('kategori_soal_user', function (Blueprint $table) {
-            $table->dropColumn('id');
-        });
-
-        Schema::table('soal_user', function (Blueprint $table) {
-            $table->dropColumn('id');
-        });
+        if (Schema::hasColumn('soal_user', 'id')) {
+            Schema::table('soal_user', function (Blueprint $table) {
+                $table->dropColumn('id');
+            });
+        }
     }
 
     public function down(): void
