@@ -814,7 +814,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                 }
             } elseif (method_exists($element, 'getText')) {
                 $text = $element->getText() ?? '';
-                $html = e($text);
+                $html = e(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             }
         } elseif ($element instanceof TextRun) {
             foreach ($element->getElements() as $child) {
@@ -862,7 +862,7 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
             }
         } elseif (method_exists($element, 'getText')) {
             $text = $element->getText() ?? '';
-            $html = e($text);
+            $html = e(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         }
 
         $text = html_entity_decode(trim((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -937,7 +937,10 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
     {
         if (empty($text)) return '';
 
-        $escaped = e($text);
+        // PHPWord already htmlspecialchars() text in its reader (AbstractPart.php).
+        // Decode first to avoid double-escaping (e.g. " → &quot; → &amp;quot;).
+        $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $escaped = e($decoded);
 
         if (!($fontStyle instanceof Font)) {
             return $escaped;
