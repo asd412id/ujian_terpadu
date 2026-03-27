@@ -183,7 +183,7 @@ return [
     |
     */
 
-    'memory_limit' => 512,
+    'memory_limit' => 768,
 
     /*
     |--------------------------------------------------------------------------
@@ -227,23 +227,23 @@ return [
                 'connection' => 'redis',
                 'queue' => ['default', 'logging'],
                 'balance' => 'auto',
-                'minProcesses' => 2,
-                'maxProcesses' => 5,
+                'minProcesses' => 3,
+                'maxProcesses' => 8,
                 'tries' => 3,
                 'timeout' => 300,
                 'maxTime' => 3600,
-                'memory' => 256,
+                'memory' => 384,
             ],
             'supervisor-imports' => [
                 'connection' => 'redis',
                 'queue' => ['imports'],
                 'balance' => false,
                 'minProcesses' => 1,
-                'maxProcesses' => 2,
+                'maxProcesses' => 3,
                 'tries' => 1,
                 'timeout' => 1200,
                 'maxTime' => 3600,
-                'memory' => 384,
+                'memory' => 512,
             ],
         ],
 
