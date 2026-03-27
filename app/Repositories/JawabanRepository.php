@@ -87,7 +87,7 @@ class JawabanRepository
      */
     public function countAnswered(string $sesiPesertaId): int
     {
-        return $this->model
+        return DB::table('jawaban_peserta')
             ->where('sesi_peserta_id', $sesiPesertaId)
             ->where('is_terjawab', true)
             ->count();
@@ -229,12 +229,14 @@ class JawabanRepository
      */
     public function syncTandaiList(string $sesiPesertaId, array $tandaiSoalIds): void
     {
-        $this->model->where('sesi_peserta_id', $sesiPesertaId)
+        DB::table('jawaban_peserta')
+            ->where('sesi_peserta_id', $sesiPesertaId)
             ->whereNotIn('soal_id', $tandaiSoalIds)
             ->where('is_ditandai', true)
             ->update(['is_ditandai' => false]);
 
-        $this->model->where('sesi_peserta_id', $sesiPesertaId)
+        DB::table('jawaban_peserta')
+            ->where('sesi_peserta_id', $sesiPesertaId)
             ->whereIn('soal_id', $tandaiSoalIds)
             ->where('is_ditandai', false)
             ->update(['is_ditandai' => true]);
@@ -245,7 +247,8 @@ class JawabanRepository
      */
     public function clearAllTandai(string $sesiPesertaId): void
     {
-        $this->model->where('sesi_peserta_id', $sesiPesertaId)
+        DB::table('jawaban_peserta')
+            ->where('sesi_peserta_id', $sesiPesertaId)
             ->where('is_ditandai', true)
             ->update(['is_ditandai' => false]);
     }

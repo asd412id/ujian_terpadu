@@ -99,7 +99,7 @@ class JawabanService
         $errors  = [];
         $synced  = 0;
         $skipped = 0;
-        $maxRetries = 3;
+        $maxRetries = 5;
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             DB::beginTransaction();
@@ -144,7 +144,7 @@ class JawabanService
                 if (isset($requestMeta['soal_ditandai'])) {
                     $updateData['soal_ditandai'] = $requestMeta['soal_ditandai'];
                 }
-                $sesiPeserta->update($updateData);
+                DB::table('sesi_peserta')->where('id', $sesiPeserta->id)->update($updateData);
 
                 if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
                     $this->repository->syncTandaiList($sesiPeserta->id, $requestMeta['tandai_list']);
@@ -175,9 +175,9 @@ class JawabanService
                 break;
             } catch (\Illuminate\Database\QueryException $e) {
                 DB::rollBack();
-                // Retry on lock wait timeout (1205) or deadlock (1213)
-                if (in_array($e->errorInfo[1] ?? null, [1205, 1213]) && $attempt < $maxRetries) {
-                    usleep(50000 * $attempt);
+                // Retry on lock wait timeout (1205), deadlock (1213), or record changed (1020)
+                if (in_array($e->errorInfo[1] ?? null, [1020, 1205, 1213]) && $attempt < $maxRetries) {
+                    usleep(random_int(20000, 80000) * $attempt);
                     continue;
                 }
                 throw $e;
