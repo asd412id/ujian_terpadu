@@ -26,15 +26,19 @@ return new class extends Migration
 
     private function safeDropColumn(string $table, string $column): void
     {
-        $exists = DB::selectOne(
-            "SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-            [$table, $column]
-        );
+        try {
+            $exists = DB::selectOne(
+                "SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                [$table, $column]
+            );
 
-        if ($exists && $exists->cnt > 0) {
-            Schema::table($table, function (Blueprint $table) use ($column) {
-                $table->dropColumn($column);
-            });
+            if ($exists && $exists->cnt > 0) {
+                Schema::table($table, function (Blueprint $table) use ($column) {
+                    $table->dropColumn($column);
+                });
+            }
+        } catch (\Throwable $e) {
+            // Column doesn't exist or already dropped — safe to ignore
         }
     }
 };
