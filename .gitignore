@@ -31,3 +31,4 @@ nul
 frankenphp
 frankenphp-worker.php
 .cache/
+.env.gce
