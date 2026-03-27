@@ -26,6 +26,7 @@ use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\Element\Text;
 use PhpOffice\PhpWord\Element\ListItem;
 use PhpOffice\PhpWord\Element\ListItemRun;
+use PhpOffice\PhpWord\Element\TextBreak;
 use PhpOffice\PhpWord\Style\Font;
 
 /**
@@ -806,6 +807,9 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                         $latex = $this->formulaToLatex($child);
                         $text .= $latex;
                         $html .= e($latex);
+                    } elseif ($child instanceof TextBreak) {
+                        $text .= "\n";
+                        $html .= '<br>';
                     }
                 }
             } elseif (method_exists($element, 'getText')) {
@@ -833,6 +837,9 @@ class ImportSoalWordJob implements ShouldQueue, ShouldBeUnique
                     $latex = $this->formulaToLatex($child);
                     $text .= $latex;
                     $html .= e($latex);
+                } elseif ($child instanceof TextBreak) {
+                    $text .= "\n";
+                    $html .= '<br>';
                 }
             }
         } elseif ($element instanceof Text) {
