@@ -285,7 +285,7 @@ class SeedBenchmark extends Command
         DB::beginTransaction();
         try {
             // Delete in reverse order of dependencies
-            $pesertaIds = Peserta::where('nama', 'like', self::BENCHMARK_PREFIX . '%')->pluck('id');
+            $pesertaIds = Peserta::withTrashed()->where('nama', 'like', self::BENCHMARK_PREFIX . '%')->pluck('id');
             $sesiPesertaIds = SesiPeserta::whereIn('peserta_id', $pesertaIds)->pluck('id');
 
             $this->info('Menghapus jawaban peserta...');
@@ -297,7 +297,7 @@ class SeedBenchmark extends Command
             $this->info('Menghapus sesi peserta...');
             SesiPeserta::whereIn('peserta_id', $pesertaIds)->delete();
 
-            $paketIds = PaketUjian::where('nama', 'like', self::BENCHMARK_PREFIX . '%')->pluck('id');
+            $paketIds = PaketUjian::withTrashed()->where('nama', 'like', self::BENCHMARK_PREFIX . '%')->pluck('id');
             $sesiIds = SesiUjian::whereIn('paket_id', $paketIds)->pluck('id');
 
             $this->info('Menghapus sesi ujian...');
@@ -307,22 +307,22 @@ class SeedBenchmark extends Command
             PaketSoal::whereIn('paket_id', $paketIds)->delete();
 
             $this->info('Menghapus paket ujian...');
-            PaketUjian::whereIn('id', $paketIds)->delete();
+            PaketUjian::withTrashed()->whereIn('id', $paketIds)->forceDelete();
 
             $sekolahIds = Sekolah::where('nama', 'like', self::BENCHMARK_PREFIX . '%')->pluck('id');
 
             $this->info('Menghapus opsi jawaban...');
-            $soalIds = Soal::whereIn('sekolah_id', $sekolahIds)->pluck('id');
+            $soalIds = Soal::withTrashed()->whereIn('sekolah_id', $sekolahIds)->pluck('id');
             OpsiJawaban::whereIn('soal_id', $soalIds)->delete();
 
             $this->info('Menghapus soal...');
-            Soal::whereIn('sekolah_id', $sekolahIds)->delete();
+            Soal::withTrashed()->whereIn('sekolah_id', $sekolahIds)->forceDelete();
 
             $this->info('Menghapus kategori...');
             KategoriSoal::where('nama', 'like', self::BENCHMARK_PREFIX . '%')->delete();
 
             $this->info('Menghapus peserta...');
-            Peserta::whereIn('id', $pesertaIds)->delete();
+            Peserta::withTrashed()->whereIn('id', $pesertaIds)->forceDelete();
 
             $this->info('Menghapus user...');
             User::where('name', 'like', self::BENCHMARK_PREFIX . '%')->delete();
