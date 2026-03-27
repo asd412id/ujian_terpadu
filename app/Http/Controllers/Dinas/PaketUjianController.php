@@ -169,6 +169,19 @@ class PaketUjianController extends Controller
                          ->with('success', 'Paket ujian dihapus permanen beserta semua data terkait.');
     }
 
+    public function emptyTrash()
+    {
+        $deleted = $this->paketUjianService->forceDeleteAllTrashed();
+
+        if ($deleted === 0) {
+            return redirect()->route('dinas.paket.trash')
+                             ->with('error', 'Sampah sudah kosong.');
+        }
+
+        return redirect()->route('dinas.paket.trash')
+                         ->with('success', "{$deleted} paket ujian dihapus permanen beserta semua data terkait.");
+    }
+
     public function publish(PaketUjian $paket)
     {
         try {

@@ -140,10 +140,12 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::resource('narasi', \App\Http\Controllers\Dinas\NarasiSoalController::class)->names('narasi');
 
     // Kategori Soal
+    Route::delete('/kategori/destroy-all', [\App\Http\Controllers\Dinas\KategoriSoalController::class, 'destroyAll'])->name('kategori.destroy-all');
     Route::resource('kategori', \App\Http\Controllers\Dinas\KategoriSoalController::class)->names('kategori');
 
     // Paket Ujian
     Route::get('/paket/trash', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'trash'])->name('paket.trash');
+    Route::delete('/paket/trash/empty', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'emptyTrash'])->name('paket.empty-trash');
     Route::post('/paket/{paket_trashed}/restore', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'restore'])->name('paket.restore')->withTrashed();
     Route::delete('/paket/{paket_trashed}/force-delete', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'forceDelete'])->name('paket.force-delete')->withTrashed();
     Route::resource('paket', \App\Http\Controllers\Dinas\PaketUjianController::class)->names('paket');

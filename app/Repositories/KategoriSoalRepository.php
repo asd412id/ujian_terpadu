@@ -59,10 +59,20 @@ class KategoriSoalRepository
     }
 
     /**
-     * Soft-delete (deactivate) a kategori.
+     * Hard-delete a kategori (fails if has soal).
      */
     public function delete(KategoriSoal $kategori): bool
     {
-        return $kategori->update(['is_active' => false]);
+        return $kategori->delete();
+    }
+
+    /**
+     * Delete all kategori that have zero soal.
+     */
+    public function deleteAllEmpty(): int
+    {
+        return $this->model
+            ->whereDoesntHave('soal')
+            ->delete();
     }
 }

@@ -66,9 +66,27 @@ class KategoriSoalController extends Controller
 
     public function destroy(KategoriSoal $kategori)
     {
-        $this->kategoriSoalService->deleteKategori($kategori);
+        try {
+            $this->kategoriSoalService->deleteKategori($kategori);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->route('dinas.kategori.index')
+                             ->with('error', collect($e->errors())->flatten()->first());
+        }
 
         return redirect()->route('dinas.kategori.index')
-                         ->with('success', 'Kategori dinonaktifkan.');
+                         ->with('success', 'Kategori berhasil dihapus.');
+    }
+
+    public function destroyAll()
+    {
+        $deleted = $this->kategoriSoalService->deleteAllEmptyKategoris();
+
+        if ($deleted === 0) {
+            return redirect()->route('dinas.kategori.index')
+                             ->with('error', 'Tidak ada kategori yang bisa dihapus. Semua kategori masih memiliki soal.');
+        }
+
+        return redirect()->route('dinas.kategori.index')
+                         ->with('success', "{$deleted} kategori berhasil dihapus.");
     }
 }

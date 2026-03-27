@@ -148,6 +148,15 @@ class PaketUjianService
     }
 
     /**
+     * Permanently delete ALL trashed paket ujian and their related data.
+     * Returns the count of deleted paket.
+     */
+    public function forceDeleteAllTrashed(): int
+    {
+        return DB::transaction(fn () => $this->repository->forceDeleteAllTrashed());
+    }
+
+    /**
      * Delete a paket ujian (legacy).
      */
     public function deletePaket(PaketUjian $paket): bool

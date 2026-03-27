@@ -228,6 +228,23 @@ class PaketUjianRepository
     }
 
     /**
+     * Force-delete all trashed paket ujian.
+     * Returns the count of deleted paket.
+     */
+    public function forceDeleteAllTrashed(): int
+    {
+        $trashed = $this->model::onlyTrashed()->get();
+        $count = 0;
+
+        foreach ($trashed as $paket) {
+            $paket->forceDelete();
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
      * Sync soal selection for a paket (bulk add/remove).
      */
     public function syncSoalPaket(PaketUjian $paket, array $soalIds): void

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\KategoriSoal;
 use App\Repositories\KategoriSoalRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class KategoriSoalService
@@ -54,10 +55,27 @@ class KategoriSoalService
     }
 
     /**
-     * Soft-delete (deactivate) a kategori soal.
+     * Hard-delete a kategori soal.
+     * Throws ValidationException if kategori still has soal.
      */
     public function deleteKategori(KategoriSoal $kategori): bool
     {
+        $soalCount = $kategori->soal()->count();
+        if ($soalCount > 0) {
+            throw ValidationException::withMessages([
+                'kategori' => "Kategori \"{$kategori->nama}\" masih memiliki {$soalCount} soal. Hapus atau pindahkan soal terlebih dahulu.",
+            ]);
+        }
+
         return $this->repository->delete($kategori);
+    }
+
+    /**
+     * Delete all kategori that have zero soal.
+     * Returns the count of deleted kategori.
+     */
+    public function deleteAllEmptyKategoris(): int
+    {
+        return $this->repository->deleteAllEmpty();
     }
 }

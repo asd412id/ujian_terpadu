@@ -11,13 +11,27 @@
 
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 class="text-xl font-bold text-gray-900">Kategori Soal</h1>
-        <button @click="openModal()"
-                class="btn-primary inline-flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Tambah Kategori
-        </button>
+        <div class="flex items-center gap-2">
+            @if($kategoris->count() > 0)
+            <form action="{{ route('dinas.kategori.destroy-all') }}" method="POST"
+                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Kategori',message:'Semua kategori yang tidak memiliki soal akan dihapus permanen. Kategori yang masih memiliki soal tidak akan terhapus. Lanjutkan?',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
+                @csrf @method('DELETE')
+                <button type="submit" class="btn-danger inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Hapus Semua
+                </button>
+            </form>
+            @endif
+            <button @click="openModal()"
+                    class="btn-primary inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tambah Kategori
+            </button>
+        </div>
     </div>
 
     <div class="card overflow-hidden p-0">
@@ -57,7 +71,7 @@
                             <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
                                     class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
                             <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
-                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Kategori',message:'Hapus kategori ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Kategori',message:'Kategori &quot;{{ addslashes($kat->nama) }}&quot; akan dihapus permanen.{{ ($kat->soal_count ?? 0) > 0 ? ' Kategori ini masih memiliki ' . ($kat->soal_count ?? 0) . ' soal, hapus atau pindahkan soal terlebih dahulu.' : ' Lanjutkan?' }}',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                             </form>
@@ -99,7 +113,7 @@
                     <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
                             class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
                     <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
-                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Kategori',message:'Hapus kategori ini?',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Kategori',message:'Kategori &quot;{{ addslashes($kat->nama) }}&quot; akan dihapus permanen.{{ ($kat->soal_count ?? 0) > 0 ? ' Kategori ini masih memiliki ' . ($kat->soal_count ?? 0) . ' soal, hapus atau pindahkan soal terlebih dahulu.' : ' Lanjutkan?' }}',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                         @csrf @method('DELETE')
                         <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                     </form>
