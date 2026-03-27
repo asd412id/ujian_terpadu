@@ -69,7 +69,7 @@ COPY docker/app/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Set permissions
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache \
+RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache /app/public \
     && chmod -R 775 /app/storage /app/bootstrap/cache
 
 EXPOSE 8000
