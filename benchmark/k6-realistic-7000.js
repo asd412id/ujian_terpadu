@@ -4,19 +4,16 @@ import { Rate, Trend, Counter } from 'k6/metrics';
 import { SharedArray } from 'k6/data';
 
 // =============================================================================
-// Realistic 7000-Peserta Exam Simulation
+// Realistic 7000-Peserta Exam Simulation (Arrival-Rate)
 //
-// Pola request nyata per peserta selama ujian:
-// - sync-jawaban: setiap jawab soal (debounce 800ms client) + auto-sync 30s
-// - status polling: setiap 30 detik
-// - Rata-rata 1 peserta = 1 sync + 1 status setiap ~15-30 detik
+// Pola request nyata:
+// - 7000 peserta, masing-masing sync setiap ~15-30 detik
+// - Setiap sync cycle: 1 POST sync-jawaban + 1 GET status
+// - Target RPS: 7000/22.5s ≈ 311 iterations/sec (each iter = 2 requests)
+// - Total target: ~622 HTTP req/sec
 //
-// Untuk 7000 peserta concurrent:
-// - sync-jawaban: ~7000/30 = ~233 req/sec
-// - status: ~7000/30 = ~233 req/sec
-// - Total: ~466 req/sec sustained
-//
-// k6 VU model: setiap VU = 1 peserta, melakukan sync lalu status, lalu sleep
+// Menggunakan constant-arrival-rate agar VU count tetap rendah (~200-300)
+// tapi request rate tetap tinggi — tidak OOM di client.
 // =============================================================================
 
 const syncErrors = new Rate('sync_errors');
@@ -34,39 +31,82 @@ const soalIds = tokenData.soal_ids;
 
 export const options = {
     scenarios: {
-        realistic_exam: {
-            executor: 'ramping-vus',
-            startVUs: 0,
-            stages: [
-                { duration: '30s', target: 1000 },   // peserta mulai login (batch 1)
-                { duration: '30s', target: 3000 },   // batch 2-3 masuk
-                { duration: '30s', target: 5000 },   // batch 4-5
-                { duration: '30s', target: 7000 },   // semua peserta aktif
-                { duration: '120s', target: 7000 },  // steady state — ujian berlangsung 2 menit
-                { duration: '30s', target: 3000 },   // sebagian submit
-                { duration: '20s', target: 0 },      // ramp down
-            ],
-            gracefulRampDown: '10s',
+        // Phase 1: Warm-up (1000 peserta pace)
+        warmup: {
+            executor: 'constant-arrival-rate',
+            rate: 45,              // 1000 peserta / 22.5s ≈ 45 iter/sec
+            timeUnit: '1s',
+            duration: '30s',
+            preAllocatedVUs: 100,
+            maxVUs: 300,
+            exec: 'examIteration',
+            startTime: '0s',
+        },
+        // Phase 2: Moderate (3000 peserta pace)
+        moderate: {
+            executor: 'constant-arrival-rate',
+            rate: 135,             // 3000 / 22.5 ≈ 133 iter/sec
+            timeUnit: '1s',
+            duration: '30s',
+            preAllocatedVUs: 200,
+            maxVUs: 500,
+            exec: 'examIteration',
+            startTime: '30s',
+        },
+        // Phase 3: High (5000 peserta pace)
+        high: {
+            executor: 'constant-arrival-rate',
+            rate: 222,             // 5000 / 22.5 ≈ 222 iter/sec
+            timeUnit: '1s',
+            duration: '30s',
+            preAllocatedVUs: 300,
+            maxVUs: 600,
+            exec: 'examIteration',
+            startTime: '60s',
+        },
+        // Phase 4: Full load (7000 peserta pace) — 2 minutes sustained
+        full_load: {
+            executor: 'constant-arrival-rate',
+            rate: 311,             // 7000 / 22.5 ≈ 311 iter/sec
+            timeUnit: '1s',
+            duration: '120s',
+            preAllocatedVUs: 400,
+            maxVUs: 800,
+            exec: 'examIteration',
+            startTime: '90s',
+        },
+        // Phase 5: Ramp-down (3000 peserta submit, sisanya masih)
+        cooldown: {
+            executor: 'constant-arrival-rate',
+            rate: 135,
+            timeUnit: '1s',
+            duration: '30s',
+            preAllocatedVUs: 200,
+            maxVUs: 400,
+            exec: 'examIteration',
+            startTime: '210s',
         },
     },
     thresholds: {
-        sync_errors: ['rate<0.10'],         // < 10% sync errors
-        status_errors: ['rate<0.10'],       // < 10% status errors
-        sync_duration: ['p(95)<3000'],      // p95 < 3s
-        status_duration: ['p(95)<2000'],    // p95 < 2s
+        sync_errors: ['rate<0.10'],
+        status_errors: ['rate<0.10'],
+        sync_duration: ['p(95)<3000'],
+        status_duration: ['p(95)<2000'],
         http_req_duration: ['p(95)<3000'],
     },
 };
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 
-export default function () {
-    // Setiap VU = 1 peserta unik
-    const tokenIndex = (__VU - 1) % tokens.length;
+// Atomic counter for unique token assignment
+let iterCounter = 0;
+
+export function examIteration() {
+    // Distribute tokens across iterations (not VUs) for better spread
+    const tokenIndex = (iterCounter++) % tokens.length;
     const myToken = tokens[tokenIndex];
 
     // === 1. Sync Jawaban (POST) ===
-    // Peserta jawab 1-3 soal lalu sync (realistic pattern)
     const answersCount = Math.floor(Math.random() * 3) + 1;
     const startSoalIndex = Math.floor(Math.random() * (soalIds.length - answersCount));
     const answers = [];
@@ -75,28 +115,23 @@ export default function () {
         answers.push({
             soal_id: soalIds[startSoalIndex + i],
             jawaban: ['A', 'B', 'C', 'D', 'E'][Math.floor(Math.random() * 5)],
-            idempotency_key: `${myToken.token.substring(0, 8)}-${__ITER}-${startSoalIndex + i}-${Date.now()}`,
+            idempotency_key: `${myToken.token.substring(0, 8)}-${__VU}-${__ITER}-${startSoalIndex + i}-${Date.now()}`,
             client_timestamp: Date.now(),
         });
     }
 
-    const syncPayload = JSON.stringify({
+    const syncRes = http.post(`${BASE_URL}/api/ujian/sync-jawaban`, JSON.stringify({
         sesi_token: myToken.token,
         answers: answers,
         soal_ditandai: 0,
         tandai_list: [],
-    });
-
-    const syncRes = http.post(`${BASE_URL}/api/ujian/sync-jawaban`, syncPayload, {
+    }), {
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         timeout: '15s',
     });
 
     syncDuration.add(syncRes.timings.duration);
-    const syncOk = check(syncRes, {
-        'sync: status 200': (r) => r.status === 200,
-    });
-
+    const syncOk = check(syncRes, { 'sync: 200': (r) => r.status === 200 });
     if (syncOk) {
         syncSuccess.add(1);
         syncErrors.add(0);
@@ -105,8 +140,8 @@ export default function () {
         syncErrors.add(1);
     }
 
-    // Brief pause between sync and status (realistic: not simultaneous)
-    sleep(Math.random() * 2 + 1);
+    // Brief pause (client debounce ~800ms)
+    sleep(Math.random() * 0.5 + 0.3);
 
     // === 2. Status Polling (GET) ===
     const statusRes = http.get(`${BASE_URL}/api/ujian/status/${myToken.token}`, {
@@ -115,35 +150,25 @@ export default function () {
     });
 
     statusDuration.add(statusRes.timings.duration);
-    const statusOk = check(statusRes, {
-        'status: status 200': (r) => r.status === 200,
-    });
+    const statusOk = check(statusRes, { 'status: 200': (r) => r.status === 200 });
     statusErrors.add(statusOk ? 0 : 1);
-
-    // === 3. Think time ===
-    // Realistic: peserta baca soal + jawab = 15-30 detik per soal
-    // Untuk benchmark: 10-20 detik (agar total duration manageable)
-    sleep(Math.random() * 10 + 10);
 }
 
 export function handleSummary(data) {
-    const now = new Date().toISOString().replace(/[:.]/g, '-');
-    return {
-        stdout: textSummary(data),
-    };
+    return { stdout: textSummary(data) };
 }
 
 function textSummary(data) {
     const m = data.metrics;
     return `
-=== BENCHMARK: Realistic 7000 Peserta Exam Simulation ===
-VM: e2-standard-4 (4 vCPU, 16GB RAM)
-App Replicas: 4
+=== BENCHMARK: Realistic 7000 Peserta Exam (Arrival-Rate) ===
+VM Target: e2-standard-4 (4 vCPU, 16GB RAM)
+k6 Client: disdik server (4 CPU, 8GB RAM) → Cloudflare Tunnel
 
 --- Traffic ---
 Total HTTP Requests:  ${m.http_reqs?.values?.count || 'N/A'}
 RPS (avg):            ${(m.http_reqs?.values?.rate || 0).toFixed(2)}
-Peak VUs:             ${m.vus_max?.values?.max || 'N/A'}
+Max VUs Used:         ${m.vus_max?.values?.max || 'N/A'}
 
 --- Sync Jawaban (POST /api/ujian/sync-jawaban) ---
 Success:              ${m.sync_success?.values?.count || 0}
@@ -161,10 +186,12 @@ Duration (avg):       ${(m.status_duration?.values?.avg || 0).toFixed(0)}ms
 Duration (p95):       ${(m.status_duration?.values?.['p(95)'] || 0).toFixed(0)}ms
 Duration (p99):       ${(m.status_duration?.values?.['p(99)'] || 0).toFixed(0)}ms
 
---- Overall ---
+--- Verdict ---
 HTTP Duration (avg):  ${(m.http_req_duration?.values?.avg || 0).toFixed(0)}ms
 HTTP Duration (p95):  ${(m.http_req_duration?.values?.['p(95)'] || 0).toFixed(0)}ms
 HTTP Failed:          ${m.http_req_failed?.values?.rate !== undefined ? (m.http_req_failed.values.rate * 100).toFixed(2) + '%' : 'N/A'}
+
+Estimated Capacity:   ${((m.sync_errors?.values?.rate || 0) < 0.05) ? '7000 peserta ✅ LULUS' : ((m.sync_errors?.values?.rate || 0) < 0.10) ? '7000 peserta ⚠️ MARGINAL' : '7000 peserta ❌ TIDAK CUKUP'}
 ===================================================================
 `;
 }
