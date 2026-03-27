@@ -586,7 +586,7 @@
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
-         @click.self="showNavigator = false"
+         @mousedown.self="showNavigator = false"
          class="lg:hidden fixed inset-0 bg-black/50 z-40">
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 max-h-[60vh] overflow-y-auto"
              @click.stop>

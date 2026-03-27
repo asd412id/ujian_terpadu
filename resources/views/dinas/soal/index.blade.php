@@ -30,7 +30,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-                        <div x-show="openDel" x-cloak @click.outside="openDel = false" x-transition
+                        <div x-show="openDel" x-cloak @mousedown.outside="openDel = false" x-transition
                              class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 py-2">
                             {{-- Hapus semua --}}
                             <form action="{{ route('dinas.soal.destroy-all') }}" method="POST"
@@ -95,7 +95,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-                        <div x-show="openDel" x-cloak @click.outside="openDel = false" x-transition
+                        <div x-show="openDel" x-cloak @mousedown.outside="openDel = false" x-transition
                              class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 py-2">
                             <form action="{{ route('dinas.narasi.destroy-all') }}" method="POST"
                                   x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Narasi',message:'Yakin ingin menghapus SEMUA narasi? Soal terkait hanya akan dilepas dari narasi, tidak ikut dihapus.',confirmText:'Ya, Hapus Semua',danger:true})) { openDel=false; $el.submit() }">

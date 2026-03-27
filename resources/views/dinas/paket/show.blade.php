@@ -390,7 +390,7 @@
     </div>
 
     {{-- Confirm Clear Dialog --}}
-    <div x-show="showConfirmClear" x-cloak x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showConfirmClear = false">
+    <div x-show="showConfirmClear" x-cloak x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @mousedown.self="showConfirmClear = false">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
             <p class="text-sm text-gray-800 font-medium mb-4">Hapus semua soal dari paket ini?</p>
             <div class="flex justify-end gap-2">

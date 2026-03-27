@@ -105,7 +105,7 @@
                             class="border border-purple-300 hover:bg-purple-50 text-purple-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
                         Salin
                     </button>
-                    <div x-show="showClone" x-cloak @click.outside="showClone = false"
+                    <div x-show="showClone" x-cloak @mousedown.outside="showClone = false"
                          x-transition.scale.origin.top
                          class="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20">
                         <form action="{{ route('dinas.paket.clone', $item->id) }}" method="POST">

@@ -61,7 +61,7 @@
     </button>
 
     <div x-show="showNav" x-cloak x-transition
-         @click.outside="showNav = false"
+         @mousedown.outside="showNav = false"
          class="fixed bottom-20 right-6 z-40 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 max-h-[60vh] overflow-y-auto w-72 print:hidden">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Navigasi Soal</h3>
         <div class="space-y-1">

@@ -171,7 +171,7 @@
     {{-- Modal: Search & Add Soal --}}
     <div x-show="showSearchModal" x-cloak x-transition.opacity
          class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-20 bg-black/50"
-         @click.self="showSearchModal = false">
+         @mousedown.self="showSearchModal = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[70vh] flex flex-col" @click.stop>
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <h3 class="font-semibold text-gray-900">Cari & Tambah Soal</h3>

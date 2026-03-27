@@ -49,7 +49,7 @@
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
                  class="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-black/50"
-                 @click.self="$store.confirmModal.cancel()">
+                 @mousedown.self="$store.confirmModal.cancel()">
                 <div x-show="$store.confirmModal.show"
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 scale-95"

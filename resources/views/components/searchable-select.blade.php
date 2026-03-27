@@ -47,7 +47,7 @@
             });
         }
     }"
-    x-on:click.outside="open = false; search = '';"
+    x-on:mousedown.outside="open = false; search = '';"
     x-on:keydown.escape.window="open = false; search = '';"
     class="relative {{ $class }}"
 >
