@@ -229,17 +229,22 @@ class PaketUjianController extends Controller
 
     public function clone(Request $request, PaketUjian $paket)
     {
-        $withSesi = $request->boolean('with_sesi');
+        try {
+            $withSesi = $request->boolean('with_sesi');
 
-        $newPaket = $this->paketUjianService->clonePaket($paket, $withSesi);
+            $newPaket = $this->paketUjianService->clonePaket($paket, $withSesi);
 
-        $msg = "Paket berhasil disalin sebagai \"{$newPaket->nama}\".";
-        if ($withSesi) {
-            $sesiCount = $newPaket->sesi()->count();
-            $msg .= " ({$sesiCount} sesi turut disalin)";
+            $msg = "Paket berhasil disalin sebagai \"{$newPaket->nama}\".";
+            if ($withSesi) {
+                $sesiCount = $newPaket->sesi()->count();
+                $msg .= " ({$sesiCount} sesi turut disalin)";
+            }
+
+            return redirect()->route('dinas.paket.show', $newPaket)
+                             ->with('success', $msg);
+        } catch (\Throwable $e) {
+            return redirect()->route('dinas.paket.index')
+                             ->with('error', 'Gagal menyalin paket: ' . $e->getMessage());
         }
-
-        return redirect()->route('dinas.paket.show', $newPaket)
-                         ->with('success', $msg);
     }
 }

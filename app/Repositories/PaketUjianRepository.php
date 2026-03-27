@@ -298,7 +298,7 @@ class PaketUjianRepository
             'sekolah_id'      => $source->sekolah_id,
             'created_by'      => $source->created_by,
             'nama'            => $source->nama . ' (Salinan)',
-            'kode'            => strtoupper(Str::random(8)),
+            'kode'            => strtoupper(Str::random(8)),  // 8 chars, fits varchar(20)
             'jenis_ujian'     => $source->jenis_ujian,
             'jenjang'         => $source->jenjang,
             'deskripsi'       => $source->deskripsi,

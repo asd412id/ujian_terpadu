@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\KategoriSoal;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 class KategoriSoalRepository
 {
@@ -77,13 +78,19 @@ class KategoriSoalRepository
     }
 
     /**
-     * Clone a kategori (copy attributes, new kode).
+     * Clone a kategori (copy attributes, generate safe kode).
      */
     public function clone(KategoriSoal $source): KategoriSoal
     {
+        $kode = null;
+        if ($source->kode) {
+            $base = mb_substr($source->kode, 0, 14);
+            $kode = $base . '_' . strtoupper(Str::random(5));
+        }
+
         return $this->model->create([
-            'nama'      => $source->nama . ' (Salinan)',
-            'kode'      => $source->kode ? $source->kode . '_COPY' : null,
+            'nama'      => mb_substr($source->nama . ' (Salinan)', 0, 100),
+            'kode'      => $kode,
             'jenjang'   => $source->jenjang,
             'kelompok'  => $source->kelompok,
             'kurikulum' => $source->kurikulum,
