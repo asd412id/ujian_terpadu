@@ -347,4 +347,20 @@ class PaketUjianService
             'kategoriId' => $s->kategori_id ?? '_none',
         ];
     }
+
+    /**
+     * Clone a paket ujian (with optional sesi).
+     * Always clones paket_soal. Sesi are cloned without peserta.
+     * New paket is always set to 'draft'.
+     */
+    public function clonePaket(PaketUjian $paket, bool $withSesi = false): PaketUjian
+    {
+        return DB::transaction(function () use ($paket, $withSesi) {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            $clone = $this->repository->clonePaket($paket, $withSesi);
+            $clone->update(['created_by' => $user->id]);
+            return $clone;
+        });
+    }
 }

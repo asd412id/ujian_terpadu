@@ -99,6 +99,30 @@
                    class="border border-blue-300 hover:bg-blue-50 text-blue-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
                     Edit
                 </a>
+                {{-- Clone paket --}}
+                <div x-data="{ showClone: false }" class="relative">
+                    <button @click="showClone = !showClone"
+                            class="border border-purple-300 hover:bg-purple-50 text-purple-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                        Salin
+                    </button>
+                    <div x-show="showClone" x-cloak @click.outside="showClone = false"
+                         x-transition.scale.origin.top
+                         class="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20">
+                        <form action="{{ route('dinas.paket.clone', $item->id) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                Salin Paket Saja
+                            </button>
+                        </form>
+                        <form action="{{ route('dinas.paket.clone', $item->id) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="with_sesi" value="1">
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                Salin Paket + Sesi
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 <form action="{{ route('dinas.paket.destroy', $item->id) }}" method="POST"
                       x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Paket',message:'Hapus paket ujian ini? Paket akan dipindahkan ke Sampah.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                     @csrf @method('DELETE')

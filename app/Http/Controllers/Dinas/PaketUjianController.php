@@ -226,4 +226,20 @@ class PaketUjianController extends Controller
 
         return back()->with('success', 'Soal paket berhasil diperbarui (' . count($soalIds) . ' soal).');
     }
+
+    public function clone(Request $request, PaketUjian $paket)
+    {
+        $withSesi = $request->boolean('with_sesi');
+
+        $newPaket = $this->paketUjianService->clonePaket($paket, $withSesi);
+
+        $msg = "Paket berhasil disalin sebagai \"{$newPaket->nama}\".";
+        if ($withSesi) {
+            $sesiCount = $newPaket->sesi()->count();
+            $msg .= " ({$sesiCount} sesi turut disalin)";
+        }
+
+        return redirect()->route('dinas.paket.show', $newPaket)
+                         ->with('success', $msg);
+    }
 }

@@ -75,4 +75,20 @@ class KategoriSoalRepository
             ->whereDoesntHave('soal')
             ->delete();
     }
+
+    /**
+     * Clone a kategori (copy attributes, new kode).
+     */
+    public function clone(KategoriSoal $source): KategoriSoal
+    {
+        return $this->model->create([
+            'nama'      => $source->nama . ' (Salinan)',
+            'kode'      => $source->kode ? $source->kode . '_COPY' : null,
+            'jenjang'   => $source->jenjang,
+            'kelompok'  => $source->kelompok,
+            'kurikulum' => $source->kurikulum,
+            'urutan'    => $source->urutan,
+            'is_active' => $source->is_active,
+        ]);
+    }
 }

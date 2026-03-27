@@ -141,6 +141,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 
     // Kategori Soal
     Route::delete('/kategori/destroy-all', [\App\Http\Controllers\Dinas\KategoriSoalController::class, 'destroyAll'])->name('kategori.destroy-all');
+    Route::post('/kategori/{kategori}/clone', [\App\Http\Controllers\Dinas\KategoriSoalController::class, 'clone'])->name('kategori.clone');
     Route::resource('kategori', \App\Http\Controllers\Dinas\KategoriSoalController::class)->names('kategori');
 
     // Paket Ujian
@@ -155,6 +156,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::post('/paket/{paket}/soal/add', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalAdd'])->name('paket.soal.add');
     Route::put('/paket/{paket}/soal/sync', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalSync'])->name('paket.soal.sync');
     Route::delete('/paket/{paket}/soal/{soal}', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'soalRemove'])->name('paket.soal.remove');
+    Route::post('/paket/{paket}/clone', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'clone'])->name('paket.clone');
 
     // Sesi Ujian CRUD (nested under paket)
     Route::post('/paket/{paket}/sesi', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'store'])->name('paket.sesi.store');

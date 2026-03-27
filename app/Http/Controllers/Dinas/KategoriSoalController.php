@@ -89,4 +89,12 @@ class KategoriSoalController extends Controller
         return redirect()->route('dinas.kategori.index')
                          ->with('success', "{$deleted} kategori berhasil dihapus.");
     }
+
+    public function clone(KategoriSoal $kategori)
+    {
+        $newKategori = $this->kategoriSoalService->cloneKategori($kategori);
+
+        return redirect()->route('dinas.kategori.index')
+                         ->with('success', "Kategori berhasil disalin sebagai \"{$newKategori->nama}\".");
+    }
 }

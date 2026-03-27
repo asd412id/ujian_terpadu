@@ -78,4 +78,12 @@ class KategoriSoalService
     {
         return $this->repository->deleteAllEmpty();
     }
+
+    /**
+     * Clone a kategori soal (attributes only, no soal copied).
+     */
+    public function cloneKategori(KategoriSoal $kategori): KategoriSoal
+    {
+        return $this->repository->clone($kategori);
+    }
 }

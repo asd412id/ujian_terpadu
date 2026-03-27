@@ -287,4 +287,66 @@ class PaketUjianRepository
     {
         return User::where('role', 'pengawas')->orderBy('name')->get();
     }
+
+    /**
+     * Clone a paket ujian (copy attributes + paket_soal, optionally sesi).
+     * Returns the newly created paket.
+     */
+    public function clonePaket(PaketUjian $source, bool $withSesi = false): PaketUjian
+    {
+        $newPaket = $this->model->create([
+            'sekolah_id'      => $source->sekolah_id,
+            'created_by'      => $source->created_by,
+            'nama'            => $source->nama . ' (Salinan)',
+            'kode'            => strtoupper(Str::random(8)),
+            'jenis_ujian'     => $source->jenis_ujian,
+            'jenjang'         => $source->jenjang,
+            'deskripsi'       => $source->deskripsi,
+            'durasi_menit'    => $source->durasi_menit,
+            'jumlah_soal'     => $source->jumlah_soal,
+            'acak_soal'       => $source->acak_soal,
+            'acak_opsi'       => $source->acak_opsi,
+            'tampilkan_hasil' => $source->tampilkan_hasil,
+            'boleh_kembali'   => $source->boleh_kembali,
+            'anti_curang'     => $source->anti_curang,
+            'max_peserta'     => $source->max_peserta,
+            'tanggal_mulai'   => $source->tanggal_mulai,
+            'tanggal_selesai' => $source->tanggal_selesai,
+            'status'          => 'draft',
+        ]);
+
+        // Clone paket_soal rows
+        $paketSoals = PaketSoal::where('paket_id', $source->id)
+            ->orderBy('nomor_urut')
+            ->get();
+
+        foreach ($paketSoals as $ps) {
+            PaketSoal::create([
+                'paket_id'       => $newPaket->id,
+                'soal_id'        => $ps->soal_id,
+                'nomor_urut'     => $ps->nomor_urut,
+                'bobot_override' => $ps->bobot_override,
+            ]);
+        }
+
+        // Optionally clone sesi (without peserta)
+        if ($withSesi) {
+            $sesiList = SesiUjian::where('paket_id', $source->id)->get();
+            foreach ($sesiList as $sesi) {
+                SesiUjian::create([
+                    'paket_id'           => $newPaket->id,
+                    'nama_sesi'          => $sesi->nama_sesi,
+                    'ruangan'            => $sesi->ruangan,
+                    'pengawas_id'        => $sesi->pengawas_id,
+                    'waktu_mulai'        => $sesi->waktu_mulai,
+                    'waktu_selesai'      => $sesi->waktu_selesai,
+                    'status'             => 'persiapan',
+                    'kapasitas'          => $sesi->kapasitas,
+                    'is_peserta_override' => $sesi->is_peserta_override,
+                ]);
+            }
+        }
+
+        return $newPaket;
+    }
 }

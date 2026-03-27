@@ -68,6 +68,10 @@
                     <td class="px-5 py-3 text-center font-medium text-gray-700">{{ $kat->soal_count ?? 0 }}</td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-2">
+                            <form action="{{ route('dinas.kategori.clone', $kat->id) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="text-purple-600 hover:text-purple-800 text-xs font-medium">Salin</button>
+                            </form>
                             <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
                                     class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
                             <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
@@ -110,6 +114,10 @@
                     @endif
                 </div>
                 <div class="flex items-center gap-3 pt-1">
+                    <form action="{{ route('dinas.kategori.clone', $kat->id) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="text-purple-600 hover:text-purple-800 text-xs font-medium">Salin</button>
+                    </form>
                     <button @click="editKategori('{{ $kat->id }}', '{{ addslashes($kat->nama) }}', '{{ addslashes($kat->kode ?? '') }}', '{{ $kat->jenjang ?? '' }}', '{{ addslashes($kat->kelompok ?? '') }}', '{{ addslashes($kat->kurikulum ?? '') }}')"
                             class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
                     <form action="{{ route('dinas.kategori.destroy', $kat->id) }}" method="POST"
