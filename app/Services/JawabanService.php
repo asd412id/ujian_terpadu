@@ -148,8 +148,6 @@ class JawabanService
 
                 if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
                     $this->repository->syncTandaiList($sesiPeserta->id, $requestMeta['tandai_list']);
-                } elseif (isset($requestMeta['tandai_list']) && empty($requestMeta['tandai_list'])) {
-                    $this->repository->clearAllTandai($sesiPeserta->id);
                 }
 
                 DB::commit();

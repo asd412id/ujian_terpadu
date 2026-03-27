@@ -220,7 +220,7 @@ class JawabanRepository
         DB::table('jawaban_peserta')->upsert(
             $prepared,
             ['sesi_peserta_id', 'soal_id'],
-            ['jawaban_pg', 'jawaban_teks', 'jawaban_pasangan', 'is_terjawab', 'idempotency_key', 'waktu_jawab', 'updated_at']
+            ['jawaban_pg', 'jawaban_teks', 'jawaban_pasangan', 'is_terjawab', 'idempotency_key', 'waktu_jawab']
         );
     }
 
