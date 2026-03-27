@@ -33,15 +33,6 @@ class JawabanController extends Controller
             'final_submit'       => 'nullable|boolean',
         ]);
 
-        // Bulk soal_id validation (1 query instead of N)
-        $soalIds = array_unique(array_column($data['answers'], 'soal_id'));
-        $invalidIds = $this->jawabanService->validateSoalIds($soalIds);
-        if (!empty($invalidIds)) {
-            throw ValidationException::withMessages([
-                'answers.soal_id' => 'Soal tidak ditemukan: ' . implode(', ', array_slice($invalidIds, 0, 5)),
-            ]);
-        }
-
         try {
             $result = $this->jawabanService->syncOfflineAnswers(
                 sesiToken: $data['sesi_token'],
@@ -52,6 +43,7 @@ class JawabanController extends Controller
                     'tandai_list'    => $data['tandai_list'] ?? null,
                 ],
                 isFinalSubmit: (bool) ($data['final_submit'] ?? false),
+                preloadedSesiPeserta: $request->attributes->get('sesiPeserta'),
             );
 
             return response()->json($result, ($result['accepted'] ?? true) ? 200 : 422);
@@ -119,9 +111,9 @@ class JawabanController extends Controller
             'detail' => 'nullable|array',
         ]);
 
-        $sesiPeserta = $this->jawabanService->findActiveSesiPesertaByToken($data['token']);
+        $sesiPeserta = $request->attributes->get('sesiPeserta');
 
-        if (!$sesiPeserta) {
+        if (!$sesiPeserta || !in_array($sesiPeserta->status, ['login', 'mengerjakan'])) {
             return response()->json(['ok' => false, 'error' => 'Sesi tidak ditemukan'], 404);
         }
 

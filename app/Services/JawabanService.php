@@ -6,6 +6,7 @@ use App\Jobs\LogAktivitasUjianJob;
 use App\Models\SesiPeserta;
 use App\Repositories\JawabanRepository;
 use App\Repositories\SoalRepository;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -46,11 +47,15 @@ class JawabanService
     /**
      * Sync offline answers — batch save from IndexedDB.
      */
-    public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = [], bool $isFinalSubmit = false): array
+    public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = [], bool $isFinalSubmit = false, ?SesiPeserta $preloadedSesiPeserta = null): array
     {
-        $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaket(
-            $sesiToken, ['mengerjakan', 'login', 'submit', 'dinilai']
-        );
+        if ($preloadedSesiPeserta && in_array($preloadedSesiPeserta->status, ['mengerjakan', 'login', 'submit', 'dinilai'])) {
+            $sesiPeserta = $preloadedSesiPeserta->loadMissing('sesi.paket');
+        } else {
+            $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaket(
+                $sesiToken, ['mengerjakan', 'login', 'submit', 'dinilai']
+            );
+        }
 
         $isAlreadySubmitted = in_array($sesiPeserta->status, ['submit', 'dinilai']);
 
@@ -81,8 +86,11 @@ class JawabanService
             ];
         }
 
-        // H3 fix: Validate soal_ids belong to the assigned paket
-        $paketSoalIds = $sesiPeserta->sesi->paket->soal()->pluck('soal.id')->toArray();
+        // H3 fix: Validate soal_ids belong to the assigned paket (cached 60s)
+        $paketId = $sesiPeserta->sesi->paket->id;
+        $paketSoalIds = Cache::remember("paket_soal_ids:{$paketId}", 60, function () use ($sesiPeserta) {
+            return $sesiPeserta->sesi->paket->soal()->pluck('soal.id')->toArray();
+        });
         $answers = array_filter($answers, function ($ans) use ($paketSoalIds) {
             return in_array($ans['soal_id'] ?? '', $paketSoalIds);
         });
