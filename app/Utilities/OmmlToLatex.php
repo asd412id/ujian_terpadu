@@ -44,7 +44,9 @@ class OmmlToLatex
         $this->xpath->registerNamespace('m', self::NS_MATH);
 
         // Find the math root element
-        $mathNodes = $this->xpath->query('//m:oMathPara | //m:oMath');
+        // Query oMathPara first; for oMath only select those NOT inside oMathPara
+        // to avoid double-processing (oMathPara contains oMath as child).
+        $mathNodes = $this->xpath->query('//m:oMathPara | //m:oMath[not(ancestor::m:oMathPara)]');
         if (!$mathNodes || $mathNodes->length === 0) {
             return '';
         }

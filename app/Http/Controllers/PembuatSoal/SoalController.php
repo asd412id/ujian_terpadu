@@ -193,16 +193,24 @@ class SoalController extends Controller
         $kategori = $this->soalService->getActiveKategori();
 
         $userId = Auth::id();
+        $accessScope = function ($q) use ($userId) {
+            $q->where('created_by', $userId)
+              ->orWhereIn('soal.id', function ($sub) use ($userId) {
+                  $sub->select('soal_id')->from('soal_user')->where('user_id', $userId);
+              })
+              ->orWhereIn('soal.kategori_id', function ($sub) use ($userId) {
+                  $sub->select('kategori_soal_id')->from('kategori_soal_user')->where('user_id', $userId);
+              });
+        };
+
+        // Count accessible soal per category (unfiltered) for dropdown display
+        $soalCounts = Soal::where($accessScope)
+            ->selectRaw('kategori_id, count(*) as total')
+            ->groupBy('kategori_id')
+            ->pluck('total', 'kategori_id');
+
         $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori', 'narasi'])
-            ->where(function ($q) use ($userId) {
-                $q->where('created_by', $userId)
-                  ->orWhereIn('soal.id', function ($sub) use ($userId) {
-                      $sub->select('soal_id')->from('soal_user')->where('user_id', $userId);
-                  })
-                  ->orWhereIn('soal.kategori_id', function ($sub) use ($userId) {
-                      $sub->select('kategori_soal_id')->from('kategori_soal_user')->where('user_id', $userId);
-                  });
-            })
+            ->where($accessScope)
             ->orderBy('kategori_id')
             ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
             ->orderBy('id');
@@ -213,7 +221,7 @@ class SoalController extends Controller
 
         $soalList = $query->get();
 
-        return view('pembuat-soal.soal.preview-all', compact('soalList', 'kategori'));
+        return view('pembuat-soal.soal.preview-all', compact('soalList', 'kategori', 'soalCounts'));
     }
 
     public function uploadImage(Request $request)

@@ -204,6 +204,28 @@
     margin-top: 0.35em;
 }
 
+.formatted-content ul,
+.formatted-content ol {
+    padding-left: 1.5em;
+}
+
+.formatted-content ul {
+    list-style-type: disc;
+}
+
+.formatted-content ol {
+    list-style-type: decimal;
+}
+
+.formatted-content li > p {
+    margin: 0;
+    display: inline;
+}
+
+.formatted-content li::marker {
+    color: #4b5563;
+}
+
 .formatted-content img {
     border-radius: 0.5rem;
 }

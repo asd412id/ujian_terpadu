@@ -196,6 +196,11 @@ class SoalController extends Controller
     {
         $kategori = $this->soalService->getActiveKategori();
 
+        // Count soal per category (unfiltered) for dropdown display
+        $soalCounts = Soal::selectRaw('kategori_id, count(*) as total')
+            ->groupBy('kategori_id')
+            ->pluck('total', 'kategori_id');
+
         $query = Soal::with(['opsiJawaban', 'pasangan', 'kategori', 'narasi'])
             ->orderBy('kategori_id')
             ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
@@ -207,7 +212,7 @@ class SoalController extends Controller
 
         $soalList = $query->get();
 
-        return view('dinas.soal.preview-all', compact('soalList', 'kategori'));
+        return view('dinas.soal.preview-all', compact('soalList', 'kategori', 'soalCounts'));
     }
 
     public function showImport()

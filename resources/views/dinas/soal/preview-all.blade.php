@@ -42,7 +42,7 @@
             <option value="">Semua Kategori</option>
             @foreach($kategori as $kat)
             <option value="{{ $kat->id }}" {{ request('kategori') == $kat->id ? 'selected' : '' }}>
-                {{ $kat->nama }} ({{ $soalList->where('kategori_id', $kat->id)->count() }})
+                {{ $kat->nama }} ({{ $soalCounts[$kat->id] ?? 0 }})
             </option>
             @endforeach
         </select>
