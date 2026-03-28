@@ -47,8 +47,9 @@ class SoalController extends Controller
         $narasis = $narasiQuery->latest()->paginate(20, ['*'], 'narasi_page');
 
         $trashedCount = Soal::onlyTrashed()->count();
+        $trashedNarasiCount = NarasiSoal::onlyTrashed()->count();
 
-        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount'));
+        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount', 'trashedNarasiCount'));
     }
 
     public function create()
@@ -186,8 +187,12 @@ class SoalController extends Controller
         );
 
         $kategori = $this->soalService->getActiveKategori();
+        $allFilteredIds = $this->soalService->getTrashedSoalIds(
+            kategoriId: $request->trash_kategori,
+            search: $request->trash_search,
+        );
 
-        return view('dinas.soal.trash', compact('trashedSoal', 'kategori'));
+        return view('dinas.soal.trash', compact('trashedSoal', 'kategori', 'allFilteredIds'));
     }
 
     public function restore(Soal $soal_trashed)

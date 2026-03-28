@@ -149,8 +149,9 @@ class PaketUjianController extends Controller
     public function trash()
     {
         $paket = $this->paketUjianService->getTrashedPaginated(20);
+        $allFilteredIds = $this->paketUjianService->getTrashedIds();
 
-        return view('dinas.paket.trash', compact('paket'));
+        return view('dinas.paket.trash', compact('paket', 'allFilteredIds'));
     }
 
     public function restore(PaketUjian $paket_trashed)

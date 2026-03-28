@@ -49,8 +49,9 @@ class SoalController extends Controller
             ->withQueryString();
 
         $trashedCount = Soal::onlyTrashed()->where('created_by', Auth::id())->count();
+        $trashedNarasiCount = NarasiSoal::onlyTrashed()->where('created_by', Auth::id())->count();
 
-        return view('pembuat-soal.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount'));
+        return view('pembuat-soal.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount', 'trashedNarasiCount'));
     }
 
     public function create()
@@ -192,18 +193,21 @@ class SoalController extends Controller
 
     public function trash(Request $request)
     {
-        $trashedSoal = Soal::onlyTrashed()
-            ->with(['kategori', 'pembuat'])
-            ->where('created_by', Auth::id())
-            ->when($request->trash_kategori, fn ($q) => $q->where('kategori_id', $request->trash_kategori))
-            ->when($request->trash_search, fn ($q) => $q->where('pertanyaan', 'like', "%{$request->trash_search}%"))
-            ->latest('deleted_at')
-            ->paginate(20, ['*'], 'trash_page')
-            ->withQueryString();
+        $trashedSoal = $this->soalService->getTrashedSoal(
+            kategoriId: $request->trash_kategori,
+            search: $request->trash_search,
+            perPage: 20,
+            createdBy: Auth::id(),
+        );
 
         $kategori = $this->soalService->getActiveKategori();
+        $allFilteredIds = $this->soalService->getTrashedSoalIds(
+            kategoriId: $request->trash_kategori,
+            search: $request->trash_search,
+            createdBy: Auth::id(),
+        );
 
-        return view('pembuat-soal.soal.trash', compact('trashedSoal', 'kategori'));
+        return view('pembuat-soal.soal.trash', compact('trashedSoal', 'kategori', 'allFilteredIds'));
     }
 
     public function restore(Soal $soal_trashed)

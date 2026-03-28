@@ -148,6 +148,14 @@ class PaketUjianService
     }
 
     /**
+     * Get all trashed paket IDs for current trash page/filter context.
+     */
+    public function getTrashedIds(): array
+    {
+        return PaketUjian::onlyTrashed()->latest('deleted_at')->pluck('id')->all();
+    }
+
+    /**
      * Permanently delete ALL trashed paket ujian and their related data.
      * Returns the count of deleted paket.
      */

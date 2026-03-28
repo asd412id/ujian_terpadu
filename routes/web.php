@@ -142,6 +142,12 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     // Narasi Soal
     Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
     Route::delete('/narasi/destroy-all', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'destroyAll'])->name('narasi.destroy-all');
+    Route::get('/narasi/trash', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'trash'])->name('narasi.trash');
+    Route::delete('/narasi/trash/empty', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'emptyTrash'])->name('narasi.empty-trash');
+    Route::post('/narasi/trash/bulk-restore', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'bulkRestore'])->name('narasi.bulk-restore');
+    Route::delete('/narasi/trash/bulk-force-delete', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'bulkForceDelete'])->name('narasi.bulk-force-delete');
+    Route::post('/narasi/{narasi_trashed}/restore', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'restore'])->name('narasi.restore')->withTrashed();
+    Route::delete('/narasi/{narasi_trashed}/force-delete', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'forceDelete'])->name('narasi.force-delete')->withTrashed();
     Route::post('/narasi/upload-image', [\App\Http\Controllers\Dinas\NarasiSoalController::class, 'uploadImage'])->name('narasi.upload-image');
     Route::resource('narasi', \App\Http\Controllers\Dinas\NarasiSoalController::class)->names('narasi');
 
@@ -281,6 +287,12 @@ Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:
     // Narasi Soal (CRUD, scoped to own)
     Route::get('/narasi/api/by-kategori', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'apiByKategori'])->name('narasi.api.by-kategori');
     Route::delete('/narasi/destroy-all', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'destroyAll'])->name('narasi.destroy-all');
+    Route::get('/narasi/trash', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'trash'])->name('narasi.trash');
+    Route::delete('/narasi/trash/empty', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'emptyTrash'])->name('narasi.empty-trash');
+    Route::post('/narasi/trash/bulk-restore', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'bulkRestore'])->name('narasi.bulk-restore');
+    Route::delete('/narasi/trash/bulk-force-delete', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'bulkForceDelete'])->name('narasi.bulk-force-delete');
+    Route::post('/narasi/{narasi_trashed}/restore', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'restore'])->name('narasi.restore')->withTrashed();
+    Route::delete('/narasi/{narasi_trashed}/force-delete', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'forceDelete'])->name('narasi.force-delete')->withTrashed();
     Route::post('/narasi/upload-image', [\App\Http\Controllers\PembuatSoal\NarasiSoalController::class, 'uploadImage'])->name('narasi.upload-image');
     Route::resource('narasi', \App\Http\Controllers\PembuatSoal\NarasiSoalController::class)->names('narasi');
 

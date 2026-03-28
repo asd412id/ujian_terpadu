@@ -37,9 +37,21 @@ class SoalService
     public function getTrashedSoal(
         ?string $kategoriId = null,
         ?string $search = null,
-        int $perPage = 20
+        int $perPage = 20,
+        ?string $createdBy = null
     ): LengthAwarePaginator {
-        return $this->repository->getTrashedSoal($kategoriId, $search, $perPage);
+        return $this->repository->getTrashedSoal($kategoriId, $search, $perPage, $createdBy);
+    }
+
+    /**
+     * Get all trashed soal IDs for current filter.
+     */
+    public function getTrashedSoalIds(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null
+    ): array {
+        return $this->repository->getTrashedSoalIds($kategoriId, $search, $createdBy);
     }
 
     /**
@@ -47,7 +59,16 @@ class SoalService
      */
     public function restoreSoal(Soal $soal): bool
     {
-        return $this->repository->restore($soal);
+        return DB::transaction(function () use ($soal) {
+            if ($soal->narasi_id) {
+                $narasi = NarasiSoal::withTrashed()->find($soal->narasi_id);
+                if ($narasi?->trashed()) {
+                    $narasi->restore();
+                }
+            }
+
+            return $this->repository->restore($soal);
+        });
     }
 
     /**
@@ -134,6 +155,36 @@ class SoalService
 
         $count = 0;
         foreach ($query->get() as $soal) {
+            if ($soal->narasi_id) {
+                $narasi = NarasiSoal::withTrashed()->find($soal->narasi_id);
+                if ($narasi?->trashed()) {
+                    $narasi->restore();
+                }
+            }
+
+            $soal->restore();
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Restore trashed soal by narasi IDs.
+     */
+    public function restoreTrashedByNarasiIds(array $narasiIds, ?string $userId = null): int
+    {
+        if ($narasiIds === []) {
+            return 0;
+        }
+
+        $query = Soal::onlyTrashed()->whereIn('narasi_id', $narasiIds);
+        if ($userId) {
+            $query->where('created_by', $userId);
+        }
+
+        $count = 0;
+        foreach ($query->get() as $soal) {
             $soal->restore();
             $count++;
         }
@@ -148,6 +199,35 @@ class SoalService
     {
         return DB::transaction(function () use ($ids, $userId) {
             $query = Soal::onlyTrashed()->whereIn('id', $ids)->with(['opsiJawaban', 'pasangan']);
+            if ($userId) {
+                $query->where('created_by', $userId);
+            }
+
+            $count = 0;
+            foreach ($query->get() as $soal) {
+                $this->deleteAllSoalImages($soal);
+                $this->repository->forceDelete($soal);
+                $count++;
+            }
+
+            return $count;
+        });
+    }
+
+    /**
+     * Permanently delete trashed soal by narasi IDs.
+     */
+    public function forceDeleteTrashedByNarasiIds(array $narasiIds, ?string $userId = null): int
+    {
+        if ($narasiIds === []) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($narasiIds, $userId) {
+            $query = Soal::onlyTrashed()
+                ->whereIn('narasi_id', $narasiIds)
+                ->with(['opsiJawaban', 'pasangan']);
+
             if ($userId) {
                 $query->where('created_by', $userId);
             }

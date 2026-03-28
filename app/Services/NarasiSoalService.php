@@ -13,7 +13,8 @@ use Mews\Purifier\Facades\Purifier;
 class NarasiSoalService
 {
     public function __construct(
-        protected NarasiSoalRepository $repository
+        protected NarasiSoalRepository $repository,
+        protected SoalService $soalService
     ) {}
 
     public function getAllPaginated(
@@ -27,6 +28,23 @@ class NarasiSoalService
     public function getActive(?string $kategoriId = null): Collection
     {
         return $this->repository->getActive($kategoriId);
+    }
+
+    public function getTrashedPaginated(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        int $perPage = 20,
+        ?string $createdBy = null
+    ): LengthAwarePaginator {
+        return $this->repository->getTrashedPaginated($kategoriId, $search, $perPage, $createdBy);
+    }
+
+    public function getTrashedIds(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null
+    ): array {
+        return $this->repository->getTrashedIds($kategoriId, $search, $createdBy);
     }
 
     public function getById(string $id): ?NarasiSoal
@@ -85,6 +103,91 @@ class NarasiSoalService
         });
     }
 
+    public function restoreNarasi(NarasiSoal $narasi, ?string $soalCreatedBy = null): bool
+    {
+        return DB::transaction(function () use ($narasi, $soalCreatedBy) {
+            $restored = $this->repository->restore($narasi);
+            $this->soalService->restoreTrashedByNarasiIds([$narasi->id], $soalCreatedBy);
+
+            return $restored;
+        });
+    }
+
+    public function forceDeleteNarasi(NarasiSoal $narasi, ?string $soalCreatedBy = null): bool
+    {
+        return DB::transaction(function () use ($narasi, $soalCreatedBy) {
+            $paths = $this->collectNarasiAssetPaths($narasi);
+
+            $this->soalService->forceDeleteTrashedByNarasiIds([$narasi->id], $soalCreatedBy);
+            $deleted = $this->repository->forceDelete($narasi);
+
+            DB::afterCommit(fn () => $this->deleteAssetPaths($paths));
+
+            return $deleted;
+        });
+    }
+
+    public function emptyTrash(?string $createdBy = null): int
+    {
+        return $this->bulkForceDeleteNarasi($this->getTrashedIds(null, null, $createdBy), $createdBy);
+    }
+
+    public function bulkRestoreNarasi(array $ids, ?string $createdBy = null): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($ids, $createdBy) {
+            $query = NarasiSoal::onlyTrashed()->whereIn('id', $ids);
+            if ($createdBy) {
+                $query->where('created_by', $createdBy);
+            }
+
+            $count = 0;
+            foreach ($query->get() as $narasi) {
+                $this->repository->restore($narasi);
+                $this->soalService->restoreTrashedByNarasiIds([$narasi->id], $createdBy);
+                $count++;
+            }
+
+            return $count;
+        });
+    }
+
+    public function bulkForceDeleteNarasi(array $ids, ?string $createdBy = null): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($ids, $createdBy) {
+            $query = NarasiSoal::onlyTrashed()->whereIn('id', $ids);
+            if ($createdBy) {
+                $query->where('created_by', $createdBy);
+            }
+
+            $narasis = $query->get();
+            $paths = $narasis
+                ->flatMap(fn (NarasiSoal $narasi) => $this->collectNarasiAssetPaths($narasi))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $count = 0;
+            foreach ($narasis as $narasi) {
+                $this->soalService->forceDeleteTrashedByNarasiIds([$narasi->id], $createdBy);
+                $this->repository->forceDelete($narasi);
+                $count++;
+            }
+
+            DB::afterCommit(fn () => $this->deleteAssetPaths($paths));
+
+            return $count;
+        });
+    }
+
     /**
      * Soft-delete all soal associated with the given narasi IDs without deleting assets.
      */
@@ -109,5 +212,59 @@ class NarasiSoalService
                 $soal->delete();
             }
         }
+    }
+
+    /**
+     * @return string[]
+     */
+    private function collectNarasiAssetPaths(NarasiSoal $narasi): array
+    {
+        return collect([
+            $narasi->gambar,
+            ...$this->extractStoragePaths($narasi->konten),
+        ])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function deleteAssetPaths(array $paths): void
+    {
+        if ($paths === []) {
+            return;
+        }
+
+        \Storage::disk('public')->delete($paths);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function extractStoragePaths(?string $html): array
+    {
+        if (empty($html) || !str_contains($html, '<img')) {
+            return [];
+        }
+
+        $paths = [];
+
+        if (preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $matches)) {
+            foreach ($matches[1] as $src) {
+                if (preg_match('#/storage/(.+)$#', $src, $pathMatch)) {
+                    $path = urldecode($pathMatch[1]);
+
+                    if (
+                        str_starts_with($path, 'narasi/')
+                        || str_starts_with($path, 'import/')
+                        || str_starts_with($path, 'soal/')
+                    ) {
+                        $paths[] = $path;
+                    }
+                }
+            }
+        }
+
+        return $paths;
     }
 }

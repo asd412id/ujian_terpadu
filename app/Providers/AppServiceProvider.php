@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
+use App\Models\NarasiSoal;
 use App\Models\PaketUjian;
 use App\Models\Soal;
 
@@ -75,6 +76,10 @@ class AppServiceProvider extends ServiceProvider
 
         Route::bind('soal_trashed', function (string $value) {
             return Soal::withTrashed()->where('id', $value)->firstOrFail();
+        });
+
+        Route::bind('narasi_trashed', function (string $value) {
+            return NarasiSoal::withTrashed()->where('id', $value)->firstOrFail();
         });
     }
 }

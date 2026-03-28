@@ -77,6 +77,65 @@ class NarasiSoalController extends Controller
                          ->with('success', 'Narasi berhasil dihapus.');
     }
 
+    public function trash(Request $request)
+    {
+        $trashedNarasi = $this->narasiSoalService->getTrashedPaginated(
+            kategoriId: $request->trash_kategori,
+            search: $request->trash_search,
+            perPage: 20,
+        );
+
+        $kategoris = $this->kategoriSoalRepository->getActive();
+        $allFilteredIds = $this->narasiSoalService->getTrashedIds(
+            kategoriId: $request->trash_kategori,
+            search: $request->trash_search,
+        );
+
+        return view('dinas.narasi.trash', compact('trashedNarasi', 'kategoris', 'allFilteredIds'));
+    }
+
+    public function restore(NarasiSoal $narasi_trashed)
+    {
+        $this->narasiSoalService->restoreNarasi($narasi_trashed);
+
+        return redirect()->route('dinas.narasi.trash')
+            ->with('success', 'Narasi berhasil dipulihkan beserta soal terkait yang masih ada di sampah.');
+    }
+
+    public function forceDelete(NarasiSoal $narasi_trashed)
+    {
+        $this->narasiSoalService->forceDeleteNarasi($narasi_trashed);
+
+        return redirect()->route('dinas.narasi.trash')
+            ->with('success', 'Narasi berhasil dihapus permanen beserta soal terkait dan asetnya.');
+    }
+
+    public function emptyTrash()
+    {
+        $count = $this->narasiSoalService->emptyTrash();
+
+        return redirect()->route('dinas.narasi.trash')
+            ->with('success', "{$count} narasi berhasil dihapus permanen.");
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = $this->narasiSoalService->bulkRestoreNarasi($request->ids);
+
+        return redirect()->route('dinas.narasi.trash')
+            ->with('success', "{$count} narasi berhasil dipulihkan.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = $this->narasiSoalService->bulkForceDeleteNarasi($request->ids);
+
+        return redirect()->route('dinas.narasi.trash')
+            ->with('success', "{$count} narasi berhasil dihapus permanen.");
+    }
+
     public function destroyAll(Request $request)
     {
         $validated = $request->validate([

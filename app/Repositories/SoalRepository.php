@@ -6,6 +6,7 @@ use App\Models\Soal;
 use App\Models\OpsiJawaban;
 use App\Models\PasanganSoal;
 use App\Models\ImportJob;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -243,20 +244,47 @@ class SoalRepository
     }
 
     /**
+     * Base query for trashed soal.
+     */
+    public function queryTrashedSoal(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null
+    ): Builder {
+        return $this->model->onlyTrashed()
+            ->when($createdBy, fn ($q) => $q->where('created_by', $createdBy))
+            ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"));
+    }
+
+    /**
      * Get trashed soal with pagination.
      */
     public function getTrashedSoal(
         ?string $kategoriId = null,
         ?string $search = null,
-        int $perPage = 20
+        int $perPage = 20,
+        ?string $createdBy = null
     ): LengthAwarePaginator {
-        return $this->model->onlyTrashed()
+        return $this->queryTrashedSoal($kategoriId, $search, $createdBy)
             ->with(['kategori', 'pembuat'])
-            ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
-            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
             ->latest('deleted_at')
             ->paginate($perPage, ['*'], 'trash_page')
             ->withQueryString();
+    }
+
+    /**
+     * Get all trashed soal IDs for current filter.
+     */
+    public function getTrashedSoalIds(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null
+    ): array {
+        return $this->queryTrashedSoal($kategoriId, $search, $createdBy)
+            ->orderBy('deleted_at', 'desc')
+            ->pluck('id')
+            ->all();
     }
 
     /**

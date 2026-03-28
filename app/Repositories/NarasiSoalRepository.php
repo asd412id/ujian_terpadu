@@ -42,6 +42,51 @@ class NarasiSoalRepository
     }
 
     /**
+     * Base query for trashed narasi.
+     */
+    public function queryTrashed(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null
+    ): Builder {
+        return $this->model->onlyTrashed()
+            ->when($createdBy, fn (Builder $query) => $query->where('created_by', $createdBy))
+            ->when($kategoriId, fn (Builder $query) => $query->where('kategori_id', $kategoriId))
+            ->search($search);
+    }
+
+    /**
+     * Get trashed narasi with pagination.
+     */
+    public function getTrashedPaginated(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        int $perPage = 20,
+        ?string $createdBy = null
+    ): LengthAwarePaginator {
+        return $this->queryTrashed($kategoriId, $search, $createdBy)
+            ->with(['kategori', 'pembuat'])
+            ->withCount(['soalList' => fn ($query) => $query->withTrashed()])
+            ->latest('deleted_at')
+            ->paginate($perPage, ['*'], 'trash_page')
+            ->withQueryString();
+    }
+
+    /**
+     * Get all trashed narasi IDs for current filter.
+     */
+    public function getTrashedIds(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        ?string $createdBy = null
+    ): array {
+        return $this->queryTrashed($kategoriId, $search, $createdBy)
+            ->orderBy('deleted_at', 'desc')
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
      * Get active narasi for dropdowns/selects (optionally filtered by kategori).
      */
     public function getActive(?string $kategoriId = null): Collection
@@ -127,6 +172,16 @@ class NarasiSoalRepository
         }
 
         return $this->model->newQuery()->whereIn('id', $ids)->delete();
+    }
+
+    public function restore(NarasiSoal $narasi): bool
+    {
+        return $narasi->restore();
+    }
+
+    public function forceDelete(NarasiSoal $narasi): bool
+    {
+        return $narasi->forceDelete();
     }
 
     /**
