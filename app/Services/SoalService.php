@@ -322,16 +322,11 @@ class SoalService
     }
 
     /**
-     * Delete a soal and its related data.
+     * Soft-delete a soal without deleting its assets.
      */
     public function deleteSoal(Soal $soal): bool
     {
-        return DB::transaction(function () use ($soal) {
-            $soal->load(['opsiJawaban', 'pasangan']);
-            $this->deleteAllSoalImages($soal);
-
-            return (bool) $this->repository->delete($soal);
-        });
+        return DB::transaction(fn () => (bool) $this->repository->delete($soal));
     }
 
     private function deleteAllSoalImages(Soal $soal): void
@@ -435,104 +430,39 @@ class SoalService
     }
 
     /**
-     * Delete all soal (soft-delete) and remove associated images + narasi.
+     * Soft-delete all soal and related narasi without deleting assets.
      */
     public function deleteAllSoal(): void
     {
         DB::transaction(function () {
-            $disk = Storage::disk('public');
-
-            $this->repository->chunkWithRelations(100, function ($soals) use ($disk) {
-                foreach ($soals as $soal) {
-                    $this->deleteAllSoalImages($soal);
-                }
-            });
-
             $this->repository->deleteAll();
-
             $this->deleteNarasiByKategori(null);
         });
     }
 
     /**
-     * Delete soal by kategori (soft-delete) and remove associated images + narasi.
+     * Soft-delete soal by kategori and related narasi without deleting assets.
      */
     public function deleteSoalByKategori(string $kategoriId): void
     {
         DB::transaction(function () use ($kategoriId) {
-            $this->repository->chunkByKategoriWithRelations($kategoriId, 100, function ($soals) {
-                foreach ($soals as $soal) {
-                    $this->deleteAllSoalImages($soal);
-                }
-            });
-
             $this->repository->deleteByKategori($kategoriId);
-
             $this->deleteNarasiByKategori($kategoriId);
         });
     }
 
     /**
-     * Delete narasi (and their assets) for a kategori, or all narasi if null.
+     * Soft-delete narasi for a kategori, or all narasi if null, without deleting assets.
      */
     private function deleteNarasiByKategori(?string $kategoriId): void
     {
         $query = NarasiSoal::query();
+
         if ($kategoriId) {
             $query->where('kategori_id', $kategoriId);
         }
 
-        $narasis = $query->get();
-
-        if ($narasis->isEmpty()) {
-            return;
-        }
-
-        $disk = Storage::disk('public');
-        $assetPaths = [];
-
-        foreach ($narasis as $narasi) {
-            if ($narasi->gambar) {
-                $assetPaths[] = $narasi->gambar;
-            }
-            foreach ($this->extractNarasiStoragePaths($narasi->konten) as $path) {
-                $assetPaths[] = $path;
-            }
-        }
-
-        $query = NarasiSoal::query();
-        if ($kategoriId) {
-            $query->where('kategori_id', $kategoriId);
-        }
         $query->delete();
-
-        if (!empty($assetPaths)) {
-            DB::afterCommit(fn () => $disk->delete(array_unique($assetPaths)));
-        }
-    }
-
-    /**
-     * Extract storage paths from narasi HTML content.
-     */
-    private function extractNarasiStoragePaths(?string $html): array
-    {
-        if (empty($html) || !str_contains($html, '<img')) {
-            return [];
-        }
-
-        $paths = [];
-        if (preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $matches)) {
-            foreach ($matches[1] as $src) {
-                if (preg_match('#/storage/(.+)$#', $src, $m)) {
-                    $path = urldecode($m[1]);
-                    if (str_starts_with($path, 'narasi/') || str_starts_with($path, 'import/') || str_starts_with($path, 'soal/')) {
-                        $paths[] = $path;
-                    }
-                }
-            }
-        }
-
-        return $paths;
     }
 
         /**
