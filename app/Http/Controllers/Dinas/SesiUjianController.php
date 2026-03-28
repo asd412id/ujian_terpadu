@@ -241,4 +241,34 @@ class SesiUjianController extends Controller
 
         return back()->with('info', 'Tidak ada peserta baru yang perlu disinkronkan.');
     }
+
+    public function removeAllPeserta(PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        if ($response = $this->ensurePersiapanSesi($sesi)) {
+            return $response;
+        }
+
+        try {
+            $count = $this->service->removeAllPesertaFromSesi($sesi);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        if ($count > 0) {
+            return back()->with('success', "{$count} peserta berhasil dihapus dari sesi.");
+        }
+
+        return back()->with('info', 'Tidak ada peserta terdaftar yang bisa dihapus dari sesi ini.');
+    }
+
+    public function enrolledIds(PaketUjian $paket, SesiUjian $sesi)
+    {
+        abort_unless($sesi->paket_id === $paket->id, 404);
+
+        return response()->json([
+            'ids' => $this->service->getAllEnrolledPesertaIds($sesi),
+        ]);
+    }
 }

@@ -170,6 +170,8 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/remove', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'removePeserta'])->name('paket.sesi.peserta.remove');
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/reset', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'resetPeserta'])->name('paket.sesi.peserta.reset');
     Route::post('/paket/{paket}/sesi/{sesi}/peserta/sync', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'syncPesertaBaru'])->name('paket.sesi.peserta.sync');
+    Route::post('/paket/{paket}/sesi/{sesi}/peserta/remove-all', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'removeAllPeserta'])->name('paket.sesi.peserta.remove-all');
+    Route::get('/paket/{paket}/sesi/{sesi}/peserta/enrolled-ids', [\App\Http\Controllers\Dinas\SesiUjianController::class, 'enrolledIds'])->name('paket.sesi.peserta.enrolled-ids');
 
     // Grading Essay
     Route::get('/grading', [\App\Http\Controllers\Dinas\GradingController::class, 'index'])->name('grading');

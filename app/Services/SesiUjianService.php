@@ -392,6 +392,35 @@ class SesiUjianService
     }
 
     /**
+     * Get all enrolled peserta IDs (status = terdaftar) for bulk selection across pages.
+     */
+    public function getAllEnrolledPesertaIds(SesiUjian $sesi): array
+    {
+        return $sesi->sesiPeserta()
+            ->where('status', 'terdaftar')
+            ->pluck('peserta_id')
+            ->toArray();
+    }
+
+    /**
+     * Remove all peserta with status 'terdaftar' from sesi.
+     */
+    public function removeAllPesertaFromSesi(SesiUjian $sesi): int
+    {
+        return $this->withPersiapanSesiLock($sesi, function (SesiUjian $lockedSesi) {
+            $count = $lockedSesi->sesiPeserta()
+                ->where('status', 'terdaftar')
+                ->delete();
+
+            if ($count > 0) {
+                $lockedSesi->update(['is_peserta_override' => true]);
+            }
+
+            return $count;
+        });
+    }
+
+    /**
      * Get list of pengawas users for dropdown.
      */
     public function getPengawasList(): mixed

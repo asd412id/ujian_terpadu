@@ -141,9 +141,20 @@
             <div class="flex items-center justify-between mb-3">
                 <h2 class="font-semibold text-gray-900">Peserta Terdaftar ({{ $totalEnrolled }})</h2>
                 @if($enrolled->where('pivot.status', 'terdaftar')->count() > 0 && $sesi->status === 'persiapan')
-                <button type="button" @click="selectAllEnrolled()" class="text-xs text-red-600 hover:text-red-800 font-medium">
-                    <span x-text="allEnrolledSelected ? 'Batal Pilih' : 'Pilih Semua'"></span>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button type="button" @click="selectAllEnrolled()" class="text-xs text-red-600 hover:text-red-800 font-medium">
+                        <span x-text="allEnrolledSelected ? 'Batal Pilih' : 'Pilih Semua'"></span>
+                    </button>
+                    @if($totalEnrolled > 0)
+                    <form action="{{ route('dinas.paket.sesi.peserta.remove-all', [$paket->id, $sesi->id]) }}" method="POST"
+                          x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Peserta',message:'Hapus semua {{ $totalEnrolled }} peserta terdaftar dari sesi ini? Aksi ini tidak dapat dibatalkan.',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
+                        @csrf
+                        <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-300 hover:bg-red-50 px-2 py-0.5 rounded-lg transition-colors">
+                            Hapus Semua
+                        </button>
+                    </form>
+                    @endif
+                </div>
                 @endif
             </div>
 
@@ -281,23 +292,43 @@
 function pesertaSesiApp() {
     const enrolledRemovable = @json($enrolled->filter(fn($p) => $p->pivot->status === 'terdaftar')->pluck('id')->values());
     const availableIds = @json($available->pluck('id')->values());
+    const enrolledIdsUrl = @json(route('dinas.paket.sesi.peserta.enrolled-ids', [$paket->id, $sesi->id]));
+    let allEnrolledIds = null;
 
     return {
         enrolledSelected: [],
         availableSelected: [],
+        loadingAllEnrolled: false,
 
         get allEnrolledSelected() {
+            if (allEnrolledIds) {
+                return allEnrolledIds.length > 0 && this.enrolledSelected.length === allEnrolledIds.length;
+            }
             return enrolledRemovable.length > 0 && this.enrolledSelected.length === enrolledRemovable.length;
         },
         get allAvailableSelected() {
             return availableIds.length > 0 && this.availableSelected.length === availableIds.length;
         },
 
-        selectAllEnrolled() {
+        async selectAllEnrolled() {
             if (this.allEnrolledSelected) {
                 this.enrolledSelected = [];
-            } else {
+                return;
+            }
+            if (allEnrolledIds) {
+                this.enrolledSelected = allEnrolledIds.map(String);
+                return;
+            }
+            this.loadingAllEnrolled = true;
+            try {
+                const resp = await fetch(enrolledIdsUrl, { headers: { 'Accept': 'application/json' } });
+                const data = await resp.json();
+                allEnrolledIds = data.ids;
+                this.enrolledSelected = allEnrolledIds.map(String);
+            } catch (e) {
                 this.enrolledSelected = enrolledRemovable.map(String);
+            } finally {
+                this.loadingAllEnrolled = false;
             }
         },
         selectAllAvailable() {
