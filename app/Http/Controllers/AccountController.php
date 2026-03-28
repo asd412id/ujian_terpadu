@@ -48,4 +48,29 @@ class AccountController extends Controller
 
         return redirect()->route('account.edit')->with('success', 'Pengaturan akun berhasil diperbarui.');
     }
+
+    public function forceChangePassword()
+    {
+        return view('auth.force-change-password');
+    }
+
+    public function forceChangePasswordUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ], [
+            'password.required' => 'Password baru wajib diisi.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'password.min' => 'Password baru minimal 8 karakter.',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $user->password = Hash::make($validated['password']);
+        $user->must_change_password = false;
+        $user->save();
+
+        return redirect()->route($user->getDashboardRoute())
+            ->with('success', 'Password berhasil diperbarui.');
+    }
 }

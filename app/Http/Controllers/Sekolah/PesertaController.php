@@ -207,7 +207,7 @@ class PesertaController extends Controller
         $sheet       = $spreadsheet->getActiveSheet();
 
         // Header row
-        $headers = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
+        $headers = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir', 'password'];
         foreach ($headers as $col => $header) {
             $sheet->setCellValueByColumnAndRow($col + 1, 1, $header);
         }
@@ -220,6 +220,7 @@ class PesertaController extends Controller
         $sheet->setCellValueByColumnAndRow(5, 2, 'IPA');
         $sheet->setCellValueByColumnAndRow(6, 2, 'L');
         $sheet->setCellValueByColumnAndRow(7, 2, '2006-05-20');
+        $sheet->setCellValueByColumnAndRow(8, 2, '');
 
         $sheet->setCellValueByColumnAndRow(1, 3, 'Siti Aminah');
         $sheet->setCellValueByColumnAndRow(2, 3, '12346');
@@ -228,6 +229,11 @@ class PesertaController extends Controller
         $sheet->setCellValueByColumnAndRow(5, 3, 'IPA');
         $sheet->setCellValueByColumnAndRow(6, 3, 'P');
         $sheet->setCellValueByColumnAndRow(7, 3, '2006-08-15');
+        $sheet->setCellValueByColumnAndRow(8, 3, 'custom123');
+
+        // Note row for password column
+        $sheet->setCellValueByColumnAndRow(8, 4, 'Opsional. Jika kosong, password akan di-generate otomatis.');
+        $sheet->getStyle('H4')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF6B7280'));
 
         // Style header
         $headerStyle = [
@@ -238,10 +244,18 @@ class PesertaController extends Controller
             ],
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
         ];
-        $sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+
+        // Password header with grey color (optional column)
+        $sheet->getStyle('H1')->applyFromArray([
+            'fill' => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '6B7280'],
+            ],
+        ]);
 
         // Auto-size columns
-        foreach (range('A', 'G') as $col) {
+        foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

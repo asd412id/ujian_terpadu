@@ -25,7 +25,7 @@ class ImportSekolahJob implements ShouldQueue
     public int $tries   = 1;
 
     private const VALID_JENJANG = ['SD', 'SMP', 'SMA', 'SMK', 'MA', 'MTs', 'MI'];
-    private const EXPECTED_HEADERS = ['nama', 'npsn', 'jenjang', 'alamat', 'kota', 'telepon', 'email', 'kepala_sekolah'];
+    private const EXPECTED_HEADERS = ['nama', 'npsn', 'jenjang', 'alamat', 'kota', 'telepon', 'email', 'kepala_sekolah', 'password'];
     private const CHUNK_SIZE = 200;
 
     public function __construct(public ImportJob $importJob)
@@ -138,13 +138,16 @@ class ImportSekolahJob implements ShouldQueue
                                     $counter++;
                                 }
 
+                                $rawPassword = $parsed['password'] ?? $npsn ?: 'sekolah123';
+
                                 User::create([
-                                    'name'       => "Operator {$data['nama']}",
-                                    'email'      => $email,
-                                    'password'   => Hash::make(\Illuminate\Support\Str::random(12), ['rounds' => 10]),
-                                    'role'       => User::ROLE_ADMIN_SEKOLAH,
-                                    'sekolah_id' => $sekolahId,
-                                    'is_active'  => true,
+                                    'name'                 => "Operator {$data['nama']}",
+                                    'email'                => $email,
+                                    'password'             => Hash::make($rawPassword),
+                                    'role'                 => User::ROLE_ADMIN_SEKOLAH,
+                                    'sekolah_id'           => $sekolahId,
+                                    'is_active'            => true,
+                                    'must_change_password'  => true,
                                 ]);
 
                                 $existingEmails[$email]       = true;
@@ -208,7 +211,9 @@ class ImportSekolahJob implements ShouldQueue
         $actualHeaders = array_map(fn ($h) => strtolower(trim((string) $h)), $headerRow);
         $actualHeaders = array_slice($actualHeaders, 0, count(self::EXPECTED_HEADERS));
 
-        foreach (self::EXPECTED_HEADERS as $i => $expected) {
+        $requiredHeaders = array_slice(self::EXPECTED_HEADERS, 0, 8);
+
+        foreach ($requiredHeaders as $i => $expected) {
             $actual = $actualHeaders[$i] ?? '';
             if ($actual !== $expected) {
                 throw new \Exception(
@@ -221,11 +226,12 @@ class ImportSekolahJob implements ShouldQueue
 
     private function parseRow(array $row, int $baris): array
     {
-        [$nama, $npsn, $jenjang, $alamat, $kota, $telepon, $email, $kepalaSekolah] = array_pad($row, 8, null);
+        [$nama, $npsn, $jenjang, $alamat, $kota, $telepon, $email, $kepalaSekolah, $password] = array_pad($row, 9, null);
 
         $nama    = $nama    ? trim((string) $nama)    : null;
         $npsn    = $npsn    ? trim((string) $npsn)    : null;
         $jenjang = $jenjang ? strtoupper(trim((string) $jenjang)) : null;
+        $password = $password ? trim((string) $password) : null;
 
         if (empty($nama)) {
             throw new \Exception("Nama sekolah tidak boleh kosong");
@@ -233,6 +239,7 @@ class ImportSekolahJob implements ShouldQueue
 
         return [
             'jenjang' => $jenjang,
+            'password' => $password,
             'data'    => [
                 'nama'           => $nama,
                 'npsn'           => $npsn ?: null,

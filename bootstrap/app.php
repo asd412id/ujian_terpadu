@@ -22,10 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: env('TRUSTED_PROXIES', '*'));
 
         $middleware->alias([
-            'role'            => \App\Http\Middleware\RoleMiddleware::class,
-            'peserta'         => \App\Http\Middleware\AuthPeserta::class,
-            'no.active.exam'  => \App\Http\Middleware\EnsureNoActiveExam::class,
-            'verify.ujian.token' => \App\Http\Middleware\VerifyUjianToken::class,
+            'role'                => \App\Http\Middleware\RoleMiddleware::class,
+            'peserta'             => \App\Http\Middleware\AuthPeserta::class,
+            'no.active.exam'      => \App\Http\Middleware\EnsureNoActiveExam::class,
+            'verify.ujian.token'  => \App\Http\Middleware\VerifyUjianToken::class,
+            'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
         ]);
 
         // Where to redirect authenticated users who hit "guest" routes (e.g. /login)

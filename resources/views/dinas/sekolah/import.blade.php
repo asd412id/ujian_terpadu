@@ -106,6 +106,7 @@
                     <tr><td class="border border-gray-200 px-3 py-1.5 font-mono font-bold text-blue-600">F</td><td class="border border-gray-200 px-3 py-1.5">telepon</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">—</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">Nomor telepon sekolah</td></tr>
                     <tr><td class="border border-gray-200 px-3 py-1.5 font-mono font-bold text-blue-600">G</td><td class="border border-gray-200 px-3 py-1.5">email</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">—</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">Email sekolah</td></tr>
                     <tr><td class="border border-gray-200 px-3 py-1.5 font-mono font-bold text-blue-600">H</td><td class="border border-gray-200 px-3 py-1.5">kepala_sekolah</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">—</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">Nama kepala sekolah</td></tr>
+                    <tr class="bg-gray-50"><td class="border border-gray-200 px-3 py-1.5 font-mono font-bold text-gray-400">I</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">password</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">—</td><td class="border border-gray-200 px-3 py-1.5 text-gray-500">Password operator (opsional). Jika kosong, password = NPSN. <span class="font-semibold text-amber-700">User wajib ganti password saat login pertama.</span></td></tr>
                 </tbody>
             </table>
         </div>

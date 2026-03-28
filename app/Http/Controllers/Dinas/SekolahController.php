@@ -158,7 +158,7 @@ class SekolahController extends Controller
         $sheet       = $spreadsheet->getActiveSheet();
 
         // Header row
-        $headers = ['nama', 'npsn', 'jenjang', 'alamat', 'kota', 'telepon', 'email', 'kepala_sekolah'];
+        $headers = ['nama', 'npsn', 'jenjang', 'alamat', 'kota', 'telepon', 'email', 'kepala_sekolah', 'password'];
         foreach ($headers as $col => $header) {
             $sheet->setCellValueByColumnAndRow($col + 1, 1, $header);
         }
@@ -172,6 +172,11 @@ class SekolahController extends Controller
         $sheet->setCellValueByColumnAndRow(6, 2, '021-1234567');
         $sheet->setCellValueByColumnAndRow(7, 2, 'sman1@example.com');
         $sheet->setCellValueByColumnAndRow(8, 2, 'Budi Santoso, M.Pd');
+        $sheet->setCellValueByColumnAndRow(9, 2, '');
+
+        // Note row for password column
+        $sheet->setCellValueByColumnAndRow(9, 3, 'Opsional. Jika kosong, password = NPSN. User wajib ganti password saat login pertama.');
+        $sheet->getStyle('I3')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF6B7280'));
 
         // Style header
         $headerStyle = [
@@ -182,10 +187,18 @@ class SekolahController extends Controller
             'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
         ];
-        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+        $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+
+        // Password header with different color (optional column indicator)
+        $sheet->getStyle('I1')->applyFromArray([
+            'fill' => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '6B7280'],
+            ],
+        ]);
 
         // Auto-size columns
-        foreach (range('A', 'H') as $col) {
+        foreach (range('A', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

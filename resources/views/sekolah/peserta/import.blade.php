@@ -60,6 +60,7 @@
                         ['jurusan',      'Jurusan / program studi',            'Tidak'],
                         ['jenis_kelamin','L atau P',                           'Tidak'],
                         ['tanggal_lahir','Format: YYYY-MM-DD (2006-05-20)',    'Tidak'],
+                        ['password',     'Password ujian (opsional, jika kosong akan di-generate otomatis)', 'Tidak'],
                     ] as [$col, $ket, $wajib])
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-1.5 border border-gray-200 font-mono text-blue-700">{{ $col }}</td>

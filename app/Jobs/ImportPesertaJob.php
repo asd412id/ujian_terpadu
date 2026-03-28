@@ -23,8 +23,10 @@ class ImportPesertaJob implements ShouldQueue
     public int $timeout  = 1200;
     public int $tries    = 1;
 
-    private const SEKOLAH_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
-    private const DINAS_HEADERS = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'];
+    private const SEKOLAH_HEADERS = ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir', 'password'];
+    private const DINAS_HEADERS = ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir', 'password'];
+    private const SEKOLAH_REQUIRED_COUNT = 7;
+    private const DINAS_REQUIRED_COUNT = 8;
     private const CHUNK_SIZE = 200;
 
     /** In-memory set of existing username_ujian for uniqueness check */
@@ -58,8 +60,9 @@ class ImportPesertaJob implements ShouldQueue
 
             // Auto-detect header row: scan the first 10 rows to find the expected headers
             // This handles files with title/merged rows before the actual header
-            $expected = $isDinas ? self::DINAS_HEADERS : self::SEKOLAH_HEADERS;
-            $headerRowIndex = $this->detectHeaderRow($rows, $expected);
+            $expected       = $isDinas ? self::DINAS_HEADERS : self::SEKOLAH_HEADERS;
+            $requiredCount  = $isDinas ? self::DINAS_REQUIRED_COUNT : self::SEKOLAH_REQUIRED_COUNT;
+            $headerRowIndex = $this->detectHeaderRow($rows, $expected, $requiredCount);
 
             if ($headerRowIndex === null) {
                 // No header row found — give a helpful error message
@@ -155,8 +158,8 @@ class ImportPesertaJob implements ShouldQueue
                         // Generate unique username using in-memory set (no DB query)
                         $username = $this->generateUsernameFromMemory($parsed['nisn'], $nisStr);
 
-                        // Generate password
-                        $password = Peserta::generatePassword();
+                        // Generate password — use Excel value if provided, otherwise auto-generate
+                        $password = !empty($parsed['password']) ? $parsed['password'] : Peserta::generatePassword();
 
                         $insertBatch[] = [
                             'id'             => Str::orderedUuid()->toString(),
@@ -284,10 +287,11 @@ class ImportPesertaJob implements ShouldQueue
      * Scan the first rows to find the header row index.
      * Returns null if no matching header row is found within the first 10 rows.
      */
-    private function detectHeaderRow(array $rows, array $expected): ?int
+    private function detectHeaderRow(array $rows, array $expected, int $requiredCount = null): ?int
     {
         $maxScan = min(10, count($rows));
         $firstExpected = $expected[0];
+        $requiredHeaders = array_slice($expected, 0, $requiredCount ?? count($expected));
 
         for ($i = 0; $i < $maxScan; $i++) {
             $row = $rows[$i] ?? [];
@@ -295,9 +299,9 @@ class ImportPesertaJob implements ShouldQueue
 
             if ($firstCell === $firstExpected) {
                 $actualHeaders = array_map(fn ($h) => strtolower(trim((string) $h)), $row);
-                $actualHeaders = array_slice($actualHeaders, 0, count($expected));
+                $actualSlice = array_slice($actualHeaders, 0, count($requiredHeaders));
 
-                if ($actualHeaders === $expected) {
+                if ($actualSlice === $requiredHeaders) {
                     return $i;
                 }
             }
@@ -308,7 +312,7 @@ class ImportPesertaJob implements ShouldQueue
 
     private function parseDinasRow(array $row, int $baris, array $npsnCache): array
     {
-        [$npsn, $nama, $nis, $nisn, $kelas, $jurusan, $jk, $tgl_lahir] = array_pad($row, 8, null);
+        [$npsn, $nama, $nis, $nisn, $kelas, $jurusan, $jk, $tgl_lahir, $password] = array_pad($row, 9, null);
 
         $npsnStr = trim((string) ($npsn ?? ''));
         if (empty($npsnStr)) {
@@ -334,12 +338,13 @@ class ImportPesertaJob implements ShouldQueue
             'jurusan'       => $jurusan ? trim((string) $jurusan) : null,
             'jenis_kelamin' => in_array(strtoupper((string) $jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
             'tanggal_lahir' => $tgl_lahir ? date('Y-m-d', strtotime((string) $tgl_lahir)) : null,
+            'password'      => $password ? trim((string) $password) : null,
         ];
     }
 
     private function parseSekolahRow(array $row, int $baris): array
     {
-        [$nama, $nis, $nisn, $kelas, $jurusan, $jk, $tgl_lahir] = array_pad($row, 7, null);
+        [$nama, $nis, $nisn, $kelas, $jurusan, $jk, $tgl_lahir, $password] = array_pad($row, 8, null);
 
         if (empty(trim((string) $nama))) {
             throw new \Exception("Nama tidak boleh kosong");
@@ -355,6 +360,7 @@ class ImportPesertaJob implements ShouldQueue
             'jurusan'       => $jurusan ? trim((string) $jurusan) : null,
             'jenis_kelamin' => in_array(strtoupper((string) $jk), ['L', 'P']) ? strtoupper((string) $jk) : null,
             'tanggal_lahir' => $tgl_lahir ? date('Y-m-d', strtotime((string) $tgl_lahir)) : null,
+            'password'      => $password ? trim((string) $password) : null,
         ];
     }
 }

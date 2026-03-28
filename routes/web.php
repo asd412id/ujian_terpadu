@@ -50,8 +50,10 @@ Route::post('/logout', [LoginController::class, 'logout'])
 
 // Account Settings (all authenticated admin/dinas/sekolah/pengawas users)
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
-    Route::get('/', [AccountController::class, 'edit'])->name('edit');
-    Route::put('/', [AccountController::class, 'update'])->name('update');
+    Route::get('/force-change-password', [AccountController::class, 'forceChangePassword'])->name('force-change-password');
+    Route::put('/force-change-password', [AccountController::class, 'forceChangePasswordUpdate'])->name('force-change-password.update');
+    Route::get('/', [AccountController::class, 'edit'])->name('edit')->middleware('force.password.change');
+    Route::put('/', [AccountController::class, 'update'])->name('update')->middleware('force.password.change');
 });
 
 // =============================================================
@@ -91,7 +93,7 @@ Route::prefix('api/ujian')->name('api.ujian.')->middleware(['throttle:3000,1', '
 // =============================================================
 // DINAS PENDIDIKAN
 // =============================================================
-Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,admin_dinas'])->group(function () {
+Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,admin_dinas', 'force.password.change'])->group(function () {
     Route::get('/dashboard', [DinasDashboardController::class, 'index'])->name('dashboard');
 
     // Monitoring real-time
@@ -218,7 +220,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
 // =============================================================
 // ADMIN SEKOLAH
 // =============================================================
-Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_sekolah,super_admin,admin_dinas'])->group(function () {
+Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_sekolah,super_admin,admin_dinas', 'force.password.change'])->group(function () {
     Route::get('/dashboard', [SekolahDashboardController::class, 'index'])->name('dashboard');
 
     // Peserta (sekolah hanya bisa lihat daftar + import + cetak kartu, tidak bisa tambah/edit/hapus manual)
@@ -255,7 +257,7 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
 // =============================================================
 // PENGAWAS
 // =============================================================
-Route::prefix('pengawas')->name('pengawas.')->middleware(['auth', 'role:pengawas,admin_sekolah,admin_dinas,super_admin'])->group(function () {
+Route::prefix('pengawas')->name('pengawas.')->middleware(['auth', 'role:pengawas,admin_sekolah,admin_dinas,super_admin', 'force.password.change'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Pengawas\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/sesi/{sesi}', [\App\Http\Controllers\Pengawas\MonitoringRuangController::class, 'index'])->name('sesi');
     Route::get('/sesi/{sesi}/api', [\App\Http\Controllers\Pengawas\MonitoringRuangController::class, 'apiSesi'])->name('sesi.api');
@@ -264,7 +266,7 @@ Route::prefix('pengawas')->name('pengawas.')->middleware(['auth', 'role:pengawas
 // =============================================================
 // PEMBUAT SOAL
 // =============================================================
-Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:pembuat_soal,super_admin,admin_dinas'])->group(function () {
+Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:pembuat_soal,super_admin,admin_dinas', 'force.password.change'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\PembuatSoal\DashboardController::class, 'index'])->name('dashboard');
 
     // Bank Soal (CRUD, scoped to own)
