@@ -1,37 +1,37 @@
 # =================================================================
 # Docker Compose — Ujian Terpadu (Production)
 # Laravel Octane + FrankenPHP + Nginx LB + Horizon + Cloudflare Tunnel
-# Optimized for 4 core / 16GB RAM / 7000+ concurrent users
+# Optimized for 8 core / 32GB RAM / 7000+ concurrent users
 #
 # Architecture:
-#   Internet → Cloudflare Tunnel → Nginx LB → App replicas (×4)
+#   Internet → Cloudflare Tunnel → Nginx LB → App replicas (×8)
 #                                                ↓
 #                              MariaDB 11.7 + Redis 7
 #                                                ↓
 #                              Horizon (queue) + Scheduler (cron)
 #
-# Memory Budget (16GB):
-#   nginx:       128 MB
-#   app ×4:    3072 MB (4 × 768 MB, each 12 workers = 48 total)
-#   horizon:   1024 MB  (custom php.ini: OPcache 64M, JIT 32M)
-#   scheduler:  256 MB  (custom php.ini: OPcache 32M, JIT off)
-#   mariadb:   2048 MB  (innodb_buffer_pool_size 1G for 7K users)
-#   redis:      768 MB  (maxmemory 512mb)
-#   tunnel ×2:  512 MB  (2 × 256 MB, GOMEMLIMIT=180MiB each)
+# Memory Budget (32GB):
+#   nginx:        256 MB
+#   app ×8:     8192 MB (8 × 1024 MB, each 16 workers = 128 total)
+#   horizon:    1536 MB  (custom php.ini: OPcache 64M, JIT 32M)
+#   scheduler:   256 MB  (custom php.ini: OPcache 32M, JIT off)
+#   mariadb:    4096 MB  (innodb_buffer_pool_size 2.5G for 7K users)
+#   redis:      1536 MB  (maxmemory 1024mb)
+#   tunnel ×2:   512 MB  (2 × 256 MB, GOMEMLIMIT=180MiB each)
 #   ─────────────
-#   Total: ~7808 MB (leaves ~8192 MB for OS + Docker overhead)
+#   Total: ~16384 MB (leaves ~16GB for OS + Docker overhead)
 #
-# CPU Budget (4 vCPU):
+# CPU Budget (8 vCPU):
 #   Reservations (guaranteed):             Limits (burst max):
-#   nginx:       0.10                      nginx:       0.25
-#   app ×4:      0.50 × 4 = 2.00           app ×4:      0.80 × 4 = 3.20
-#   horizon:     0.25                      horizon:     0.75
-#   scheduler:   0.05                      scheduler:   0.25
-#   mariadb:     0.75                      mariadb:     1.50
-#   redis:       0.20                      redis:       0.50
+#   nginx:       0.15                      nginx:       0.50
+#   app ×8:      0.50 × 8 = 4.00           app ×8:      1.00 × 8 = 8.00
+#   horizon:     0.50                      horizon:     1.50
+#   scheduler:   0.10                      scheduler:   0.25
+#   mariadb:     1.00                      mariadb:     2.50
+#   redis:       0.30                      redis:       0.75
 #   tunnel ×2:   0.05 × 2 = 0.10           tunnel ×2:   0.15 × 2 = 0.30
 #   ─────────────                          ─────────────
-#   Total: 3.45 (leaves 0.55 for OS)       Total: 6.75 (mild overcommit, OK)
+#   Total: 6.15 (leaves 1.85 for OS)       Total: 13.80 (mild overcommit, OK)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -60,13 +60,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 128M
+          cpus: "0.50"
+          memory: 256M
         reservations:
-          cpus: "0.10"
-          memory: 64M
+          cpus: "0.15"
+          memory: 128M
 
-  # --- App (FrankenPHP + Octane) — scaled to 4 replicas ---
+  # --- App (FrankenPHP + Octane) — scaled to 8 replicas ---
   app:
     build:
       context: .
@@ -75,7 +75,7 @@ services:
     env_file: .env
     environment:
       - SERVER_NAME=:8000
-      - OCTANE_WORKERS=${OCTANE_WORKERS:-12}
+      - OCTANE_WORKERS=${OCTANE_WORKERS:-16}
       - RUN_MIGRATIONS=false
     volumes:
       - .env:/app/.env
@@ -96,14 +96,14 @@ services:
     networks:
       - backend
     deploy:
-      replicas: ${APP_REPLICAS:-4}
+      replicas: ${APP_REPLICAS:-8}
       resources:
         limits:
-          cpus: "0.80"
-          memory: 768M
+          cpus: "1.00"
+          memory: 1024M
         reservations:
           cpus: "0.50"
-          memory: 384M
+          memory: 512M
 
   # --- App Migrator (one-shot: runs migrations then exits) ---
   app-migrator:
@@ -170,11 +170,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.75"
-          memory: 1024M
+          cpus: "1.50"
+          memory: 1536M
         reservations:
-          cpus: "0.25"
-          memory: 384M
+          cpus: "0.50"
+          memory: 512M
 
   # --- Scheduler (Cron) ---
   # Custom php.ini: OPcache 32M, JIT disabled (saves ~96MB vs app config)
@@ -212,8 +212,8 @@ services:
           cpus: "0.25"
           memory: 256M
         reservations:
-          cpus: "0.05"
-          memory: 64M
+          cpus: "0.10"
+          memory: 128M
 
   # --- Cloudflare Tunnel (×2 replicas) ---
   # Go runtime uses ~1.3GB virtual memory but only ~70MB RSS.
@@ -268,11 +268,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.50"
-          memory: 2048M
+          cpus: "2.50"
+          memory: 4096M
         reservations:
-          cpus: "0.75"
-          memory: 1024M
+          cpus: "1.00"
+          memory: 2048M
 
   # --- Redis ---
   redis:
@@ -282,14 +282,14 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 512mb
+      --maxmemory 1024mb
       --maxmemory-policy allkeys-lru
       --save 900 1
       --save 300 10
       --tcp-backlog 511
       --timeout 300
       --tcp-keepalive 60
-      --io-threads 2
+      --io-threads 4
       --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
       - redis_data:/data
@@ -304,11 +304,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.50"
-          memory: 768M
+          cpus: "0.75"
+          memory: 1536M
         reservations:
-          cpus: "0.20"
-          memory: 256M
+          cpus: "0.30"
+          memory: 512M
 
 volumes:
   mariadb_data:
