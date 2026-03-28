@@ -494,7 +494,7 @@
             </div>
             @if($narasis->hasPages())
             <div class="px-5 py-4 border-t border-gray-100">
-                {{ $narasis->withQueryString()->links() }}
+                {{ $narasis->appends(['tab' => 'narasi'])->withQueryString()->links() }}
             </div>
             @endif
         </div>
@@ -725,8 +725,14 @@
 
 <script>
 function soalIndex() {
+    const params = new URLSearchParams(window.location.search);
+    const hasNarasiContext = params.get('tab') === 'narasi'
+        || params.has('narasi_page')
+        || params.has('narasi_search')
+        || params.has('narasi_kategori');
+
     return {
-        activeTab: new URLSearchParams(window.location.search).get('tab') || 'soal',
+        activeTab: hasNarasiContext ? 'narasi' : 'soal',
         showPreview: false,
         previewLoading: false,
         previewData: null,
