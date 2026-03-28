@@ -8,6 +8,7 @@ use App\Repositories\SoalRepository;
 use App\Repositories\KategoriSoalRepository;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -29,6 +30,60 @@ class SoalService
         protected SoalRepository $repository,
         protected KategoriSoalRepository $kategoriRepository
     ) {}
+
+    /**
+     * Get trashed soal with pagination.
+     */
+    public function getTrashedSoal(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        int $perPage = 20
+    ): LengthAwarePaginator {
+        return $this->repository->getTrashedSoal($kategoriId, $search, $perPage);
+    }
+
+    /**
+     * Restore a soft-deleted soal.
+     */
+    public function restoreSoal(Soal $soal): bool
+    {
+        return $this->repository->restore($soal);
+    }
+
+    /**
+     * Permanently delete a soft-deleted soal and its related data/images.
+     */
+    public function forceDeleteSoal(Soal $soal): bool
+    {
+        return DB::transaction(function () use ($soal) {
+            $soal->load(['opsiJawaban', 'pasangan']);
+            $this->deleteAllSoalImages($soal);
+
+            return $this->repository->forceDelete($soal);
+        });
+    }
+
+    /**
+     * Empty trash: permanently delete all trashed soal.
+     */
+    public function emptyTrash(): int
+    {
+        return DB::transaction(function () {
+            $count = 0;
+
+            Soal::onlyTrashed()
+                ->with(['opsiJawaban', 'pasangan'])
+                ->chunk(100, function ($soals) use (&$count) {
+                    foreach ($soals as $soal) {
+                        $this->deleteAllSoalImages($soal);
+                        $this->repository->forceDelete($soal);
+                        $count++;
+                    }
+                });
+
+            return $count;
+        });
+    }
 
     /**
      * Get filtered list of soal with pagination (Dinas view).

@@ -7,6 +7,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use App\Models\PaketUjian;
+use App\Models\Soal;
 
 // Repositories
 use App\Repositories\SoalRepository;
@@ -70,6 +71,10 @@ class AppServiceProvider extends ServiceProvider
 
         Route::bind('paket_trashed', function (string $value) {
             return PaketUjian::withTrashed()->where('id', $value)->firstOrFail();
+        });
+
+        Route::bind('soal_trashed', function (string $value) {
+            return Soal::withTrashed()->where('id', $value)->firstOrFail();
         });
     }
 }

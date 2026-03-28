@@ -243,6 +243,41 @@ class SoalRepository
     }
 
     /**
+     * Get trashed soal with pagination.
+     */
+    public function getTrashedSoal(
+        ?string $kategoriId = null,
+        ?string $search = null,
+        int $perPage = 20
+    ): LengthAwarePaginator {
+        return $this->model->onlyTrashed()
+            ->with(['kategori', 'pembuat'])
+            ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->latest('deleted_at')
+            ->paginate($perPage, ['*'], 'trash_page')
+            ->withQueryString();
+    }
+
+    /**
+     * Restore a soft-deleted soal.
+     */
+    public function restore(Soal $soal): bool
+    {
+        return $soal->restore();
+    }
+
+    /**
+     * Permanently delete a soal (force delete).
+     */
+    public function forceDelete(Soal $soal): bool
+    {
+        $soal->opsiJawaban()->delete();
+        $soal->pasangan()->delete();
+        return $soal->forceDelete();
+    }
+
+    /**
      * Create an import job for soal and dispatch appropriate job.
      */
     public function createImportJob(array $data): \App\Models\ImportJob

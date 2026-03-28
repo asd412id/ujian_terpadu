@@ -88,7 +88,7 @@
                             <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}"
                                class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                             <form action="{{ route('pembuat-soal.narasi.destroy', $narasi->id) }}" method="POST"
-                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini? Soal yang terkait akan dilepas dari narasi.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
+                                  x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Narasi',message:'Hapus narasi ini? Semua soal yang terkait narasi ini juga akan ikut dihapus.',confirmText:'Ya, Hapus',danger:true})) $el.submit()">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Hapus</button>
                             </form>

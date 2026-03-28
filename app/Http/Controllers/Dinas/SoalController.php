@@ -46,7 +46,9 @@ class SoalController extends Controller
         }
         $narasis = $narasiQuery->latest()->paginate(20, ['*'], 'narasi_page');
 
-        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis'));
+        $trashedCount = Soal::onlyTrashed()->count();
+
+        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount'));
     }
 
     public function create()
@@ -173,6 +175,43 @@ class SoalController extends Controller
 
         return redirect()->route('dinas.soal.index')
                          ->with('success', 'Soal berhasil dihapus.');
+    }
+
+    public function trash(Request $request)
+    {
+        $trashedSoal = $this->soalService->getTrashedSoal(
+            kategoriId: $request->trash_kategori,
+            search: $request->trash_search,
+            perPage: 20
+        );
+
+        $kategori = $this->soalService->getActiveKategori();
+
+        return view('dinas.soal.trash', compact('trashedSoal', 'kategori'));
+    }
+
+    public function restore(Soal $soal_trashed)
+    {
+        $this->soalService->restoreSoal($soal_trashed);
+
+        return redirect()->route('dinas.soal.trash')
+                         ->with('success', 'Soal berhasil dipulihkan.');
+    }
+
+    public function forceDelete(Soal $soal_trashed)
+    {
+        $this->soalService->forceDeleteSoal($soal_trashed);
+
+        return redirect()->route('dinas.soal.trash')
+                         ->with('success', 'Soal berhasil dihapus permanen.');
+    }
+
+    public function emptyTrash()
+    {
+        $count = $this->soalService->emptyTrash();
+
+        return redirect()->route('dinas.soal.trash')
+                         ->with('success', "{$count} soal berhasil dihapus permanen.");
     }
 
     public function destroyAll(Request $request)
