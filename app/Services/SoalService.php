@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\NarasiSoal;
 use App\Models\Soal;
 use App\Repositories\SoalRepository;
 use App\Repositories\KategoriSoalRepository;
@@ -301,7 +302,7 @@ class SoalService
     }
 
     /**
-     * Delete all soal (soft-delete) and remove associated images.
+     * Delete all soal (soft-delete) and remove associated images + narasi.
      */
     public function deleteAllSoal(): void
     {
@@ -315,11 +316,13 @@ class SoalService
             });
 
             $this->repository->deleteAll();
+
+            $this->deleteNarasiByKategori(null);
         });
     }
 
     /**
-     * Delete soal by kategori (soft-delete) and remove associated images.
+     * Delete soal by kategori (soft-delete) and remove associated images + narasi.
      */
     public function deleteSoalByKategori(string $kategoriId): void
     {
@@ -331,7 +334,72 @@ class SoalService
             });
 
             $this->repository->deleteByKategori($kategoriId);
+
+            $this->deleteNarasiByKategori($kategoriId);
         });
+    }
+
+    /**
+     * Delete narasi (and their assets) for a kategori, or all narasi if null.
+     */
+    private function deleteNarasiByKategori(?string $kategoriId): void
+    {
+        $query = NarasiSoal::query();
+        if ($kategoriId) {
+            $query->where('kategori_id', $kategoriId);
+        }
+
+        $narasis = $query->get();
+
+        if ($narasis->isEmpty()) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        $assetPaths = [];
+
+        foreach ($narasis as $narasi) {
+            if ($narasi->gambar) {
+                $assetPaths[] = $narasi->gambar;
+            }
+            foreach ($this->extractNarasiStoragePaths($narasi->konten) as $path) {
+                $assetPaths[] = $path;
+            }
+        }
+
+        $query = NarasiSoal::query();
+        if ($kategoriId) {
+            $query->where('kategori_id', $kategoriId);
+        }
+        $query->delete();
+
+        if (!empty($assetPaths)) {
+            DB::afterCommit(fn () => $disk->delete(array_unique($assetPaths)));
+        }
+    }
+
+    /**
+     * Extract storage paths from narasi HTML content.
+     */
+    private function extractNarasiStoragePaths(?string $html): array
+    {
+        if (empty($html) || !str_contains($html, '<img')) {
+            return [];
+        }
+
+        $paths = [];
+        if (preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $matches)) {
+            foreach ($matches[1] as $src) {
+                if (preg_match('#/storage/(.+)$#', $src, $m)) {
+                    $path = urldecode($m[1]);
+                    if (str_starts_with($path, 'narasi/') || str_starts_with($path, 'import/') || str_starts_with($path, 'soal/')) {
+                        $paths[] = $path;
+                    }
+                }
+            }
+        }
+
+        return $paths;
     }
 
         /**

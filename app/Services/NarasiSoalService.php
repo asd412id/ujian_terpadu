@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\NarasiSoal;
+use App\Models\Soal;
 use App\Repositories\NarasiSoalRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -65,7 +66,7 @@ class NarasiSoalService
         return DB::transaction(function () use ($narasi, $soalCreatedBy) {
             $paths = $this->collectNarasiAssetPaths($narasi);
 
-            $this->repository->detachSoalFromNarasiIds([$narasi->id], $soalCreatedBy);
+            $this->deleteSoalByNarasiIds([$narasi->id], $soalCreatedBy);
             $deleted = $this->repository->delete($narasi);
 
             DB::afterCommit(fn () => $this->deleteAssetPaths($paths));
@@ -90,13 +91,59 @@ class NarasiSoalService
                 ->values()
                 ->all();
 
-            $this->repository->detachSoalFromNarasiIds($narasis->pluck('id'), $createdBy);
+            $this->deleteSoalByNarasiIds($narasis->pluck('id')->all(), $createdBy);
             $this->repository->deleteByIds($narasis->pluck('id'));
 
             DB::afterCommit(fn () => $this->deleteAssetPaths($paths));
 
             return $narasis->count();
         });
+    }
+
+    /**
+     * Delete all soal associated with the given narasi IDs (cascade delete).
+     */
+    private function deleteSoalByNarasiIds(array $narasiIds, ?string $createdBy = null): void
+    {
+        if (empty($narasiIds)) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+
+        Soal::with(['opsiJawaban', 'pasangan'])
+            ->whereIn('narasi_id', $narasiIds)
+            ->when($createdBy, fn ($q) => $q->where('created_by', $createdBy))
+            ->chunk(100, function ($soals) use ($disk) {
+                foreach ($soals as $soal) {
+                    if ($soal->gambar_soal) {
+                        $disk->delete($soal->gambar_soal);
+                    }
+                    foreach ($this->extractStoragePaths($soal->pertanyaan) as $path) {
+                        $disk->delete($path);
+                    }
+                    foreach ($this->extractStoragePaths($soal->pembahasan) as $path) {
+                        $disk->delete($path);
+                    }
+                    foreach ($soal->opsiJawaban as $opsi) {
+                        if ($opsi->gambar) {
+                            $disk->delete($opsi->gambar);
+                        }
+                        foreach ($this->extractStoragePaths($opsi->teks) as $path) {
+                            $disk->delete($path);
+                        }
+                    }
+                    foreach ($soal->pasangan as $pas) {
+                        if ($pas->kiri_gambar) {
+                            $disk->delete($pas->kiri_gambar);
+                        }
+                        if ($pas->kanan_gambar) {
+                            $disk->delete($pas->kanan_gambar);
+                        }
+                    }
+                    $soal->delete();
+                }
+            });
     }
 
     /**
@@ -142,7 +189,7 @@ class NarasiSoalService
                     if (
                         str_starts_with($path, 'narasi/')
                         || str_starts_with($path, 'import/')
-                        || str_starts_with($path, 'soal/gambar/')
+                        || str_starts_with($path, 'soal/')
                     ) {
                         $paths[] = $path;
                     }

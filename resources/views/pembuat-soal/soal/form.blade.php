@@ -358,7 +358,8 @@
                 <div x-show="selectedNarasiId">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Urutan dalam Narasi</label>
                     <input type="number" name="urutan_dalam_narasi" min="1"
-                           value="{{ old('urutan_dalam_narasi', $soal->urutan_dalam_narasi ?? 1) }}"
+                           :disabled="!selectedNarasiId"
+                           x-bind:value="selectedNarasiId ? '{{ old('urutan_dalam_narasi', $soal->urutan_dalam_narasi ?? 1) }}' : ''"
                            class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
