@@ -194,17 +194,36 @@ class PaketUjianRepository
      */
     public function daftarPesertaToSesi(string $sesiId, array $pesertaIds): int
     {
-        $created = 0;
-        foreach ($pesertaIds as $pesertaId) {
-            $sp = SesiPeserta::firstOrCreate(
-                ['sesi_id' => $sesiId, 'peserta_id' => $pesertaId],
-                ['status' => 'belum_login']
-            );
-            if ($sp->wasRecentlyCreated) {
-                $created++;
-            }
+        // Get existing peserta IDs in this sesi to avoid duplicates
+        $existingIds = SesiPeserta::where('sesi_id', $sesiId)
+            ->whereIn('peserta_id', $pesertaIds)
+            ->pluck('peserta_id')
+            ->toArray();
+
+        $newIds = array_diff($pesertaIds, $existingIds);
+        if (empty($newIds)) {
+            return 0;
         }
-        return $created;
+
+        $insertRows = [];
+        $now = now();
+        foreach ($newIds as $pesertaId) {
+            $insertRows[] = [
+                'id'          => (string) Str::uuid(),
+                'sesi_id'     => $sesiId,
+                'peserta_id'  => $pesertaId,
+                'status'      => 'belum_login',
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ];
+        }
+
+        // Insert in chunks to avoid parameter limit
+        foreach (array_chunk($insertRows, 500) as $chunk) {
+            SesiPeserta::insert($chunk);
+        }
+
+        return count($newIds);
     }
 
     /**
@@ -233,13 +252,14 @@ class PaketUjianRepository
      */
     public function forceDeleteAllTrashed(): int
     {
-        $trashed = $this->model::onlyTrashed()->get();
         $count = 0;
 
-        foreach ($trashed as $paket) {
-            $paket->forceDelete();
-            $count++;
-        }
+        $this->model::onlyTrashed()->chunkById(50, function ($pakets) use (&$count) {
+            foreach ($pakets as $paket) {
+                $paket->forceDelete();
+                $count++;
+            }
+        });
 
         return $count;
     }
@@ -285,7 +305,7 @@ class PaketUjianRepository
      */
     public function getPengawasList(): Collection
     {
-        return User::where('role', 'pengawas')->orderBy('name')->get();
+        return User::where('role', 'pengawas')->orderBy('name')->get(['id', 'name', 'email']);
     }
 
     /**
@@ -315,18 +335,25 @@ class PaketUjianRepository
             'status'          => 'draft',
         ]);
 
-        // Clone paket_soal rows
+        // Clone paket_soal rows via bulk insert
         $paketSoals = PaketSoal::where('paket_id', $source->id)
             ->orderBy('nomor_urut')
             ->get();
 
-        foreach ($paketSoals as $ps) {
-            PaketSoal::create([
-                'paket_id'       => $newPaket->id,
-                'soal_id'        => $ps->soal_id,
-                'nomor_urut'     => $ps->nomor_urut,
-                'bobot_override' => $ps->bobot_override,
-            ]);
+        if ($paketSoals->isNotEmpty()) {
+            $insertRows = [];
+            foreach ($paketSoals as $ps) {
+                $insertRows[] = [
+                    'id'             => (string) Str::uuid(),
+                    'paket_id'       => $newPaket->id,
+                    'soal_id'        => $ps->soal_id,
+                    'nomor_urut'     => $ps->nomor_urut,
+                    'bobot_override' => $ps->bobot_override,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ];
+            }
+            PaketSoal::insert($insertRows);
         }
 
         // Optionally clone sesi (without peserta)

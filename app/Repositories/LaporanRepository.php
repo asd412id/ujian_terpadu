@@ -9,6 +9,7 @@ use App\Models\Sekolah;
 use App\Support\NilaiStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class LaporanRepository
 {
@@ -80,7 +81,9 @@ class LaporanRepository
      */
     public function getSekolahList(): Collection
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        return Cache::remember('laporan_sekolah_list', 300, function () {
+            return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        });
     }
 
     /**
@@ -88,7 +91,9 @@ class LaporanRepository
      */
     public function getPaketList(): Collection
     {
-        return PaketUjian::orderBy('nama')->get(['id', 'nama']);
+        return Cache::remember('laporan_paket_list', 300, function () {
+            return PaketUjian::orderBy('nama')->get(['id', 'nama']);
+        });
     }
 
     /**
@@ -318,40 +323,6 @@ class LaporanRepository
             'kurang'        => (int) ($row->kurang ?? 0),
             'sangat_kurang' => (int) ($row->sangat_kurang ?? 0),
         ];
-    }
-
-    /**
-     * Get all hasil ujian for export (no pagination).
-     */
-    public function getHasilForExport(array $filters = []): Collection
-    {
-        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
-            ->whereIn('status', ['submit', 'dinilai']);
-
-        if (!empty($filters['sekolah_id'])) {
-            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
-        }
-
-        if (!empty($filters['paket_id'])) {
-            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
-        }
-
-        if (!empty($filters['status'])) {
-            $query->where(function ($q) use ($filters) {
-                match ($filters['status']) {
-                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
-                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
-                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
-                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
-                    'sangat_kurang' => $q->where(function ($q) {
-                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
-                    }),
-                    default => null,
-                };
-            });
-        }
-
-        return $query->latest('updated_at')->get();
     }
 
     /**

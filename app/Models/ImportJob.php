@@ -37,7 +37,7 @@ class ImportJob extends Model
 
     public function getProgressPercentAttribute(): int
     {
-        if ($this->total_rows === 0) return 0;
+        if (!$this->total_rows) return 0;
         return (int) round(($this->processed_rows / $this->total_rows) * 100);
     }
 }

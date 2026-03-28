@@ -134,7 +134,7 @@
                                @change="toggle('{{ $soal->id }}')" :checked="isSelected('{{ $soal->id }}')">
                     </td>
                     <td class="px-4 py-3 max-w-md">
-                        <div class="text-gray-800 line-clamp-2 text-sm">{!! strip_tags($soal->pertanyaan) !!}</div>
+                        <div class="text-gray-800 line-clamp-2 text-sm">{{ \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 150) }}</div>
                         <button x-show="selectAllFilteredMode" x-cloak type="button"
                                 class="mt-1 text-xs font-medium"
                                 :class="isExcluded('{{ $soal->id }}') ? 'text-green-600 hover:underline' : 'text-amber-600 hover:underline'"

@@ -31,7 +31,7 @@ class SesiUjianRepository
      */
     public function getPengawasList(): Collection
     {
-        return User::where('role', 'pengawas')->orderBy('name')->get();
+        return User::where('role', 'pengawas')->orderBy('name')->get(['id', 'name', 'email']);
     }
 
     /**

@@ -89,28 +89,28 @@ class SoalService
      */
     public function emptyTrash(): int
     {
-        return DB::transaction(function () {
-            $count = 0;
+        $count = 0;
 
-            while (true) {
-                $soals = Soal::onlyTrashed()
-                    ->with(['opsiJawaban', 'pasangan'])
-                    ->limit(100)
-                    ->get();
+        while (true) {
+            $soals = Soal::onlyTrashed()
+                ->with(['opsiJawaban', 'pasangan'])
+                ->limit(100)
+                ->get();
 
-                if ($soals->isEmpty()) {
-                    break;
-                }
+            if ($soals->isEmpty()) {
+                break;
+            }
 
+            DB::transaction(function () use ($soals, &$count) {
                 foreach ($soals as $soal) {
                     $this->deleteAllSoalImages($soal);
                     $this->repository->forceDelete($soal);
                     $count++;
                 }
-            }
+            });
+        }
 
-            return $count;
-        });
+        return $count;
     }
 
     /**
@@ -118,29 +118,29 @@ class SoalService
      */
     public function emptyTrashByUser(string $userId): int
     {
-        return DB::transaction(function () use ($userId) {
-            $count = 0;
+        $count = 0;
 
-            while (true) {
-                $soals = Soal::onlyTrashed()
-                    ->where('created_by', $userId)
-                    ->with(['opsiJawaban', 'pasangan'])
-                    ->limit(100)
-                    ->get();
+        while (true) {
+            $soals = Soal::onlyTrashed()
+                ->where('created_by', $userId)
+                ->with(['opsiJawaban', 'pasangan'])
+                ->limit(100)
+                ->get();
 
-                if ($soals->isEmpty()) {
-                    break;
-                }
+            if ($soals->isEmpty()) {
+                break;
+            }
 
+            DB::transaction(function () use ($soals, &$count) {
                 foreach ($soals as $soal) {
                     $this->deleteAllSoalImages($soal);
                     $this->repository->forceDelete($soal);
                     $count++;
                 }
-            }
+            });
+        }
 
-            return $count;
-        });
+        return $count;
     }
 
     /**

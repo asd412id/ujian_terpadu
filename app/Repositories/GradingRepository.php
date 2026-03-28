@@ -27,7 +27,9 @@ class GradingRepository
      */
     public function getPaketList(): Collection
     {
-        return PaketUjian::orderBy('nama')->get(['id', 'nama']);
+        return \Illuminate\Support\Facades\Cache::remember('grading_paket_list', 300, function () {
+            return PaketUjian::orderBy('nama')->get(['id', 'nama']);
+        });
     }
 
     /**
@@ -35,7 +37,9 @@ class GradingRepository
      */
     public function getSekolahList(): Collection
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        return \Illuminate\Support\Facades\Cache::remember('grading_sekolah_list', 300, function () {
+            return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        });
     }
 
     /**

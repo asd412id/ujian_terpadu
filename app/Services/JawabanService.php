@@ -224,9 +224,12 @@ class JawabanService
 
         // Count server-side violations for anti-cheat enforcement
         // Only count events that trigger recordViolation() on client: ganti_tab, fullscreen_exit
-        $violationCount = \App\Models\LogAktivitasUjian::where('sesi_peserta_id', $sesiPeserta->id)
-            ->whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
-            ->count();
+        $violationCacheKey = "violation_count:{$sesiPeserta->id}";
+        $violationCount = Cache::remember($violationCacheKey, 15, function () use ($sesiPeserta) {
+            return \App\Models\LogAktivitasUjian::where('sesi_peserta_id', $sesiPeserta->id)
+                ->whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
+                ->count();
+        });
 
         return [
             'status'            => $sesiPeserta->status,

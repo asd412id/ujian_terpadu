@@ -17,6 +17,8 @@ class LogAktivitasUjianJob implements ShouldQueue
 
     public int $backoff = 5;
 
+    public int $timeout = 30;
+
     public function __construct(
         protected string $sesiPesertaId,
         protected string $tipeEvent,

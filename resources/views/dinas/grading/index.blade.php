@@ -55,7 +55,7 @@
         <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <p class="text-xs text-blue-500 font-medium uppercase tracking-wide mb-2">Pertanyaan</p>
             <div class="text-sm text-gray-800 ck-content mathjax-process">
-                {!! $jawaban->soal->pertanyaan !!}
+                {!! \App\Support\HtmlDisplay::render($jawaban->soal->pertanyaan) !!}
             </div>
             @if($jawaban->soal->gambar_soal && !str_contains($jawaban->soal->pertanyaan ?? '', '<img '))
             <img src="{{ Storage::url($jawaban->soal->gambar_soal) }}" alt="Gambar soal"

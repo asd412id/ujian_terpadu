@@ -19,15 +19,15 @@ class AutoSubmitExpiredExams extends Command
 
         // --- Phase 1: Auto-end sesi that passed waktu_selesai ---
         // Transition berlangsung → selesai when waktu_selesai has passed
-        $endedSesi = SesiUjian::where('status', 'berlangsung')
+        SesiUjian::where('status', 'berlangsung')
             ->whereNotNull('waktu_selesai')
             ->where('waktu_selesai', '<=', $now)
-            ->get();
-
-        foreach ($endedSesi as $sesi) {
-            $sesi->update(['status' => 'selesai']);
-            $this->info("Sesi '{$sesi->nama_sesi}' (ID: {$sesi->id}) otomatis diakhiri.");
-        }
+            ->chunkById(50, function ($sesiChunk) {
+                foreach ($sesiChunk as $sesi) {
+                    $sesi->update(['status' => 'selesai']);
+                    $this->info("Sesi '{$sesi->nama_sesi}' (ID: {$sesi->id}) otomatis diakhiri.");
+                }
+            });
 
         // --- Phase 2: Force-submit all active peserta in ended sesi ---
         $sesiSelesaiCount = 0;

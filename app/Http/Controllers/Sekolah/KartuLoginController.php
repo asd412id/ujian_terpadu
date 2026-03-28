@@ -44,7 +44,11 @@ class KartuLoginController extends Controller
 
     public function show(Peserta $peserta)
     {
-        abort_unless($peserta->sekolah_id === Auth::user()->sekolah_id, 403);
+        $user = Auth::user();
+        abort_unless(
+            $user->isDinas() || ($user->sekolah_id && $peserta->sekolah_id === $user->sekolah_id),
+            403
+        );
 
         $data = $this->kartuLoginService->getKartuPeserta($peserta->id);
 
@@ -80,7 +84,11 @@ class KartuLoginController extends Controller
 
     public function cetakSatu(Peserta $peserta)
     {
-        abort_unless($peserta->sekolah_id === Auth::user()->sekolah_id, 403);
+        $user = Auth::user();
+        abort_unless(
+            $user->isDinas() || ($user->sekolah_id && $peserta->sekolah_id === $user->sekolah_id),
+            403
+        );
 
         $data = $this->kartuLoginService->getKartuPeserta($peserta->id);
 
