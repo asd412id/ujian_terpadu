@@ -182,6 +182,32 @@ class PaketUjianController extends Controller
                          ->with('success', "{$deleted} paket ujian dihapus permanen beserta semua data terkait.");
     }
 
+    public function bulkRestore(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = 0;
+        foreach (PaketUjian::onlyTrashed()->whereIn('id', $request->ids)->get() as $paket) {
+            $this->paketUjianService->restorePaket($paket);
+            $count++;
+        }
+
+        return redirect()->route('dinas.paket.trash')
+                         ->with('success', "{$count} paket ujian berhasil dipulihkan.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = 0;
+        foreach (PaketUjian::onlyTrashed()->whereIn('id', $request->ids)->get() as $paket) {
+            $this->paketUjianService->forceDeletePaket($paket);
+            $count++;
+        }
+
+        return redirect()->route('dinas.paket.trash')
+                         ->with('success', "{$count} paket ujian dihapus permanen beserta semua data terkait.");
+    }
+
     public function publish(PaketUjian $paket)
     {
         try {

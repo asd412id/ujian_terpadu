@@ -71,15 +71,93 @@ class SoalService
         return DB::transaction(function () {
             $count = 0;
 
-            Soal::onlyTrashed()
-                ->with(['opsiJawaban', 'pasangan'])
-                ->chunk(100, function ($soals) use (&$count) {
-                    foreach ($soals as $soal) {
-                        $this->deleteAllSoalImages($soal);
-                        $this->repository->forceDelete($soal);
-                        $count++;
-                    }
-                });
+            while (true) {
+                $soals = Soal::onlyTrashed()
+                    ->with(['opsiJawaban', 'pasangan'])
+                    ->limit(100)
+                    ->get();
+
+                if ($soals->isEmpty()) {
+                    break;
+                }
+
+                foreach ($soals as $soal) {
+                    $this->deleteAllSoalImages($soal);
+                    $this->repository->forceDelete($soal);
+                    $count++;
+                }
+            }
+
+            return $count;
+        });
+    }
+
+    /**
+     * Empty trash for a specific user.
+     */
+    public function emptyTrashByUser(string $userId): int
+    {
+        return DB::transaction(function () use ($userId) {
+            $count = 0;
+
+            while (true) {
+                $soals = Soal::onlyTrashed()
+                    ->where('created_by', $userId)
+                    ->with(['opsiJawaban', 'pasangan'])
+                    ->limit(100)
+                    ->get();
+
+                if ($soals->isEmpty()) {
+                    break;
+                }
+
+                foreach ($soals as $soal) {
+                    $this->deleteAllSoalImages($soal);
+                    $this->repository->forceDelete($soal);
+                    $count++;
+                }
+            }
+
+            return $count;
+        });
+    }
+
+    /**
+     * Bulk restore trashed soal by IDs.
+     */
+    public function bulkRestoreSoal(array $ids, ?string $userId = null): int
+    {
+        $query = Soal::onlyTrashed()->whereIn('id', $ids);
+        if ($userId) {
+            $query->where('created_by', $userId);
+        }
+
+        $count = 0;
+        foreach ($query->get() as $soal) {
+            $soal->restore();
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Bulk force-delete trashed soal by IDs.
+     */
+    public function bulkForceDeleteSoal(array $ids, ?string $userId = null): int
+    {
+        return DB::transaction(function () use ($ids, $userId) {
+            $query = Soal::onlyTrashed()->whereIn('id', $ids)->with(['opsiJawaban', 'pasangan']);
+            if ($userId) {
+                $query->where('created_by', $userId);
+            }
+
+            $count = 0;
+            foreach ($query->get() as $soal) {
+                $this->deleteAllSoalImages($soal);
+                $this->repository->forceDelete($soal);
+                $count++;
+            }
 
             return $count;
         });

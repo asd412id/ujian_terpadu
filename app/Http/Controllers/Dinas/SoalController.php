@@ -214,6 +214,24 @@ class SoalController extends Controller
                          ->with('success', "{$count} soal berhasil dihapus permanen.");
     }
 
+    public function bulkRestore(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = $this->soalService->bulkRestoreSoal($request->ids);
+
+        return redirect()->route('dinas.soal.trash')
+                         ->with('success', "{$count} soal berhasil dipulihkan.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = $this->soalService->bulkForceDeleteSoal($request->ids);
+
+        return redirect()->route('dinas.soal.trash')
+                         ->with('success', "{$count} soal berhasil dihapus permanen.");
+    }
+
     public function destroyAll(Request $request)
     {
         $kategoriId = $request->input('kategori');

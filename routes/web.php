@@ -131,6 +131,8 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::delete('/soal/destroy-all', [\App\Http\Controllers\Dinas\SoalController::class, 'destroyAll'])->name('soal.destroy-all');
     Route::get('/soal/trash', [\App\Http\Controllers\Dinas\SoalController::class, 'trash'])->name('soal.trash');
     Route::delete('/soal/trash/empty', [\App\Http\Controllers\Dinas\SoalController::class, 'emptyTrash'])->name('soal.empty-trash');
+    Route::post('/soal/trash/bulk-restore', [\App\Http\Controllers\Dinas\SoalController::class, 'bulkRestore'])->name('soal.bulk-restore');
+    Route::delete('/soal/trash/bulk-force-delete', [\App\Http\Controllers\Dinas\SoalController::class, 'bulkForceDelete'])->name('soal.bulk-force-delete');
     Route::post('/soal/{soal_trashed}/restore', [\App\Http\Controllers\Dinas\SoalController::class, 'restore'])->name('soal.restore')->withTrashed();
     Route::delete('/soal/{soal_trashed}/force-delete', [\App\Http\Controllers\Dinas\SoalController::class, 'forceDelete'])->name('soal.force-delete')->withTrashed();
     Route::get('/soal/preview-all', [\App\Http\Controllers\Dinas\SoalController::class, 'previewAll'])->name('soal.preview-all');
@@ -151,6 +153,8 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     // Paket Ujian
     Route::get('/paket/trash', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'trash'])->name('paket.trash');
     Route::delete('/paket/trash/empty', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'emptyTrash'])->name('paket.empty-trash');
+    Route::post('/paket/trash/bulk-restore', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'bulkRestore'])->name('paket.bulk-restore');
+    Route::delete('/paket/trash/bulk-force-delete', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'bulkForceDelete'])->name('paket.bulk-force-delete');
     Route::post('/paket/{paket_trashed}/restore', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'restore'])->name('paket.restore')->withTrashed();
     Route::delete('/paket/{paket_trashed}/force-delete', [\App\Http\Controllers\Dinas\PaketUjianController::class, 'forceDelete'])->name('paket.force-delete')->withTrashed();
     Route::resource('paket', \App\Http\Controllers\Dinas\PaketUjianController::class)->names('paket');
@@ -265,6 +269,12 @@ Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:
     Route::get('/soal/import/template/word', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'templateWord'])->name('soal.import.template.word');
     Route::get('/soal/import/template/zip', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'templateZip'])->name('soal.import.template.zip');
     Route::get('/soal/preview-all', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'previewAll'])->name('soal.preview-all');
+    Route::get('/soal/trash', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'trash'])->name('soal.trash');
+    Route::delete('/soal/trash/empty', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'emptyTrash'])->name('soal.empty-trash');
+    Route::post('/soal/trash/bulk-restore', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'bulkRestore'])->name('soal.bulk-restore');
+    Route::delete('/soal/trash/bulk-force-delete', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'bulkForceDelete'])->name('soal.bulk-force-delete');
+    Route::post('/soal/{soal_trashed}/restore', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'restore'])->name('soal.restore')->withTrashed();
+    Route::delete('/soal/{soal_trashed}/force-delete', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'forceDelete'])->name('soal.force-delete')->withTrashed();
     Route::post('/soal/upload-image', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'uploadImage'])->name('soal.upload-image');
     Route::resource('soal', \App\Http\Controllers\PembuatSoal\SoalController::class)->names('soal');
 

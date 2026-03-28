@@ -48,7 +48,9 @@ class SoalController extends Controller
             ->paginate(20, ['*'], 'narasi_page')
             ->withQueryString();
 
-        return view('pembuat-soal.soal.index', compact('soal', 'kategori', 'narasis'));
+        $trashedCount = Soal::onlyTrashed()->where('created_by', Auth::id())->count();
+
+        return view('pembuat-soal.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount'));
     }
 
     public function create()
@@ -186,6 +188,66 @@ class SoalController extends Controller
 
         return redirect()->route('pembuat-soal.soal.index')
                          ->with('success', 'Soal berhasil dihapus.');
+    }
+
+    public function trash(Request $request)
+    {
+        $trashedSoal = Soal::onlyTrashed()
+            ->with(['kategori', 'pembuat'])
+            ->where('created_by', Auth::id())
+            ->when($request->trash_kategori, fn ($q) => $q->where('kategori_id', $request->trash_kategori))
+            ->when($request->trash_search, fn ($q) => $q->where('pertanyaan', 'like', "%{$request->trash_search}%"))
+            ->latest('deleted_at')
+            ->paginate(20, ['*'], 'trash_page')
+            ->withQueryString();
+
+        $kategori = $this->soalService->getActiveKategori();
+
+        return view('pembuat-soal.soal.trash', compact('trashedSoal', 'kategori'));
+    }
+
+    public function restore(Soal $soal_trashed)
+    {
+        abort_unless($soal_trashed->created_by === Auth::id(), 403);
+        $this->soalService->restoreSoal($soal_trashed);
+
+        return redirect()->route('pembuat-soal.soal.trash')
+                         ->with('success', 'Soal berhasil dipulihkan.');
+    }
+
+    public function forceDelete(Soal $soal_trashed)
+    {
+        abort_unless($soal_trashed->created_by === Auth::id(), 403);
+        $this->soalService->forceDeleteSoal($soal_trashed);
+
+        return redirect()->route('pembuat-soal.soal.trash')
+                         ->with('success', 'Soal berhasil dihapus permanen.');
+    }
+
+    public function emptyTrash()
+    {
+        $count = $this->soalService->emptyTrashByUser(Auth::id());
+
+        return redirect()->route('pembuat-soal.soal.trash')
+                         ->with('success', "{$count} soal berhasil dihapus permanen.");
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = $this->soalService->bulkRestoreSoal($request->ids, Auth::id());
+
+        return redirect()->route('pembuat-soal.soal.trash')
+                         ->with('success', "{$count} soal berhasil dipulihkan.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+        $count = $this->soalService->bulkForceDeleteSoal($request->ids, Auth::id());
+
+        return redirect()->route('pembuat-soal.soal.trash')
+                         ->with('success', "{$count} soal berhasil dihapus permanen.");
     }
 
     public function previewAll(Request $request)
