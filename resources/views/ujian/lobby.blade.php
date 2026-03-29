@@ -24,7 +24,7 @@
 
 {{-- Main Content --}}
 <main class="flex-1 flex items-start justify-center px-4 py-10 sm:py-14">
-    <div class="w-full max-w-md space-y-5">
+    <div class="w-full max-w-lg space-y-5">
 
         {{-- Welcome Card --}}
         <div class="card p-6 text-center">
