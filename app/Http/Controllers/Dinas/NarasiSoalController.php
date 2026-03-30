@@ -8,6 +8,7 @@ use App\Services\NarasiSoalService;
 use App\Repositories\KategoriSoalRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class NarasiSoalController extends Controller
 {
@@ -164,7 +165,21 @@ class NarasiSoalController extends Controller
      */
     public function apiByKategori(Request $request)
     {
-        $narasis = $this->narasiSoalService->getActive($request->kategori_id);
+        $narasis = NarasiSoal::where('is_active', true)
+            ->when($request->kategori_id, fn ($q) => $q->where('kategori_id', $request->kategori_id))
+            ->when($request->search, fn ($q) => $q->where(function ($inner) use ($request) {
+                $inner->where('judul', 'like', "%{$request->search}%")
+                      ->orWhere('konten_plain', 'like', "%{$request->search}%");
+            }))
+            ->withCount('soalList')
+            ->orderBy('judul')
+            ->get(['id', 'judul', 'kategori_id', 'konten_plain'])
+            ->map(fn ($n) => [
+                'id'         => $n->id,
+                'judul'      => $n->judul,
+                'preview'    => Str::limit(strip_tags($n->konten_plain ?? ''), 150),
+                'soal_count' => $n->soal_list_count,
+            ]);
 
         return response()->json($narasis);
     }

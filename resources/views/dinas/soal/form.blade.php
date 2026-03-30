@@ -339,13 +339,22 @@
                 {{-- Narasi (Passage) --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Narasi / Teks Bacaan</label>
-                    <select name="narasi_id" x-model="selectedNarasiId"
-                            class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">— Tanpa Narasi —</option>
-                        <template x-for="n in narasiList" :key="n.id">
-                            <option :value="n.id" x-text="n.judul" :selected="n.id === selectedNarasiId"></option>
-                        </template>
-                    </select>
+                    <input type="hidden" name="narasi_id" :value="selectedNarasiId">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-sm bg-gray-50 min-h-[46px]"
+                             :class="selectedNarasiId ? 'text-gray-900' : 'text-gray-400'">
+                            <span x-text="selectedNarasiId ? selectedNarasiJudul : '— Tanpa Narasi —'"></span>
+                        </div>
+                        <button type="button" @click="narasiModalOpen = true; fetchNarasiModal()"
+                                class="shrink-0 px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Pilih
+                        </button>
+                        <button type="button" x-show="selectedNarasiId"
+                                @click="selectedNarasiId = ''; selectedNarasiJudul = ''"
+                                class="shrink-0 px-3 py-3 bg-gray-100 text-gray-600 text-sm rounded-xl hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-300">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-400 mt-1">Soal bernarasi akan menampilkan teks bacaan bersama.</p>
                 </div>
 
@@ -413,6 +422,59 @@
         </div>
     </div>
 </form>
+
+{{-- Modal Pilih Narasi --}}
+<div x-show="narasiModalOpen"
+     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     @keydown.escape.window="narasiModalOpen = false">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="narasiModalOpen = false"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-900">Pilih Narasi</h3>
+            <button type="button" @click="narasiModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-6 py-3 border-b border-gray-100">
+            <input type="text" x-model="narasiSearch" @input.debounce.300ms="fetchNarasiModal()"
+                   placeholder="Cari judul atau isi narasi..."
+                   class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+            <div x-show="narasiLoading" class="flex justify-center py-8">
+                <svg class="animate-spin w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            </div>
+            <div x-show="!narasiLoading && narasiList.length === 0" class="text-center text-gray-400 text-sm py-8">
+                Tidak ada narasi ditemukan.
+            </div>
+            <template x-for="n in narasiList" :key="n.id">
+                <div @click="selectNarasi(n)"
+                     :class="n.id === selectedNarasiId ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'"
+                     class="border rounded-xl px-4 py-3 cursor-pointer transition-colors">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm text-gray-900 truncate" x-text="n.judul"></p>
+                            <p class="text-xs text-gray-500 mt-0.5 line-clamp-2" x-text="n.preview"></p>
+                        </div>
+                        <span class="shrink-0 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold"
+                              x-text="n.soal_count + ' soal'"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-between items-center">
+            <button type="button" x-show="selectedNarasiId"
+                    @click="selectedNarasiId = ''; selectedNarasiJudul = ''; narasiModalOpen = false"
+                    class="text-sm text-red-500 hover:text-red-700">
+                Hapus Pilihan
+            </button>
+            <button type="button" @click="narasiModalOpen = false"
+                    class="ml-auto px-5 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-200">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
 </div>
 
 @php
@@ -439,19 +501,45 @@ function soalForm() {
 
         selectedKategoriId: '{{ old('kategori_soal_id', $soal->kategori_id ?? '') }}',
         selectedNarasiId: '{{ old('narasi_id', $soal->narasi_id ?? '') }}',
+        selectedNarasiJudul: '',
         narasiList: @json($narasis ?? []),
+        narasiModalOpen: false,
+        narasiSearch: '',
+        narasiLoading: false,
 
         init() {
+            const found = this.narasiList.find(n => n.id === this.selectedNarasiId);
+            if (found) this.selectedNarasiJudul = found.judul;
             if (this.selectedKategoriId) this.fetchNarasi();
         },
 
         async fetchNarasi() {
-            if (!this.selectedKategoriId) { this.narasiList = []; this.selectedNarasiId = ''; return; }
+            if (!this.selectedKategoriId) { this.narasiList = []; this.selectedNarasiId = ''; this.selectedNarasiJudul = ''; return; }
             try {
                 const res = await fetch(`{{ route('dinas.narasi.api.by-kategori') }}?kategori_id=${this.selectedKategoriId}`);
                 this.narasiList = await res.json();
-                if (!this.narasiList.find(n => n.id === this.selectedNarasiId)) this.selectedNarasiId = '';
+                const found = this.narasiList.find(n => n.id === this.selectedNarasiId);
+                if (!found) { this.selectedNarasiId = ''; this.selectedNarasiJudul = ''; }
+                else { this.selectedNarasiJudul = found.judul; }
             } catch (e) { this.narasiList = []; }
+        },
+
+        async fetchNarasiModal() {
+            this.narasiLoading = true;
+            try {
+                const params = new URLSearchParams({ kategori_id: this.selectedKategoriId });
+                if (this.narasiSearch) params.set('search', this.narasiSearch);
+                const res = await fetch(`{{ route('dinas.narasi.api.by-kategori') }}?${params}`);
+                this.narasiList = await res.json();
+            } catch (e) { this.narasiList = []; }
+            this.narasiLoading = false;
+        },
+
+        selectNarasi(n) {
+            this.selectedNarasiId = n.id;
+            this.selectedNarasiJudul = n.judul;
+            this.narasiModalOpen = false;
+            this.narasiSearch = '';
         },
 
         addOpsi() {
