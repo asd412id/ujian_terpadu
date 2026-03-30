@@ -202,11 +202,27 @@ class PaketUjianService
 
     /**
      * Set paket ujian back to draft.
+     * Force-submits active peserta and stops all running/pending sesi.
      */
     public function draftPaket(PaketUjian $paket): PaketUjian
     {
-        $this->repository->update($paket, ['status' => 'draft']);
-        return $paket;
+        return DB::transaction(function () use ($paket) {
+            // Force-submit peserta yang sedang mengerjakan di semua sesi berlangsung
+            $sesiAktif = $paket->sesi()->where('status', 'berlangsung')->get();
+            $forceSubmitted = 0;
+            foreach ($sesiAktif as $sesi) {
+                $forceSubmitted += $this->sesiService->forceSubmitActivePeserta($sesi);
+            }
+
+            // Hentikan semua sesi yang belum selesai
+            $paket->sesi()
+                ->whereIn('status', ['persiapan', 'berlangsung'])
+                ->update(['status' => 'selesai']);
+
+            $this->repository->update($paket, ['status' => 'draft']);
+
+            return $paket;
+        });
     }
 
     /**

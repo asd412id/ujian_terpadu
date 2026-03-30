@@ -184,13 +184,16 @@ class SesiUjianRepository
 
     /**
      * Get available (active) sesi for a peserta.
+     * Only returns sesi where the parent paket is published (aktif).
      */
     public function getAvailableSesiForPeserta(string $pesertaId): \Illuminate\Database\Eloquent\Collection
     {
         return SesiPeserta::with(['sesi.paket'])
             ->where('peserta_id', $pesertaId)
             ->whereIn('status', ['terdaftar', 'belum_login', 'login', 'mengerjakan'])
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
+                ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
+            )
             ->get();
     }
 

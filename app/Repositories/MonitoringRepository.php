@@ -23,6 +23,7 @@ class MonitoringRepository
                 'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
             ])
             ->where('status', 'berlangsung')
+            ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
             ->latest()
             ->get();
     }
@@ -39,7 +40,7 @@ class MonitoringRepository
                 'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
             ])
             ->where('status', 'berlangsung')
-            ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId)->where('status', 'aktif'))
             ->latest()
             ->get();
     }
@@ -50,7 +51,9 @@ class MonitoringRepository
     public function getDashboardSummary(): array
     {
         $raw = SesiPeserta::query()
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
+                ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
+            )
             ->selectRaw("
                 COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
                 COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
@@ -69,7 +72,8 @@ class MonitoringRepository
     public function getSesiAktifFiltered(array $filters = []): Collection
     {
         $query = SesiUjian::with(['paket.sekolah'])
-            ->where('status', 'berlangsung');
+            ->where('status', 'berlangsung')
+            ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'));
 
         if (!empty($filters['sekolah_id'])) {
             $query->whereHas('paket', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
@@ -175,9 +179,14 @@ class MonitoringRepository
     public function getDashboardSummaryBySekolah(string $sekolahId): array
     {
         $raw = SesiPeserta::query()
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
+                ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
+            )
             ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->selectRaw("\n                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,\n                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit\n            ")
+            ->selectRaw("
+                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
+                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
+            ")
             ->first();
 
         return [
@@ -199,8 +208,9 @@ class MonitoringRepository
 
             $sekolahIds = $sekolahList->pluck('id');
 
-            $sesiAktifMap = SesiUjian::where('status', 'berlangsung')
+            $sesiAktifMap = SesiUjian::where('sesi_ujian.status', 'berlangsung')
                 ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
+                ->where('paket_ujian.status', 'aktif')
                 ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
                 ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
                 ->groupBy('paket_ujian.sekolah_id')
@@ -210,6 +220,7 @@ class MonitoringRepository
                 ->join('sesi_ujian', 'sesi_peserta.sesi_id', '=', 'sesi_ujian.id')
                 ->join('paket_ujian', 'sesi_ujian.paket_id', '=', 'paket_ujian.id')
                 ->where('sesi_ujian.status', 'berlangsung')
+                ->where('paket_ujian.status', 'aktif')
                 ->whereIn('paket_ujian.sekolah_id', $sekolahIds)
                 ->selectRaw('paket_ujian.sekolah_id, COUNT(*) as cnt')
                 ->groupBy('paket_ujian.sekolah_id')
@@ -347,7 +358,9 @@ class MonitoringRepository
      */
     public function getStatistik(): array
     {
-        $totalSesi = SesiUjian::where('status', 'berlangsung')->count();
+        $totalSesi = SesiUjian::where('status', 'berlangsung')
+            ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
+            ->count();
         $summary = $this->getDashboardSummary();
 
         return [

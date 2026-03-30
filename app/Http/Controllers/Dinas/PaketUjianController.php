@@ -221,8 +221,18 @@ class PaketUjianController extends Controller
 
     public function draft(PaketUjian $paket)
     {
+        $hadActiveSesi = $paket->sesi()
+            ->whereIn('status', ['persiapan', 'berlangsung'])
+            ->exists();
+
         $this->paketUjianService->draftPaket($paket);
-        return back()->with('success', 'Paket ujian dikembalikan ke draft.');
+
+        $msg = 'Paket ujian dikembalikan ke draft.';
+        if ($hadActiveSesi) {
+            $msg .= ' Semua sesi aktif telah dihentikan dan peserta yang sedang mengerjakan telah di-submit otomatis.';
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function soalAdd(Request $request, PaketUjian $paket)

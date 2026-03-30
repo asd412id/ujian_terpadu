@@ -39,6 +39,17 @@ class UjianService
             ];
         }
 
+        // Block if paket is not aktif (e.g. reverted to draft)
+        $paketStatus = $sesiPeserta->sesi->paket->status ?? null;
+        if ($paketStatus !== 'aktif') {
+            abort(403, 'Paket ujian tidak aktif. Ujian tidak dapat dimulai.');
+        }
+
+        // Block if sesi is no longer berlangsung
+        if ($sesiPeserta->sesi->status !== 'berlangsung') {
+            abort(403, 'Sesi ujian tidak sedang berlangsung.');
+        }
+
         // Set status mengerjakan + catat waktu mulai (use lock to prevent race condition)
         if (in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login'])) {
             $this->sesiUjianRepository->startSesiPesertaWithLock($sesiPeserta->id, [

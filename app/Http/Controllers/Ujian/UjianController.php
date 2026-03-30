@@ -35,6 +35,18 @@ class UjianController extends Controller
         $paket = $sesiPeserta->sesi->paket;
         $sesi  = $sesiPeserta->sesi;
 
+        // Block if paket is not aktif (e.g. reverted to draft)
+        if ($paket->status !== 'aktif') {
+            return redirect()->route('ujian.lobby')
+                ->with('warning', 'Paket ujian tidak aktif. Ujian tidak dapat dimulai.');
+        }
+
+        // Block if sesi is no longer berlangsung
+        if ($sesi->status !== 'berlangsung') {
+            return redirect()->route('ujian.lobby')
+                ->with('warning', 'Sesi ujian tidak sedang berlangsung.');
+        }
+
         // Schedule enforcement — block if outside time window
         $now = now();
         if ($sesi->waktu_mulai && $now->lt($sesi->waktu_mulai)) {
