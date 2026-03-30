@@ -38,10 +38,10 @@ class SoalController extends Controller
 
         $kategori = $this->soalService->getActiveKategori();
 
-        // Narasi tab data
-        $narasis = NarasiSoal::with('kategori')
+        // Narasi tab data: tampilkan narasi milik sendiri + narasi dalam kategori yang di-assign
+        $narasis = NarasiSoal::with(['kategori', 'pembuat'])
             ->withCount('soalList')
-            ->where('created_by', Auth::id())
+            ->accessibleBy(Auth::id())
             ->when($request->filled('narasi_kategori'), fn ($q) => $q->where('kategori_id', $request->narasi_kategori))
             ->search($request->input('narasi_search'))
             ->latest()
@@ -76,9 +76,18 @@ class SoalController extends Controller
             'tahun_soal'           => 'nullable|integer|min:2000|max:2099',
             'narasi_id'            => [
                 'nullable',
-                Rule::exists('narasi_soal', 'id')->where(fn ($query) => $query
-                    ->where('created_by', Auth::id())
-                    ->whereNull('deleted_at')),
+                Rule::exists('narasi_soal', 'id')->where(function ($query) {
+                    $userId = Auth::id();
+                    $assignedKategoriIds = \Illuminate\Support\Facades\DB::table('kategori_soal_user')
+                        ->where('user_id', $userId)
+                        ->pluck('kategori_soal_id')
+                        ->toArray();
+                    $query->whereNull('deleted_at')
+                          ->where(function ($q) use ($userId, $assignedKategoriIds) {
+                              $q->where('created_by', $userId)
+                                ->orWhereIn('kategori_id', $assignedKategoriIds);
+                          });
+                }),
             ],
             'urutan_dalam_narasi'  => 'nullable|integer|min:1',
         ]);
@@ -139,8 +148,8 @@ class SoalController extends Controller
         $soal->load(['opsiJawaban', 'pasangan']);
         $kategoris = $this->soalService->getActiveKategori();
         $narasis = $soal->kategori_id
-            ? \App\Models\NarasiSoal::where('kategori_id', $soal->kategori_id)
-                ->where('created_by', Auth::id())
+            ? NarasiSoal::where('kategori_id', $soal->kategori_id)
+                ->accessibleBy(Auth::id())
                 ->where('is_active', true)
                 ->orderBy('judul')
                 ->get(['id', 'judul', 'kategori_id'])
@@ -163,9 +172,18 @@ class SoalController extends Controller
             'pembahasan'           => 'nullable|string',
             'narasi_id'            => [
                 'nullable',
-                Rule::exists('narasi_soal', 'id')->where(fn ($query) => $query
-                    ->where('created_by', Auth::id())
-                    ->whereNull('deleted_at')),
+                Rule::exists('narasi_soal', 'id')->where(function ($query) {
+                    $userId = Auth::id();
+                    $assignedKategoriIds = \Illuminate\Support\Facades\DB::table('kategori_soal_user')
+                        ->where('user_id', $userId)
+                        ->pluck('kategori_soal_id')
+                        ->toArray();
+                    $query->whereNull('deleted_at')
+                          ->where(function ($q) use ($userId, $assignedKategoriIds) {
+                              $q->where('created_by', $userId)
+                                ->orWhereIn('kategori_id', $assignedKategoriIds);
+                          });
+                }),
             ],
             'urutan_dalam_narasi'  => 'nullable|integer|min:1',
         ]);

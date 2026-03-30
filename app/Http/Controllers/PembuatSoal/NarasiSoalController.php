@@ -49,7 +49,7 @@ class NarasiSoalController extends Controller
 
     public function show(NarasiSoal $narasi)
     {
-        abort_unless($narasi->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke narasi ini.');
+        abort_unless($narasi->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke narasi ini.');
 
         $narasi->load(['kategori', 'pembuat', 'soalList.opsiJawaban']);
         return view('pembuat-soal.narasi.show', compact('narasi'));
@@ -57,7 +57,7 @@ class NarasiSoalController extends Controller
 
     public function edit(NarasiSoal $narasi)
     {
-        abort_unless($narasi->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke narasi ini.');
+        abort_unless($narasi->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke narasi ini.');
 
         $kategoris = $this->kategoriSoalRepository->getActive();
         return view('pembuat-soal.narasi.form', compact('narasi', 'kategoris'));
@@ -65,7 +65,7 @@ class NarasiSoalController extends Controller
 
     public function update(Request $request, NarasiSoal $narasi)
     {
-        abort_unless($narasi->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke narasi ini.');
+        abort_unless($narasi->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke narasi ini.');
 
         $data = $request->validate([
             'judul'       => 'required|string|max:255',
@@ -82,8 +82,10 @@ class NarasiSoalController extends Controller
 
     public function destroy(NarasiSoal $narasi)
     {
-        abort_unless($narasi->created_by === Auth::id(), 403, 'Anda tidak memiliki akses ke narasi ini.');
+        abort_unless($narasi->isAccessibleBy(Auth::id()), 403, 'Anda tidak memiliki akses ke narasi ini.');
 
+        // Hanya soal milik user ini yang ikut dihapus saat narasi di-cascade.
+        // Soal milik pengguna lain yang terhubung ke narasi ini tidak terpengaruh.
         $this->narasiSoalService->deleteNarasi($narasi, Auth::id());
 
         return redirect()->route('pembuat-soal.soal.index', ['tab' => 'narasi'])
@@ -180,7 +182,7 @@ class NarasiSoalController extends Controller
 
     public function apiByKategori(Request $request)
     {
-        $narasis = NarasiSoal::where('created_by', Auth::id())
+        $narasis = NarasiSoal::accessibleBy(Auth::id())
             ->where('is_active', true)
             ->when($request->kategori_id, fn ($q) => $q->where('kategori_id', $request->kategori_id))
             ->orderBy('judul')

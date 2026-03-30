@@ -50,19 +50,38 @@
             <h2 class="font-semibold text-gray-900">Soal Terkait ({{ $narasi->soalList->count() }})</h2>
         </div>
 
+        @php
+            $tipeLabel = [
+                'pg' => ['PG', 'blue'], 'pilihan_ganda' => ['PG', 'blue'],
+                'pg_kompleks' => ['PGK', 'purple'], 'pilihan_ganda_kompleks' => ['PGK', 'purple'],
+                'benar_salah' => ['B/S', 'indigo'],
+                'isian' => ['Isian', 'green'],
+                'essay' => ['Essay', 'amber'],
+                'menjodohkan' => ['Jodoh', 'pink'],
+            ];
+            $kesulitanLabel = [
+                'mudah'  => ['Mudah',  'green'],
+                'sedang' => ['Sedang', 'amber'],
+                'sulit'  => ['Sulit',  'red'],
+            ];
+        @endphp
         @if($narasi->soalList->count() > 0)
         <div class="space-y-3">
             @foreach($narasi->soalList as $idx => $soal)
+            @php
+                [$tLabel, $tColor] = $tipeLabel[$soal->tipe_soal] ?? [strtoupper($soal->tipe_soal), 'gray'];
+                [$kLabel, $kColor] = $kesulitanLabel[$soal->tingkat_kesulitan] ?? [ucfirst($soal->tingkat_kesulitan ?? ''), 'gray'];
+            @endphp
             <div class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50">
                 <div class="flex items-start gap-3">
                     <span class="flex-shrink-0 w-7 h-7 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">
                         {{ $soal->urutan_dalam_narasi ?: $idx + 1 }}
                     </span>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase">{{ $soal->tipe_soal }}</span>
+                        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span class="text-xs font-semibold bg-{{ $tColor }}-100 text-{{ $tColor }}-700 px-2 py-0.5 rounded-full">{{ $tLabel }}</span>
                             @if($soal->tingkat_kesulitan)
-                            <span class="text-xs text-gray-500">{{ $soal->tingkat_kesulitan }}</span>
+                            <span class="text-xs font-semibold bg-{{ $kColor }}-100 text-{{ $kColor }}-700 px-2 py-0.5 rounded-full">{{ $kLabel }}</span>
                             @endif
                         </div>
                         <div class="text-sm text-gray-800 line-clamp-2">{{ \App\Support\HtmlDisplay::plainText($soal->pertanyaan, 150) }}</div>

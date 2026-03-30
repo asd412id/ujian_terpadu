@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class NarasiSoal extends Model
@@ -70,6 +71,40 @@ class NarasiSoal extends Model
                 }
             });
         });
+    }
+
+    /**
+     * Scope narasi yang dapat diakses oleh seorang user.
+     * Mencakup narasi milik user sendiri ATAU narasi yang kategorinya
+     * telah di-assign ke user tersebut oleh admin.
+     */
+    public function scopeAccessibleBy(Builder $query, string $userId): Builder
+    {
+        $assignedKategoriIds = DB::table('kategori_soal_user')
+            ->where('user_id', $userId)
+            ->pluck('kategori_soal_id')
+            ->toArray();
+
+        return $query->where(function (Builder $q) use ($userId, $assignedKategoriIds) {
+            $q->where('created_by', $userId)
+              ->orWhereIn('kategori_id', $assignedKategoriIds);
+        });
+    }
+
+    /**
+     * Helper: cek apakah narasi ini dapat diakses oleh user tertentu.
+     * Narasi accessible jika: milik user sendiri ATAU kategorinya di-assign ke user.
+     */
+    public function isAccessibleBy(string $userId): bool
+    {
+        if ($this->created_by === $userId) {
+            return true;
+        }
+
+        return DB::table('kategori_soal_user')
+            ->where('user_id', $userId)
+            ->where('kategori_soal_id', $this->kategori_id)
+            ->exists();
     }
 
     protected function konten(): Attribute

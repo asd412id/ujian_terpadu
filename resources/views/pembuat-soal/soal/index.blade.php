@@ -416,10 +416,16 @@
                         @forelse($narasis as $narasi)
                         <tr class="hover:bg-gray-50">
                             <td class="px-5 py-3">
-                                <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600">
-                                    {{ $narasi->judul }}
-                                </a>
-                                <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
+                                 <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="font-medium text-gray-900 hover:text-blue-600">
+                                     {{ $narasi->judul }}
+                                 </a>
+                                 <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
+                                 @if($narasi->created_by !== auth()->id())
+                                 <span class="text-xs text-teal-600 mt-0.5 inline-flex items-center gap-1">
+                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                     Ditugaskan{{ $narasi->pembuat ? ' · ' . $narasi->pembuat->name : '' }}
+                                 </span>
+                                 @endif
                             </td>
                             <td class="px-5 py-3 hidden md:table-cell">
                                 @if($narasi->kategori)
@@ -478,12 +484,18 @@
                             <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">Nonaktif</span>
                         @endif
                     </div>
-                    <p class="text-xs text-gray-500 line-clamp-1 mb-1.5">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
-                    <div class="flex items-center gap-2 flex-wrap text-xs">
-                        @if($narasi->kategori)
-                            <span class="font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $narasi->kategori->nama }}</span>
-                        @endif
-                        <span class="text-gray-500">{{ $narasi->soal_list_count ?? 0 }} soal</span>
+                         <p class="text-xs text-gray-500 line-clamp-1 mb-1.5">{{ \App\Support\HtmlDisplay::plainText($narasi->konten, 80) }}</p>
+                     <div class="flex items-center gap-2 flex-wrap text-xs">
+                         @if($narasi->kategori)
+                             <span class="font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $narasi->kategori->nama }}</span>
+                         @endif
+                         <span class="text-gray-500">{{ $narasi->soal_list_count ?? 0 }} soal</span>
+                         @if($narasi->created_by !== auth()->id())
+                         <span class="text-teal-600 inline-flex items-center gap-1">
+                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                             Ditugaskan{{ $narasi->pembuat ? ' · ' . $narasi->pembuat->name : '' }}
+                         </span>
+                         @endif
                         <span class="ml-auto"></span>
                         <a href="{{ route('pembuat-soal.narasi.show', $narasi->id) }}" class="text-gray-500 hover:text-blue-600 font-medium">Lihat</a>
                         <a href="{{ route('pembuat-soal.narasi.edit', $narasi->id) }}" class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
