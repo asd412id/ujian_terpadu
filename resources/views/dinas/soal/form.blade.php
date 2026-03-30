@@ -424,7 +424,7 @@
 </form>
 
 {{-- Modal Pilih Narasi --}}
-<div x-show="narasiModalOpen"
+<div x-show="narasiModalOpen" style="display:none"
      class="fixed inset-0 z-50 flex items-center justify-center p-4"
      @keydown.escape.window="narasiModalOpen = false">
     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="narasiModalOpen = false"></div>
