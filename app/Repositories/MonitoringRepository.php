@@ -33,11 +33,14 @@ class MonitoringRepository
 
     /**
      * Get dashboard sesi list filtered by sekolah.
+     * Includes both school-owned pakets AND dinas-level pakets matching jenjang.
      * Cached 10s per sekolah.
      */
     public function getDashboardSesiListBySekolah(string $sekolahId): Collection
     {
         return Cache::remember("monitoring:dashboard_sesi_sekolah:{$sekolahId}", 10, function () use ($sekolahId) {
+            $jenjang = Sekolah::where('id', $sekolahId)->value('jenjang');
+
             return SesiUjian::with(['paket.sekolah', 'pengawas'])
                 ->withCount([
                     'sesiPeserta as total_peserta',
@@ -45,7 +48,17 @@ class MonitoringRepository
                     'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
                 ])
                 ->whereIn('status', ['persiapan', 'berlangsung'])
-                ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId)->where('status', 'aktif'))
+                ->whereHas('paket', fn ($q) => $q->where('status', 'aktif')
+                    ->where(function ($q2) use ($sekolahId, $jenjang) {
+                        $q2->where('sekolah_id', $sekolahId)
+                           ->orWhere(function ($q3) use ($jenjang) {
+                               $q3->whereNull('sekolah_id');
+                               if ($jenjang) {
+                                   $q3->where(fn ($q4) => $q4->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
+                               }
+                           });
+                    })
+                )
                 ->latest()
                 ->get();
         });
