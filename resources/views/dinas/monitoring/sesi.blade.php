@@ -91,7 +91,8 @@
                         name="sekolah_id"
                         :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
                         :value="$filters['sekolah_id'] ?? ''"
-                        placeholder="Semua Sekolah" />
+                        placeholder="Semua Sekolah"
+                        size="sm" />
                 </div>
                 <select name="status" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onchange="this.form.submit()">

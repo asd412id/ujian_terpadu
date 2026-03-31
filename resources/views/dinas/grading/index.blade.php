@@ -30,7 +30,8 @@
                     name="sekolah_id"
                     :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
                     :value="request('sekolah_id')"
-                    placeholder="Semua Sekolah" />
+                    placeholder="Semua Sekolah"
+                    size="md" />
             </div>
         </form>
     </div>

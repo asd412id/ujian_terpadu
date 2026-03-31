@@ -5,6 +5,7 @@
     'name' => '',
     'required' => false,
     'class' => '',
+    'size' => 'lg',
 ])
 
 @php
@@ -12,6 +13,11 @@
     $wireModel = $attributes->whereStartsWith('wire:model')->first();
     $selectedValue = old($name, $value);
     $optionsJson = $options instanceof \Illuminate\Support\Collection ? $options->toArray() : (array) $options;
+    $sizeClasses = match($size) {
+        'sm' => 'rounded-lg px-3 py-1.5',
+        'md' => 'rounded-lg px-3 py-2',
+        default => 'rounded-xl px-4 py-3',
+    };
 @endphp
 
 <div
@@ -60,7 +66,7 @@
 
     <button type="button"
             x-on:click="open = !open; $nextTick(() => { if(open) $refs.searchInput.focus(); })"
-            class="w-full flex items-center justify-between border border-gray-300 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left cursor-pointer transition-colors hover:border-gray-400"
+            class="w-full flex items-center justify-between border border-gray-300 {{ $sizeClasses }} text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left cursor-pointer transition-colors hover:border-gray-400"
             :class="{ 'ring-2 ring-blue-500 border-blue-500': open }">
         <span x-show="value" x-text="selectedText" class="text-gray-900 truncate"></span>
         <span x-show="!value" class="text-gray-400">{{ $placeholder }}</span>

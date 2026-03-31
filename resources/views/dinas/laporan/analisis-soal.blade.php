@@ -98,8 +98,8 @@
                         <td class="px-4 py-3 text-center">
                             @php
                                 $tipeLabel = match($item['tipe']) {
-                                    'pilihan_ganda' => 'PG',
-                                    'pilihan_ganda_kompleks' => 'PGK',
+                                    'pg' => 'PG',
+                                    'pg_kompleks' => 'PGK',
                                     'menjodohkan' => 'Jodoh',
                                     'benar_salah' => 'BS',
                                     'isian' => 'Isian',
@@ -169,8 +169,8 @@
             @foreach($analisis as $item)
             @php
                 $tipeLabel = match($item['tipe']) {
-                    'pilihan_ganda' => 'PG',
-                    'pilihan_ganda_kompleks' => 'PGK',
+                    'pg' => 'PG',
+                    'pg_kompleks' => 'PGK',
                     'menjodohkan' => 'Jodoh',
                     'benar_salah' => 'BS',
                     'isian' => 'Isian',
