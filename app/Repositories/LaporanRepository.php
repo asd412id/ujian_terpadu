@@ -113,7 +113,10 @@ class LaporanRepository
                       }
                   });
             })
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
+            ->whereHas('sesi.sesiPeserta', function ($q) use ($sekolahId) {
+                $q->whereIn('status', ['submit', 'dinilai'])
+                  ->whereHas('peserta', fn ($q2) => $q2->where('sekolah_id', $sekolahId));
+            })
             ->orderBy('nama')
             ->get(['id', 'nama']);
     }
@@ -183,7 +186,6 @@ class LaporanRepository
                          });
                   });
             })
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['paket_id'])) {
@@ -299,7 +301,6 @@ class LaporanRepository
                          });
                   });
             })
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['paket_id'])) {

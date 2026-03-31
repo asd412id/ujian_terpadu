@@ -44,12 +44,19 @@ class MonitoringController extends Controller
         $filters['sekolah_id'] = $sekolah->id;
         $data = $this->monitoringService->getPesertaStatus($sesi->id, $filters);
 
+        $allSchoolSubmitted = ($data['stats']['total'] ?? 0) > 0
+            && ($data['stats']['submit'] ?? 0) >= ($data['stats']['total'] ?? 0);
+
+        $showNilai = ($sesi->paket->tampilkan_hasil ?? false)
+            && ($sesi->status === 'selesai' || $allSchoolSubmitted);
+
         return view('sekolah.monitoring.sesi', [
             'sesi'        => $data['sesi'],
             'alerts'      => $data['alerts'],
             'pesertaList' => $data['pesertaList'],
             'stats'       => $data['stats'],
             'filters'     => $filters,
+            'showNilai'   => $showNilai,
         ]);
     }
 
@@ -79,12 +86,20 @@ class MonitoringController extends Controller
 
         $data = $this->monitoringService->getSesiStats($sesi->id, $sekolah->id);
 
-        if (($sesi->status !== 'selesai' || ! ($sesi->paket->tampilkan_hasil ?? false)) && ! empty($data['peserta_live'])) {
+        $allSchoolSubmitted = ($data['stats']['total'] ?? 0) > 0
+            && ($data['stats']['submit'] ?? 0) >= ($data['stats']['total'] ?? 0);
+
+        $showNilai = ($sesi->paket->tampilkan_hasil ?? false)
+            && ($sesi->status === 'selesai' || $allSchoolSubmitted);
+
+        if (! $showNilai && ! empty($data['peserta_live'])) {
             foreach ($data['peserta_live'] as &$pesertaLive) {
                 $pesertaLive['nilai_akhir'] = null;
             }
             unset($pesertaLive);
         }
+
+        $data['show_nilai'] = $showNilai;
 
         return response()->json($data);
     }
