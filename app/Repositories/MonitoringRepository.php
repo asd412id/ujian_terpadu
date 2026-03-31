@@ -116,18 +116,28 @@ class MonitoringRepository
 
     /**
      * Get peserta stats aggregate for a sesi.
-     * Cached 10s per sesi — shared across all admin viewing the same sesi.
+     * Optionally scoped by sekolah_id for school operators.
+     * Cached 10s per sesi (+ sekolah suffix when scoped).
      */
-    public function getSesiPesertaStats(string $sesiId): array
+    public function getSesiPesertaStats(string $sesiId, ?string $sekolahId = null): array
     {
-        return Cache::remember("monitoring:sesi_stats:{$sesiId}", 10, function () use ($sesiId) {
-            $raw = SesiPeserta::where('sesi_id', $sesiId)
-                ->whereHas('peserta')
-                ->selectRaw("
+        $cacheKey = $sekolahId
+            ? "monitoring:sesi_stats:{$sesiId}:sekolah:{$sekolahId}"
+            : "monitoring:sesi_stats:{$sesiId}";
+
+        return Cache::remember($cacheKey, 10, function () use ($sesiId, $sekolahId) {
+            $query = SesiPeserta::where('sesi_id', $sesiId)
+                ->whereHas('peserta');
+
+            if ($sekolahId) {
+                $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId));
+            }
+
+            $raw = $query->selectRaw("
                     COUNT(*) as total,
-                    COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
-                    COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as submit,
-                    COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_mulai
+                    COUNT(CASE WHEN sesi_peserta.status IN ('login','mengerjakan') THEN 1 END) as `online`,
+                    COUNT(CASE WHEN sesi_peserta.status IN ('submit','dinilai') THEN 1 END) as submit,
+                    COUNT(CASE WHEN sesi_peserta.status IN ('terdaftar','belum_login') THEN 1 END) as belum_mulai
                 ")
                 ->first();
 
@@ -423,20 +433,30 @@ class MonitoringRepository
     /**
      * Get live data for all peserta in a sesi (lightweight, for polling).
      * Returns sisa_waktu_detik, status, soal_terjawab, soal_ditandai per peserta.
-     * Cached 5s per sesi.
+     * Optionally scoped by sekolah_id for school operators.
+     * Cached 5s per sesi (+sekolah suffix when scoped).
      */
-    public function getSesiPesertaLiveData(string $sesiId): array
+    public function getSesiPesertaLiveData(string $sesiId, ?string $sekolahId = null): array
     {
+        $cacheKey = $sekolahId
+            ? "sesi_live_{$sesiId}:sekolah:{$sekolahId}"
+            : "sesi_live_{$sesiId}";
+
         return Cache::remember(
-            "sesi_live_{$sesiId}",
+            $cacheKey,
             5,
-            function () use ($sesiId) {
+            function () use ($sesiId, $sekolahId) {
                 $sesi = SesiUjian::with('paket')->findOrFail($sesiId);
                 $durasiDetik = ($sesi->paket->durasi_menit ?? 0) * 60;
 
-                return SesiPeserta::where('sesi_id', $sesiId)
-                    ->whereHas('peserta')
-                    ->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
+                $query = SesiPeserta::where('sesi_id', $sesiId)
+                    ->whereHas('peserta');
+
+                if ($sekolahId) {
+                    $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId));
+                }
+
+                return $query->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
                     ->map(function ($sp) use ($durasiDetik) {
                         $sisaWaktu = 0;
                         if ($sp->mulai_at && in_array($sp->status, ['login', 'mengerjakan'])) {

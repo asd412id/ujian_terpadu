@@ -97,11 +97,23 @@ class LaporanRepository
     }
 
     /**
-     * Get paket list for a specific sekolah.
+     * Get paket list available for a specific sekolah (school-owned + dinas-level matching jenjang).
      */
     public function getPaketListBySekolah(string $sekolahId): Collection
     {
-        return PaketUjian::where('sekolah_id', $sekolahId)
+        $jenjang = Sekolah::where('id', $sekolahId)->value('jenjang');
+
+        return PaketUjian::where('tampilkan_hasil', true)
+            ->where(function ($q) use ($sekolahId, $jenjang) {
+                $q->where('sekolah_id', $sekolahId)
+                  ->orWhere(function ($q2) use ($jenjang) {
+                      $q2->whereNull('sekolah_id');
+                      if ($jenjang) {
+                          $q2->where(fn ($q3) => $q3->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
+                      }
+                  });
+            })
+            ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->orderBy('nama')
             ->get(['id', 'nama']);
     }
@@ -155,8 +167,22 @@ class LaporanRepository
      */
     public function getHasilUjianFilteredBySekolah(string $sekolahId, array $filters = []): LengthAwarePaginator
     {
+        $jenjang = Sekolah::where('id', $sekolahId)->value('jenjang');
+
         $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
-            ->whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereHas('sesi.paket', function ($q) use ($sekolahId, $jenjang) {
+                $q->where('tampilkan_hasil', true)
+                  ->where(function ($q2) use ($sekolahId, $jenjang) {
+                      $q2->where('sekolah_id', $sekolahId)
+                         ->orWhere(function ($q3) use ($jenjang) {
+                             $q3->whereNull('sekolah_id');
+                             if ($jenjang) {
+                                 $q3->where(fn ($q4) => $q4->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
+                             }
+                         });
+                  });
+            })
             ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->whereIn('status', ['submit', 'dinilai']);
 
@@ -258,7 +284,21 @@ class LaporanRepository
      */
     public function buildRekapBySekolah(string $sekolahId, array $filters = []): array
     {
-        $query = SesiPeserta::whereHas('sesi.paket', fn ($q) => $q->where('sekolah_id', $sekolahId))
+        $jenjang = Sekolah::where('id', $sekolahId)->value('jenjang');
+
+        $query = SesiPeserta::whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->whereHas('sesi.paket', function ($q) use ($sekolahId, $jenjang) {
+                $q->where('tampilkan_hasil', true)
+                  ->where(function ($q2) use ($sekolahId, $jenjang) {
+                      $q2->where('sekolah_id', $sekolahId)
+                         ->orWhere(function ($q3) use ($jenjang) {
+                             $q3->whereNull('sekolah_id');
+                             if ($jenjang) {
+                                 $q3->where(fn ($q4) => $q4->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
+                             }
+                         });
+                  });
+            })
             ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->whereIn('status', ['submit', 'dinilai']);
 

@@ -60,12 +60,13 @@ class MonitoringService
      */
     public function getPesertaStatus(string $sesiId, array $filters = []): array
     {
+        $sekolahId = $filters['sekolah_id'] ?? null;
         $sesi = $this->repository->findSesiWithPaket($sesiId);
         $alerts = $this->repository->getAlertsBySesi($sesi->id);
-        $stats = $this->repository->getSesiPesertaStats($sesi->id);
+        $stats = $this->repository->getSesiPesertaStats($sesi->id, $sekolahId);
         $pesertaList = $this->repository->getSesiPesertaPaginated($sesi->id, $filters);
         $sekolahList = $this->repository->getSekolahListBySesi($sesi->id);
-        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesi->id);
+        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesi->id, $sekolahId);
 
         return compact('sesi', 'alerts', 'pesertaList', 'stats', 'sekolahList', 'pesertaLive');
     }
@@ -162,10 +163,10 @@ class MonitoringService
     /**
      * Get sesi detail stats + per-peserta live data (for polling API).
      */
-    public function getSesiStats(string $sesiId): array
+    public function getSesiStats(string $sesiId, ?string $sekolahId = null): array
     {
-        $stats = $this->repository->getSesiPesertaStats($sesiId);
-        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesiId);
+        $stats = $this->repository->getSesiPesertaStats($sesiId, $sekolahId);
+        $pesertaLive = $this->repository->getSesiPesertaLiveData($sesiId, $sekolahId);
 
         return [
             'stats'        => $stats,

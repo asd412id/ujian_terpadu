@@ -77,9 +77,9 @@ class MonitoringController extends Controller
 
         $this->authorizeSesi($sesi, $sekolah);
 
-        $data = $this->monitoringService->getSesiStats($sesi->id);
+        $data = $this->monitoringService->getSesiStats($sesi->id, $sekolah->id);
 
-        if ($sesi->status !== 'selesai' && ! empty($data['peserta_live'])) {
+        if (($sesi->status !== 'selesai' || ! ($sesi->paket->tampilkan_hasil ?? false)) && ! empty($data['peserta_live'])) {
             foreach ($data['peserta_live'] as &$pesertaLive) {
                 $pesertaLive['nilai_akhir'] = null;
             }
