@@ -146,12 +146,11 @@
     </style>
 </head>
 <body>
-    {{-- Print Button --}}
     <div class="no-print" style="text-align:center; padding: 16px 0 8px; margin-bottom: 8px;">
         <button onclick="window.print()" style="background: #1e3a5f; color: white; border: none; padding: 10px 28px; border-radius: 8px; font-size: 13pt; cursor: pointer; font-weight: bold;">
             Cetak Kartu
         </button>
-        <a href="{{ route('dinas.kartu.index') }}" style="margin-left: 12px; color: #555; text-decoration: none; font-size: 11pt;">Kembali</a>
+        <a href="{{ route('dinas.peserta.index') }}" style="margin-left: 12px; color: #555; text-decoration: none; font-size: 11pt;">Kembali</a>
     </div>
 
     <div style="padding: 0 24px 24px;">

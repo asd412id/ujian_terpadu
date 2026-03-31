@@ -33,7 +33,6 @@
                         ['route' => 'sekolah.paket',        'icon' => 'document', 'label' => 'Paket Ujian'],
                         ['route' => 'sekolah.laporan',      'icon' => 'chart',    'label' => 'Laporan Nilai'],
                         ['route' => 'sekolah.peserta.index','icon' => 'users',    'label' => 'Data Peserta'],
-                        ['route' => 'sekolah.kartu.index',  'icon' => 'tag',      'label' => 'Kartu Login'],
                     ];
                 } elseif ($userRole === 'pengawas') {
                     $navItems = [
@@ -54,7 +53,6 @@
                         ['route' => 'dinas.kategori.index',    'icon' => 'tag',      'label' => 'Kategori Soal'],
                         ['route' => 'dinas.sekolah.index',     'icon' => 'office',   'label' => 'Sekolah'],
                         ['route' => 'dinas.peserta.index',     'icon' => 'users',    'label' => 'Peserta'],
-                        ['route' => 'dinas.kartu.index',       'icon' => 'id-card',  'label' => 'Kartu Peserta'],
                         ['route' => 'dinas.grading',           'icon' => 'star',     'label' => 'Penilaian Essay'],
                         ['route' => 'dinas.laporan',           'icon' => 'chart',    'label' => 'Laporan'],
                         ['route' => 'dinas.users.index',       'icon' => 'users',    'label' => 'Pengguna'],

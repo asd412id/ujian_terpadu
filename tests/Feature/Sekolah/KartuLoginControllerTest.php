@@ -21,28 +21,17 @@ class KartuLoginControllerTest extends TestCase
         ]);
     }
 
-    public function test_index_returns_kartu_page(): void
+    public function test_peserta_index_shows_embedded_kartu_actions(): void
     {
         $user = $this->sekolahUser();
-        Peserta::factory()->count(3)->create(['sekolah_id' => $user->sekolah_id]);
+        $peserta = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
 
-        $response = $this->actingAs($user)->get(route('sekolah.kartu.index'));
-
-        $response->assertStatus(200);
-        $response->assertViewIs('sekolah.kartu.index');
-        $response->assertViewHas('peserta');
-    }
-
-    public function test_index_filter_by_kelas(): void
-    {
-        $user = $this->sekolahUser();
-        Peserta::factory()->create(['sekolah_id' => $user->sekolah_id, 'kelas' => 'XII-1']);
-        Peserta::factory()->create(['sekolah_id' => $user->sekolah_id, 'kelas' => 'XII-2']);
-
-        $response = $this->actingAs($user)
-            ->get(route('sekolah.kartu.index', ['kelas' => 'XII-1']));
+        $response = $this->actingAs($user)->get(route('sekolah.peserta.index'));
 
         $response->assertStatus(200);
+        $response->assertViewIs('sekolah.peserta.index');
+        $response->assertSee('Cetak Semua Kartu');
+        $response->assertSee(route('sekolah.kartu.show', $peserta));
     }
 
     public function test_show_single_kartu(): void

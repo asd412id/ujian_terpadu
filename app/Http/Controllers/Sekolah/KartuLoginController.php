@@ -16,22 +16,6 @@ class KartuLoginController extends Controller
         protected KartuLoginService $kartuLoginService
     ) {}
 
-    public function index(Request $request)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        $data = $this->kartuLoginService->generateKartuLogin($user->sekolah_id, [
-            'kelas' => $request->kelas,
-            'q'     => $request->q,
-        ]);
-
-        return view('sekolah.kartu.index', [
-            'peserta'   => $data['peserta'],
-            'kelasList' => $data['kelasList'],
-        ]);
-    }
-
     public function cetakSemua(Request $request)
     {
         /** @var \App\Models\User $user */

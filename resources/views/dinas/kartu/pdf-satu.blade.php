@@ -53,7 +53,7 @@
         <button onclick="window.print()" style="background: #1e3a5f; color: white; border: none; padding: 8px 24px; border-radius: 8px; font-size: 11pt; cursor: pointer; font-weight: bold;">
             Cetak
         </button>
-        <a href="{{ route('dinas.kartu.index') }}" style="margin-left: 12px; color: #555; text-decoration: none; font-size: 10pt;">Kembali</a>
+        <a href="{{ route('dinas.peserta.index') }}" style="margin-left: 12px; color: #555; text-decoration: none; font-size: 10pt;">Kembali</a>
     </div>
     <div class="kartu">
         <div class="kartu-header">

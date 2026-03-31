@@ -11,7 +11,10 @@
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
+        <div>
+            <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
+            <p class="text-sm text-gray-500 mt-1">Kelola peserta lintas sekolah, import data, atau cetak kartu login langsung dari daftar peserta.</p>
+        </div>
         <div class="flex items-center gap-2 flex-wrap">
             <a href="{{ route('dinas.peserta.import') }}"
                class="btn-secondary inline-flex items-center gap-1.5">
@@ -25,6 +28,14 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Tambah Peserta
+            </a>
+            <a href="{{ route('dinas.kartu.cetak-semua') . (request()->getQueryString() ? '?' . request()->getQueryString() : '') }}" target="_blank"
+               class="btn-primary inline-flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                Cetak Semua Kartu
             </a>
             <form action="{{ route('dinas.peserta.destroy-all') }}" method="POST"
                   x-data @submit.prevent="if(await $store.confirmModal.open({title:'Hapus Semua Peserta',message:'PERHATIAN: Tindakan ini akan menghapus {{ request('sekolah_id') ? 'semua peserta sekolah ini' : 'SEMUA data peserta' }} secara permanen dan tidak dapat dibatalkan. Yakin ingin melanjutkan?',confirmText:'Ya, Hapus Semua',danger:true})) $el.submit()">
@@ -75,7 +86,7 @@
 
     {{-- Tabel --}}
     <div class="card overflow-hidden p-0">
-        <div class="px-5 py-3.5 border-b border-gray-100 text-sm text-gray-500">
+        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between text-sm text-gray-500">
             <span>{{ $peserta->total() }} peserta ditemukan</span>
         </div>
         {{-- Desktop table --}}
@@ -123,7 +134,9 @@
                             @endif
                         </td>
                         <td class="px-5 py-3 text-right">
-                            <div class="flex items-center justify-end gap-2">
+                            <div class="flex items-center justify-end gap-2 flex-wrap">
+                                <a href="{{ route('dinas.kartu.show', $p->id) }}"
+                                   class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">Cetak Kartu</a>
                                 <a href="{{ route('dinas.peserta.edit', $p->id) }}"
                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                                 <form action="{{ route('dinas.peserta.destroy', $p->id) }}" method="POST"
@@ -176,7 +189,9 @@
                 <div class="ml-10.5 text-xs text-gray-500 mb-2">
                     {{ $p->sekolah?->nama ?? '—' }}
                 </div>
-                <div class="flex items-center gap-3 ml-10.5">
+                <div class="flex items-center gap-3 ml-10.5 flex-wrap">
+                    <a href="{{ route('dinas.kartu.show', $p->id) }}"
+                       class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">Cetak Kartu</a>
                     <a href="{{ route('dinas.peserta.edit', $p->id) }}"
                        class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</a>
                     <form action="{{ route('dinas.peserta.destroy', $p->id) }}" method="POST"
