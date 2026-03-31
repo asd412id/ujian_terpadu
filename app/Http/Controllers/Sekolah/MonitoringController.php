@@ -44,17 +44,18 @@ class MonitoringController extends Controller
         $filters['sekolah_id'] = $sekolah->id;
         $data = $this->monitoringService->getPesertaStatus($sesi->id, $filters);
 
-        $allSchoolSubmitted = ($data['stats']['total'] ?? 0) > 0
-            && ($data['stats']['submit'] ?? 0) >= ($data['stats']['total'] ?? 0);
+        $stats = $data['stats'];
+        $allPesertaSubmitted = ($stats['total'] ?? 0) > 0
+            && ($stats['submit'] ?? 0) >= ($stats['total'] ?? 0);
 
         $showNilai = ($sesi->paket->tampilkan_hasil ?? false)
-            && ($sesi->status === 'selesai' || $allSchoolSubmitted);
+            && ($sesi->status === 'selesai' || $allPesertaSubmitted);
 
         return view('sekolah.monitoring.sesi', [
             'sesi'        => $data['sesi'],
             'alerts'      => $data['alerts'],
             'pesertaList' => $data['pesertaList'],
-            'stats'       => $data['stats'],
+            'stats'       => $stats,
             'filters'     => $filters,
             'showNilai'   => $showNilai,
         ]);
@@ -86,11 +87,12 @@ class MonitoringController extends Controller
 
         $data = $this->monitoringService->getSesiStats($sesi->id, $sekolah->id);
 
-        $allSchoolSubmitted = ($data['stats']['total'] ?? 0) > 0
-            && ($data['stats']['submit'] ?? 0) >= ($data['stats']['total'] ?? 0);
+        $stats = $data['stats'];
+        $allPesertaSubmitted = ($stats['total'] ?? 0) > 0
+            && ($stats['submit'] ?? 0) >= ($stats['total'] ?? 0);
 
         $showNilai = ($sesi->paket->tampilkan_hasil ?? false)
-            && ($sesi->status === 'selesai' || $allSchoolSubmitted);
+            && ($sesi->status === 'selesai' || $allPesertaSubmitted);
 
         if (! $showNilai && ! empty($data['peserta_live'])) {
             foreach ($data['peserta_live'] as &$pesertaLive) {

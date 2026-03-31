@@ -113,9 +113,18 @@ class LaporanRepository
                       }
                   });
             })
-            ->whereHas('sesi.sesiPeserta', function ($q) use ($sekolahId) {
-                $q->whereIn('status', ['submit', 'dinilai'])
-                  ->whereHas('peserta', fn ($q2) => $q2->where('sekolah_id', $sekolahId));
+            ->whereHas('sesi', function ($q) use ($sekolahId) {
+                $q->where(function ($q2) use ($sekolahId) {
+                    $q2->where('status', 'selesai')
+                       ->orWhereDoesntHave('sesiPeserta', function ($q3) use ($sekolahId) {
+                           $q3->whereNotIn('status', ['submit', 'dinilai'])
+                              ->whereHas('peserta', fn ($q4) => $q4->where('sekolah_id', $sekolahId));
+                       });
+                });
+                $q->whereHas('sesiPeserta', function ($q2) use ($sekolahId) {
+                    $q2->whereIn('status', ['submit', 'dinilai'])
+                       ->whereHas('peserta', fn ($q3) => $q3->where('sekolah_id', $sekolahId));
+                });
             })
             ->orderBy('nama')
             ->get(['id', 'nama']);
@@ -184,6 +193,13 @@ class LaporanRepository
                                  $q3->where(fn ($q4) => $q4->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
                              }
                          });
+                  });
+            })
+            ->whereHas('sesi', function ($q) use ($sekolahId) {
+                $q->where('status', 'selesai')
+                  ->orWhereDoesntHave('sesiPeserta', function ($q2) use ($sekolahId) {
+                      $q2->whereNotIn('status', ['submit', 'dinilai'])
+                         ->whereHas('peserta', fn ($q3) => $q3->where('sekolah_id', $sekolahId));
                   });
             })
             ->whereIn('status', ['submit', 'dinilai']);
@@ -299,6 +315,13 @@ class LaporanRepository
                                  $q3->where(fn ($q4) => $q4->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
                              }
                          });
+                  });
+            })
+            ->whereHas('sesi', function ($q) use ($sekolahId) {
+                $q->where('status', 'selesai')
+                  ->orWhereDoesntHave('sesiPeserta', function ($q2) use ($sekolahId) {
+                      $q2->whereNotIn('status', ['submit', 'dinilai'])
+                         ->whereHas('peserta', fn ($q3) => $q3->where('sekolah_id', $sekolahId));
                   });
             })
             ->whereIn('status', ['submit', 'dinilai']);
