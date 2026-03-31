@@ -147,6 +147,21 @@
                             <p class="text-xs text-blue-500 mt-1">Hasil akan muncul dalam beberapa detik</p>
                         </div>
 
+                        {{-- Polling timeout fallback --}}
+                        <div x-show="!nilaiLoading && nilaiAkhir === null" x-transition
+                             class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
+                            <svg class="w-6 h-6 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p class="text-sm text-amber-700 font-medium">Nilai sedang diproses</p>
+                            <p class="text-xs text-amber-600 mt-1">Refresh halaman ini atau cek kembali nanti untuk melihat hasil.</p>
+                            <button @click="nilaiLoading = true; _isPolling = false; pollNilai()"
+                                    class="mt-3 px-4 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold rounded-lg transition-colors">
+                                Cek Ulang
+                            </button>
+                        </div>
+
                         {{-- Nilai ready --}}
                         <div x-show="!nilaiLoading && nilaiAkhir !== null" x-transition class="space-y-3">
                             <div class="rounded-xl p-5 text-center"
@@ -279,6 +294,7 @@ function selesaiApp() {
         _db: null,
         _retryTimer: null,
         _nilaiPollTimer: null,
+        _isPolling: false,
         _onlineSyncTimer: null,
         terjawab: window.SELESAI_CONFIG.serverTerjawab,
         ragu: window.SELESAI_CONFIG.serverRagu,
@@ -632,6 +648,11 @@ function selesaiApp() {
         async pollNilai() {
             if (!this.tampilkanHasil || this.nilaiAkhir !== null) return;
 
+            // Prevent concurrent polling chains
+            if (this._nilaiPollTimer) clearTimeout(this._nilaiPollTimer);
+            if (this._isPolling) return;
+            this._isPolling = true;
+
             const cfg = window.SELESAI_CONFIG;
             let attempts = 0;
             const maxAttempts = 30;
@@ -639,6 +660,7 @@ function selesaiApp() {
             const poll = async () => {
                 if (this.nilaiAkhir !== null || attempts >= maxAttempts) {
                     this.nilaiLoading = false;
+                    this._isPolling = false;
                     return;
                 }
                 attempts++;
@@ -656,6 +678,7 @@ function selesaiApp() {
                             this.jumlahSalah = data.jumlah_salah ?? this.jumlahSalah;
                             this.jumlahKosong = data.jumlah_kosong ?? this.jumlahKosong;
                             this.nilaiLoading = false;
+                            this._isPolling = false;
                             return;
                         }
                     }

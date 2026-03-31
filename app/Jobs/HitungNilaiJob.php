@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class HitungNilaiJob implements ShouldQueue
@@ -42,6 +43,11 @@ class HitungNilaiJob implements ShouldQueue
 
         $hasil = $penilaianService->hitungNilai($sesiPeserta);
         $sesiPeserta->update($hasil);
+
+        // Bust cached status so polling gets fresh nilai immediately
+        if ($sesiPeserta->token_ujian) {
+            Cache::forget("ujian_status:{$sesiPeserta->token_ujian}");
+        }
 
         Log::info('[HitungNilai] Scored successfully', [
             'sesi_peserta_id' => $this->sesiPesertaId,

@@ -86,7 +86,6 @@ class PenilaianService
             'jumlah_benar' => $jumlahBenar,
             'jumlah_salah' => $jumlahSalah,
             'jumlah_kosong'=> $jumlahKosong,
-            'status'       => 'submit',
         ];
     }
 
