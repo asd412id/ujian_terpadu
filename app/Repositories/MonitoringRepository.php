@@ -24,7 +24,7 @@ class MonitoringRepository
                     'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
                     'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
                 ])
-                ->where('status', 'berlangsung')
+                ->whereIn('status', ['persiapan', 'berlangsung'])
                 ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
                 ->latest()
                 ->get();
@@ -44,7 +44,7 @@ class MonitoringRepository
                     'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
                     'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
                 ])
-                ->where('status', 'berlangsung')
+                ->whereIn('status', ['persiapan', 'berlangsung'])
                 ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId)->where('status', 'aktif'))
                 ->latest()
                 ->get();

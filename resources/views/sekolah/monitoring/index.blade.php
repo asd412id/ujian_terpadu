@@ -104,10 +104,10 @@
                                         Berlangsung
                                     </span>
                                 </template>
-                                <template x-if="sesi.status === 'menunggu'">
-                                    <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Menunggu</span>
+                                <template x-if="sesi.status === 'persiapan'">
+                                    <span class="text-xs font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Persiapan</span>
                                 </template>
-                                <template x-if="!['berlangsung','menunggu'].includes(sesi.status)">
+                                <template x-if="!['berlangsung','persiapan'].includes(sesi.status)">
                                     <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Selesai</span>
                                 </template>
                             </td>

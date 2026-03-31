@@ -113,7 +113,7 @@ class DashboardRepository
     public function getUpcomingSesi(\Illuminate\Support\Collection $paketIds, int $limit = 5): Collection
     {
         return SesiUjian::whereIn('paket_id', $paketIds)
-            ->whereIn('status', ['persiapan', 'menunggu', 'berlangsung'])
+            ->whereIn('status', ['persiapan', 'berlangsung'])
             ->with('paket')
             ->orderBy('waktu_mulai')
             ->limit($limit)

@@ -118,8 +118,8 @@
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                     Berlangsung
                                 </span>
-                            @elseif($sesi->status === 'menunggu')
-                                <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Menunggu</span>
+                            @elseif($sesi->status === 'persiapan')
+                                <span class="text-xs font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Persiapan</span>
                             @else
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Selesai</span>
                             @endif
