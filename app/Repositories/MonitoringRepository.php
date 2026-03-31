@@ -41,11 +41,13 @@ class MonitoringRepository
         return Cache::remember("monitoring:dashboard_sesi_sekolah:{$sekolahId}", 10, function () use ($sekolahId) {
             $jenjang = Sekolah::where('id', $sekolahId)->value('jenjang');
 
+            $pesertaScope = fn ($q) => $q->whereHas('peserta', fn ($p) => $p->where('sekolah_id', $sekolahId));
+
             return SesiUjian::with(['paket.sekolah', 'pengawas'])
                 ->withCount([
-                    'sesiPeserta as total_peserta',
-                    'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
-                    'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
+                    'sesiPeserta as total_peserta' => $pesertaScope,
+                    'sesiPeserta as peserta_online' => fn ($q) => $pesertaScope($q)->whereIn('sesi_peserta.status', ['login', 'mengerjakan']),
+                    'sesiPeserta as sudah_submit' => fn ($q) => $pesertaScope($q)->whereIn('sesi_peserta.status', ['submit', 'dinilai']),
                 ])
                 ->whereIn('status', ['persiapan', 'berlangsung'])
                 ->whereHas('paket', fn ($q) => $q->where('status', 'aktif')

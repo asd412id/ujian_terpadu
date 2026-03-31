@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sekolah;
 
 use App\Http\Controllers\Controller;
+use App\Models\Sekolah;
 use App\Models\SesiUjian;
 use App\Services\MonitoringService;
 use Illuminate\Http\Request;
@@ -37,12 +38,11 @@ class MonitoringController extends Controller
             return redirect()->route('dinas.dashboard');
         }
 
-        $this->authorizeSesi($sesi, $sekolah->id);
+        $this->authorizeSesi($sesi, $sekolah);
 
         $filters = $request->only(['search', 'status', 'per_page']);
+        $filters['sekolah_id'] = $sekolah->id;
         $data = $this->monitoringService->getPesertaStatus($sesi->id, $filters);
-
-        abort_unless(($data['sesi']->paket?->sekolah_id ?? null) === $sekolah->id, 403, 'Anda tidak memiliki akses ke sesi ini.');
 
         return view('sekolah.monitoring.sesi', [
             'sesi'        => $data['sesi'],
@@ -75,7 +75,7 @@ class MonitoringController extends Controller
             return response()->json(['message' => 'Sekolah tidak ditemukan'], 403);
         }
 
-        $this->authorizeSesi($sesi, $sekolah->id);
+        $this->authorizeSesi($sesi, $sekolah);
 
         $data = $this->monitoringService->getSesiStats($sesi->id);
 
@@ -97,8 +97,26 @@ class MonitoringController extends Controller
         return $user?->sekolah;
     }
 
-    protected function authorizeSesi(SesiUjian $sesi, string $sekolahId): void
+    protected function authorizeSesi(SesiUjian $sesi, Sekolah $sekolah): void
     {
-        abort_unless(($sesi->paket?->sekolah_id ?? null) === $sekolahId, 403, 'Anda tidak memiliki akses ke sesi ini.');
+        $paket = $sesi->paket;
+        if (! $paket) {
+            abort(403, 'Anda tidak memiliki akses ke sesi ini.');
+        }
+
+        // School-owned paket
+        if ($paket->sekolah_id === $sekolah->id) {
+            return;
+        }
+
+        // Dinas-level paket matching jenjang
+        if (is_null($paket->sekolah_id)) {
+            $jenjang = $sekolah->jenjang;
+            if (! $jenjang || $paket->jenjang === $jenjang || $paket->jenjang === 'SEMUA') {
+                return;
+            }
+        }
+
+        abort(403, 'Anda tidak memiliki akses ke sesi ini.');
     }
 }
