@@ -135,7 +135,7 @@
                         </div>
                     </div>
                     @if($sp->nilai_akhir !== null && $paket->tampilkan_hasil)
-                    <span class="text-lg font-bold text-gray-900">{{ number_format($sp->nilai_akhir, 0) }}</span>
+                    <span class="text-lg font-bold text-gray-900">{{ number_format($sp->nilai_akhir, 1) }}</span>
                     @endif
                 </div>
                 @endforeach

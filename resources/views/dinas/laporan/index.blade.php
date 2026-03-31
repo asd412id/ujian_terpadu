@@ -278,7 +278,7 @@
                         <td class="px-5 py-3 text-center">
                             @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
                             <span class="font-bold {{ \App\Support\NilaiStatus::textClass($nilai) }}">
-                                {{ $nilai }}
+                                {{ number_format($nilai, 1) }}
                             </span>
                         </td>
                         <td class="px-5 py-3 text-center">
@@ -319,7 +319,7 @@
                         <p class="text-xs text-gray-400 mt-0.5">{{ $hasil->sesi->paket->nama ?? '' }}{{ $hasil->sesi->nama_sesi ? ' · ' . $hasil->sesi->nama_sesi : '' }}</p>
                     </div>
                     <div class="text-right shrink-0">
-                        <p class="text-lg font-bold {{ \App\Support\NilaiStatus::textClass($nilai) }}">{{ $nilai }}</p>
+                        <p class="text-lg font-bold {{ \App\Support\NilaiStatus::textClass($nilai) }}">{{ number_format($nilai, 1) }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">

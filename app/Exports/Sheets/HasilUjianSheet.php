@@ -130,6 +130,8 @@ class HasilUjianSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvent
                     ]);
                     $sheet->getStyle("K2:N{$totalRows}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("J2:J{$totalRows}")->getNumberFormat()
+                        ->setFormatCode('0.0');
                     $sheet->getStyle("K2:O{$totalRows}")->getNumberFormat()
                         ->setFormatCode(NumberFormat::FORMAT_NUMBER);
                     $sheet->getStyle("O2:O{$totalRows}")->getAlignment()

@@ -90,7 +90,7 @@ class LaporanService
                     'sekolah'        => $sp->peserta->sekolah->nama ?? '-',
                     'paket'          => $sp->sesi->paket->nama ?? '-',
                     'sesi'           => $sp->sesi->nama_sesi ?? '-',
-                    'nilai_akhir'    => round($sp->nilai_akhir ?? 0, 2),
+                    'nilai_akhir'    => round($sp->nilai_akhir ?? 0, 1),
                     'jumlah_benar'   => (int) ($sp->jumlah_benar ?? 0),
                     'jumlah_salah'   => (int) ($sp->jumlah_salah ?? 0),
                     'jumlah_kosong'  => (int) ($sp->jumlah_kosong ?? 0),
