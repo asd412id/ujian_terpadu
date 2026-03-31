@@ -217,37 +217,62 @@ class JawabanService
 
     /**
      * Get ujian status by token (server-authoritative).
+     * Core status data cached 5s per token to reduce DB load at 7000 peserta scale.
+     * Violation count cached separately (15s) since it changes less frequently.
      */
     public function getStatusByToken(string $token): array
     {
-        $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaketAny($token);
+        // Cache the core status data (5s) — avoids 3-table JOIN per poll
+        $statusData = Cache::remember("ujian_status:{$token}", 5, function () use ($token) {
+            $sesiPeserta = $this->repository->findSesiPesertaByTokenWithPaketAny($token);
 
-        // Count server-side violations for anti-cheat enforcement
-        // Only count events that trigger recordViolation() on client: ganti_tab, fullscreen_exit
-        $violationCacheKey = "violation_count:{$sesiPeserta->id}";
-        $violationCount = Cache::remember($violationCacheKey, 15, function () use ($sesiPeserta) {
-            return \App\Models\LogAktivitasUjian::where('sesi_peserta_id', $sesiPeserta->id)
+            return [
+                'sp_id'             => $sesiPeserta->id,
+                'status'            => $sesiPeserta->status,
+                'sesi_status'       => $sesiPeserta->sesi->status ?? 'selesai',
+                'mulai_at'          => $sesiPeserta->mulai_at?->timestamp,
+                'durasi_menit'      => $sesiPeserta->sesi->paket->durasi_menit ?? null,
+                'waktu_selesai_sesi' => $sesiPeserta->sesi->waktu_selesai?->timestamp,
+                'soal_terjawab'     => $sesiPeserta->soal_terjawab,
+                'is_active'         => in_array($sesiPeserta->status, ['login', 'mengerjakan']),
+                'nilai_akhir'       => $sesiPeserta->nilai_akhir,
+                'jumlah_benar'      => $sesiPeserta->jumlah_benar,
+                'jumlah_salah'      => $sesiPeserta->jumlah_salah,
+                'jumlah_kosong'     => $sesiPeserta->jumlah_kosong,
+                'tampilkan_hasil'   => (bool) ($sesiPeserta->sesi->paket->tampilkan_hasil ?? false),
+            ];
+        });
+
+        // Compute time-sensitive values fresh (not cached — depends on current time)
+        $elapsed = $statusData['mulai_at']
+            ? now()->timestamp - $statusData['mulai_at'] : 0;
+        $durasiDetik = ($statusData['durasi_menit'] ?? 0) * 60;
+        $remaining = $statusData['mulai_at'] && $statusData['is_active']
+            ? max(0, $durasiDetik - $elapsed) : 0;
+
+        // Violation count cached separately (15s TTL)
+        $violationCount = Cache::remember("violation_count:{$statusData['sp_id']}", 15, function () use ($statusData) {
+            return \App\Models\LogAktivitasUjian::where('sesi_peserta_id', $statusData['sp_id'])
                 ->whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit'])
                 ->count();
         });
 
         return [
-            'status'            => $sesiPeserta->status,
-            'sesi_status'       => $sesiPeserta->sesi->status ?? 'selesai',
-            'elapsed_seconds'   => $sesiPeserta->mulai_at
-                ? now()->diffInSeconds($sesiPeserta->mulai_at) : 0,
-            'remaining_seconds' => $sesiPeserta->sisa_waktu_detik,
-            'durasi_menit'      => $sesiPeserta->sesi->paket->durasi_menit ?? null,
-            'waktu_selesai_sesi' => $sesiPeserta->sesi->waktu_selesai?->timestamp,
-            'soal_terjawab'     => $sesiPeserta->soal_terjawab,
-            'server_timestamp'  => now()->timestamp,
-            'is_active'         => in_array($sesiPeserta->status, ['login', 'mengerjakan']),
-            'nilai_akhir'       => $sesiPeserta->nilai_akhir,
-            'jumlah_benar'      => $sesiPeserta->jumlah_benar,
-            'jumlah_salah'      => $sesiPeserta->jumlah_salah,
-            'jumlah_kosong'     => $sesiPeserta->jumlah_kosong,
-            'tampilkan_hasil'   => (bool) ($sesiPeserta->sesi->paket->tampilkan_hasil ?? false),
-            'violation_count'   => $violationCount,
+            'status'             => $statusData['status'],
+            'sesi_status'        => $statusData['sesi_status'],
+            'elapsed_seconds'    => $elapsed,
+            'remaining_seconds'  => $remaining,
+            'durasi_menit'       => $statusData['durasi_menit'],
+            'waktu_selesai_sesi' => $statusData['waktu_selesai_sesi'],
+            'soal_terjawab'      => $statusData['soal_terjawab'],
+            'server_timestamp'   => now()->timestamp,
+            'is_active'          => $statusData['is_active'],
+            'nilai_akhir'        => $statusData['nilai_akhir'],
+            'jumlah_benar'       => $statusData['jumlah_benar'],
+            'jumlah_salah'       => $statusData['jumlah_salah'],
+            'jumlah_kosong'      => $statusData['jumlah_kosong'],
+            'tampilkan_hasil'    => $statusData['tampilkan_hasil'],
+            'violation_count'    => $violationCount,
         ];
     }
 
@@ -319,6 +344,9 @@ class JawabanService
 
         // Dispatch scoring once for the initial submit transition.
         if ($wasNewSubmit) {
+            // Clear cached status so next poll reflects submit immediately
+            Cache::forget("ujian_status:{$token}");
+            Cache::forget("ujian_token:{$token}");
             \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'submit');
         }
 

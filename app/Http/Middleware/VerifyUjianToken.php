@@ -26,12 +26,18 @@ class VerifyUjianToken
         }
 
         $cacheKey = "ujian_token:{$token}";
-        $sesiPesertaId = Cache::get($cacheKey);
+        $sesiPeserta = Cache::get($cacheKey);
 
-        if ($sesiPesertaId) {
-            $sesiPeserta = SesiPeserta::find($sesiPesertaId);
+        if ($sesiPeserta instanceof SesiPeserta) {
+            // Cached model — ensure relations are still loaded
+            if (! $sesiPeserta->relationLoaded('sesi')) {
+                $sesiPeserta->load('sesi.paket');
+            }
         } else {
-            $sesiPeserta = SesiPeserta::where('token_ujian', $token)->first();
+            // Cache miss or stale ID — fetch from DB with eager-loaded relations
+            $sesiPeserta = SesiPeserta::with('sesi.paket')
+                ->where('token_ujian', $token)
+                ->first();
         }
 
         if (! $sesiPeserta) {
@@ -39,7 +45,8 @@ class VerifyUjianToken
             return response()->json(['error' => 'Sesi ujian tidak ditemukan.'], 401);
         }
 
-        Cache::put($cacheKey, $sesiPeserta->id, 30);
+        // Cache the full model (with relations) for 30s
+        Cache::put($cacheKey, $sesiPeserta, 30);
 
         $request->attributes->set('sesiPeserta', $sesiPeserta);
         $request->attributes->set('ujianToken', $token);

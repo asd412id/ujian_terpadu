@@ -13,57 +13,66 @@ class MonitoringRepository
 {
     /**
      * Get dashboard sesi list with peserta counts.
+     * Cached 10s — shared across all admin viewers.
      */
     public function getDashboardSesiList(): Collection
     {
-        return SesiUjian::with(['paket.sekolah', 'pengawas'])
-            ->withCount([
-                'sesiPeserta as total_peserta',
-                'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
-                'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
-            ])
-            ->where('status', 'berlangsung')
-            ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
-            ->latest()
-            ->get();
+        return Cache::remember('monitoring:dashboard_sesi_list', 10, function () {
+            return SesiUjian::with(['paket.sekolah', 'pengawas'])
+                ->withCount([
+                    'sesiPeserta as total_peserta',
+                    'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
+                    'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
+                ])
+                ->where('status', 'berlangsung')
+                ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
+                ->latest()
+                ->get();
+        });
     }
 
     /**
      * Get dashboard sesi list filtered by sekolah.
+     * Cached 10s per sekolah.
      */
     public function getDashboardSesiListBySekolah(string $sekolahId): Collection
     {
-        return SesiUjian::with(['paket.sekolah', 'pengawas'])
-            ->withCount([
-                'sesiPeserta as total_peserta',
-                'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
-                'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
-            ])
-            ->where('status', 'berlangsung')
-            ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId)->where('status', 'aktif'))
-            ->latest()
-            ->get();
+        return Cache::remember("monitoring:dashboard_sesi_sekolah:{$sekolahId}", 10, function () use ($sekolahId) {
+            return SesiUjian::with(['paket.sekolah', 'pengawas'])
+                ->withCount([
+                    'sesiPeserta as total_peserta',
+                    'sesiPeserta as peserta_online' => fn ($q) => $q->whereIn('status', ['login', 'mengerjakan']),
+                    'sesiPeserta as sudah_submit' => fn ($q) => $q->whereIn('status', ['submit', 'dinilai']),
+                ])
+                ->where('status', 'berlangsung')
+                ->whereHas('paket', fn ($q) => $q->where('sekolah_id', $sekolahId)->where('status', 'aktif'))
+                ->latest()
+                ->get();
+        });
     }
 
     /**
      * Get aggregated summary of active sesi peserta.
+     * Cached 10s — single aggregate query shared across all admin.
      */
     public function getDashboardSummary(): array
     {
-        $raw = SesiPeserta::query()
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
-                ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
-            )
-            ->selectRaw("
-                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
-                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
-            ")
-            ->first();
+        return Cache::remember('monitoring:dashboard_summary', 10, function () {
+            $raw = SesiPeserta::query()
+                ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
+                    ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
+                )
+                ->selectRaw("
+                    COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
+                    COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
+                ")
+                ->first();
 
-        return [
-            'peserta_online' => $raw->peserta_online ?? 0,
-            'sudah_submit'   => $raw->sudah_submit ?? 0,
-        ];
+            return [
+                'peserta_online' => $raw->peserta_online ?? 0,
+                'sudah_submit'   => $raw->sudah_submit ?? 0,
+            ];
+        });
     }
 
     /**
@@ -92,26 +101,29 @@ class MonitoringRepository
 
     /**
      * Get peserta stats aggregate for a sesi.
+     * Cached 10s per sesi — shared across all admin viewing the same sesi.
      */
     public function getSesiPesertaStats(string $sesiId): array
     {
-        $raw = SesiPeserta::where('sesi_id', $sesiId)
-            ->whereHas('peserta')
-            ->selectRaw("
-                COUNT(*) as total,
-                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
-                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as submit,
-                COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_mulai
-            ")
-            ->first();
+        return Cache::remember("monitoring:sesi_stats:{$sesiId}", 10, function () use ($sesiId) {
+            $raw = SesiPeserta::where('sesi_id', $sesiId)
+                ->whereHas('peserta')
+                ->selectRaw("
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as `online`,
+                    COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as submit,
+                    COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_mulai
+                ")
+                ->first();
 
-        return [
-            'total'       => $raw->total ?? 0,
-            'online'      => $raw->online ?? 0,
-            'submit'      => $raw->submit ?? 0,
-            'kosong'      => $raw->belum_mulai ?? 0,
-            'belum_mulai' => $raw->belum_mulai ?? 0,
-        ];
+            return [
+                'total'       => $raw->total ?? 0,
+                'online'      => $raw->online ?? 0,
+                'submit'      => $raw->submit ?? 0,
+                'kosong'      => $raw->belum_mulai ?? 0,
+                'belum_mulai' => $raw->belum_mulai ?? 0,
+            ];
+        });
     }
 
     /**
@@ -154,50 +166,60 @@ class MonitoringRepository
 
     /**
      * Get active sekolah list (for filter dropdown).
+     * Cached 60s — rarely changes.
      */
     public function getActiveSekolahList(): Collection
     {
-        return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        return Cache::remember('monitoring:active_sekolah_list', 60, function () {
+            return Sekolah::where('is_active', true)->orderBy('nama')->get(['id', 'nama']);
+        });
     }
 
     /**
      * Get sekolah list that have peserta in a specific sesi.
+     * Cached 30s per sesi — rarely changes during exam.
      */
     public function getSekolahListBySesi(string $sesiId): Collection
     {
-        $sekolahIds = SesiPeserta::where('sesi_id', $sesiId)
-            ->join('peserta', 'sesi_peserta.peserta_id', '=', 'peserta.id')
-            ->distinct()
-            ->pluck('peserta.sekolah_id');
+        return Cache::remember("monitoring:sekolah_by_sesi:{$sesiId}", 30, function () use ($sesiId) {
+            $sekolahIds = SesiPeserta::where('sesi_id', $sesiId)
+                ->join('peserta', 'sesi_peserta.peserta_id', '=', 'peserta.id')
+                ->distinct()
+                ->pluck('peserta.sekolah_id');
 
-        return Sekolah::whereIn('id', $sekolahIds)->orderBy('nama')->get(['id', 'nama']);
+            return Sekolah::whereIn('id', $sekolahIds)->orderBy('nama')->get(['id', 'nama']);
+        });
     }
 
     /**
      * Get aggregated summary of active sesi peserta for a sekolah.
+     * Cached 10s per sekolah.
      */
     public function getDashboardSummaryBySekolah(string $sekolahId): array
     {
-        $raw = SesiPeserta::query()
-            ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
-                ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
-            )
-            ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->selectRaw("
-                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
-                COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
-            ")
-            ->first();
+        return Cache::remember("monitoring:dashboard_summary_sekolah:{$sekolahId}", 10, function () use ($sekolahId) {
+            $raw = SesiPeserta::query()
+                ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung')
+                    ->whereHas('paket', fn ($p) => $p->where('status', 'aktif'))
+                )
+                ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
+                ->selectRaw("
+                    COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as peserta_online,
+                    COUNT(CASE WHEN status IN ('submit','dinilai') THEN 1 END) as sudah_submit
+                ")
+                ->first();
 
-        return [
-            'peserta_online' => $raw->peserta_online ?? 0,
-            'sudah_submit'   => $raw->sudah_submit ?? 0,
-        ];
+            return [
+                'peserta_online' => $raw->peserta_online ?? 0,
+                'sudah_submit'   => $raw->sudah_submit ?? 0,
+            ];
+        });
     }
 
 
     /**
      * Get sekolah monitoring data with batch queries.
+     * Already cached 30s.
      */
     public function getSekolahMonitoringBatch(): array
     {
@@ -268,24 +290,27 @@ class MonitoringRepository
 
     /**
      * Get peserta stats for a sesi (simple aggregate without whereHas peserta).
+     * Cached 10s per sesi.
      */
     public function getSesiPesertaStatsSimple(string $sesiId): array
     {
-        $raw = SesiPeserta::where('sesi_id', $sesiId)
-            ->selectRaw("
-                COUNT(*) as total,
-                COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as aktif,
-                COUNT(CASE WHEN status = 'submit' THEN 1 END) as submit,
-                COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_masuk
-            ")
-            ->first();
+        return Cache::remember("monitoring:sesi_stats_simple:{$sesiId}", 10, function () use ($sesiId) {
+            $raw = SesiPeserta::where('sesi_id', $sesiId)
+                ->selectRaw("
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN status IN ('login','mengerjakan') THEN 1 END) as aktif,
+                    COUNT(CASE WHEN status = 'submit' THEN 1 END) as submit,
+                    COUNT(CASE WHEN status IN ('terdaftar','belum_login') THEN 1 END) as belum_masuk
+                ")
+                ->first();
 
-        return [
-            'total'        => (int) ($raw->total ?? 0),
-            'aktif'        => (int) ($raw->aktif ?? 0),
-            'submit'       => (int) ($raw->submit ?? 0),
-            'belum_masuk'  => (int) ($raw->belum_masuk ?? 0),
-        ];
+            return [
+                'total'        => (int) ($raw->total ?? 0),
+                'aktif'        => (int) ($raw->aktif ?? 0),
+                'submit'       => (int) ($raw->submit ?? 0),
+                'belum_masuk'  => (int) ($raw->belum_masuk ?? 0),
+            ];
+        });
     }
 
     /**
@@ -330,50 +355,60 @@ class MonitoringRepository
 
     /**
      * Get cheating/alert logs for a sesi.
+     * Cached 15s — not time-critical for admin view.
      */
     public function getAlertsBySesi(string $sesiId, int $limit = 20): Collection
     {
-        return LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit', 'koneksi_putus'])
-            ->whereHas('sesiPeserta', fn ($q) => $q->where('sesi_id', $sesiId))
-            ->with('sesiPeserta.peserta')
-            ->latest()
-            ->take($limit)
-            ->get();
+        return Cache::remember("monitoring:alerts_sesi:{$sesiId}:{$limit}", 15, function () use ($sesiId, $limit) {
+            return LogAktivitasUjian::whereIn('tipe_event', ['ganti_tab', 'fullscreen_exit', 'koneksi_putus'])
+                ->whereHas('sesiPeserta', fn ($q) => $q->where('sesi_id', $sesiId))
+                ->with('sesiPeserta.peserta')
+                ->latest()
+                ->take($limit)
+                ->get();
+        });
     }
 
     /**
      * Get sekolah list with monitoring stats (legacy).
+     * Cached 30s.
      */
     public function getSekolahWithMonitoringStats(): Collection
     {
-        return Sekolah::withCount(['peserta'])
-            ->with(['paketUjian' => fn ($q) => $q->whereHas('sesi', fn ($s) => $s->where('status', 'berlangsung'))])
-            ->where('is_active', true)
-            ->orderBy('nama')
-            ->get();
+        return Cache::remember('monitoring:sekolah_with_stats', 30, function () {
+            return Sekolah::withCount(['peserta'])
+                ->with(['paketUjian' => fn ($q) => $q->whereHas('sesi', fn ($s) => $s->where('status', 'berlangsung'))])
+                ->where('is_active', true)
+                ->orderBy('nama')
+                ->get();
+        });
     }
 
     /**
      * Get statistik ujian summary.
+     * Cached 10s.
      */
     public function getStatistik(): array
     {
-        $totalSesi = SesiUjian::where('status', 'berlangsung')
-            ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
-            ->count();
-        $summary = $this->getDashboardSummary();
+        return Cache::remember('monitoring:statistik', 10, function () {
+            $totalSesi = SesiUjian::where('status', 'berlangsung')
+                ->whereHas('paket', fn ($q) => $q->where('status', 'aktif'))
+                ->count();
+            $summary = $this->getDashboardSummary();
 
-        return [
-            'total_sesi'     => $totalSesi,
-            'peserta_online' => $summary['peserta_online'],
-            'peserta_ragu'   => 0,
-            'sudah_submit'   => $summary['sudah_submit'],
-        ];
+            return [
+                'total_sesi'     => $totalSesi,
+                'peserta_online' => $summary['peserta_online'],
+                'peserta_ragu'   => 0,
+                'sudah_submit'   => $summary['sudah_submit'],
+            ];
+        });
     }
 
     /**
      * Get live data for all peserta in a sesi (lightweight, for polling).
      * Returns sisa_waktu_detik, status, soal_terjawab, soal_ditandai per peserta.
+     * Cached 5s per sesi.
      */
     public function getSesiPesertaLiveData(string $sesiId): array
     {
