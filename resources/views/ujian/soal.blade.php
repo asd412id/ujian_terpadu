@@ -480,19 +480,6 @@
                 <div class="flex-1 overflow-y-auto p-3">
                     <div class="grid grid-cols-5 gap-1.5">
                         @foreach($soalList as $i => $s)
-                        @php
-                            $isNarasi = !empty($s['narasi_id']);
-                            $prevNarasi = ($i > 0) ? ($soalList[$i-1]['narasi_id'] ?? null) : null;
-                            $nextNarasi = ($i < count($soalList) - 1) ? ($soalList[$i+1]['narasi_id'] ?? null) : null;
-                            $isGroupStart = $isNarasi && ($s['narasi_id'] !== $prevNarasi);
-                            $isGroupEnd = $isNarasi && ($s['narasi_id'] !== $nextNarasi);
-                        @endphp
-                        @if($isGroupStart)
-                        <div class="col-span-5 mt-1 mb-0.5 flex items-center gap-1">
-                            <svg class="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            <span class="text-[10px] text-indigo-500 font-medium truncate">{{ $s['narasi']['judul'] ?? 'Narasi' }}</span>
-                        </div>
-                        @endif
                         <button @click="goToSoal({{ $i }})"
                                 :class="{
                                     'bg-blue-600 text-white border-blue-600': isAnswered('{{ $s['id'] }}') && !isTandai('{{ $s['id'] }}'),
@@ -501,16 +488,13 @@
                                     'ring-2 ring-offset-1 ring-blue-400': currentIndex === {{ $i }}
                                 }"
                                 class="w-full aspect-square rounded-lg border text-xs font-semibold
-                                       hover:opacity-80 transition-all duration-100 flex items-center justify-center relative {{ $isNarasi ? 'border-indigo-300' : '' }}">
+                                       hover:opacity-80 transition-all duration-100 flex items-center justify-center relative">
                             {{ $i + 1 }}
                             <span x-show="isSynced('{{ $s['id'] }}')"
                                   class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-white"></span>
                             <span x-show="isPendingSync('{{ $s['id'] }}')"
                                   class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-orange-400 ring-1 ring-white animate-pulse"></span>
                         </button>
-                        @if($isGroupEnd)
-                        <div class="col-span-5 mb-1"></div>
-                        @endif
                         @endforeach
                     </div>
                 </div>
@@ -600,19 +584,6 @@
             </div>
             <div class="grid grid-cols-7 sm:grid-cols-10 gap-2 mb-4">
                 @foreach($soalList as $i => $s)
-                @php
-                    $isNarasi = !empty($s['narasi_id']);
-                    $prevNarasi = ($i > 0) ? ($soalList[$i-1]['narasi_id'] ?? null) : null;
-                    $nextNarasi = ($i < count($soalList) - 1) ? ($soalList[$i+1]['narasi_id'] ?? null) : null;
-                    $isGroupStart = $isNarasi && ($s['narasi_id'] !== $prevNarasi);
-                    $isGroupEnd = $isNarasi && ($s['narasi_id'] !== $nextNarasi);
-                @endphp
-                @if($isGroupStart)
-                <div class="col-span-7 sm:col-span-10 mt-1 flex items-center gap-1">
-                    <svg class="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span class="text-[10px] text-indigo-500 font-medium truncate">{{ $s['narasi']['judul'] ?? 'Narasi' }}</span>
-                </div>
-                @endif
                 <button @click="goToSoal({{ $i }}); showNavigator = false"
                         :class="{
                             'bg-blue-600 text-white': isAnswered('{{ $s['id'] }}') && !isTandai('{{ $s['id'] }}'),
@@ -621,16 +592,13 @@
                             'ring-2 ring-blue-400': currentIndex === {{ $i }}
                         }"
                         class="aspect-square rounded-lg text-xs font-bold
-                               hover:opacity-80 transition-all flex items-center justify-center relative {{ $isNarasi ? 'border border-indigo-300' : '' }}">
+                               hover:opacity-80 transition-all flex items-center justify-center relative">
                     {{ $i + 1 }}
                     <span x-show="isSynced('{{ $s['id'] }}')"
                           class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-white"></span>
                     <span x-show="isPendingSync('{{ $s['id'] }}')"
                           class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-orange-400 ring-1 ring-white animate-pulse"></span>
                 </button>
-                @if($isGroupEnd)
-                <div class="col-span-7 sm:col-span-10 mb-1"></div>
-                @endif
                 @endforeach
             </div>
             <button @click="confirmSubmit()"
