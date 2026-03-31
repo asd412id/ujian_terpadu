@@ -199,12 +199,14 @@ class SesiUjianRepository
 
     /**
      * Get completed sesi for a peserta (history).
+     * Only returns sesi where the parent paket is published (aktif).
      */
     public function getCompletedSesiForPeserta(string $pesertaId): \Illuminate\Database\Eloquent\Collection
     {
         return SesiPeserta::with(['sesi.paket'])
             ->where('peserta_id', $pesertaId)
-            ->where('status', 'submit')
+            ->whereIn('status', ['submit', 'dinilai'])
+            ->whereHas('sesi', fn ($q) => $q->whereHas('paket', fn ($p) => $p->where('status', 'aktif')))
             ->latest('submit_at')
             ->get();
     }
