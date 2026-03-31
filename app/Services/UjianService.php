@@ -143,34 +143,49 @@ class UjianService
             abort(403, 'Anda tidak memiliki akses ke sesi ujian ini.');
         }
 
-        // Already submitted
-        if ($sesiPeserta->status === 'submit') {
+        // Already submitted — skip straight to result
+        if (in_array($sesiPeserta->status, ['submit', 'dinilai'])) {
             return $this->getHasilUjian($sesiPesertaId);
         }
 
-        $durasi = $sesiPeserta->mulai_at
-            ? (int) $sesiPeserta->mulai_at->diffInSeconds(now(), false)
-            : 0;
+        $wasNewSubmit = false;
+        \Illuminate\Support\Facades\DB::transaction(function () use (&$sesiPeserta, &$wasNewSubmit) {
+            $locked = SesiPeserta::whereKey($sesiPeserta->id)->lockForUpdate()->firstOrFail();
+            if (!in_array($locked->status, ['submit', 'dinilai'])) {
+                $durasi = $locked->mulai_at
+                    ? (int) $locked->mulai_at->diffInSeconds(now(), false)
+                    : 0;
 
-        $sesiPeserta->update([
-            'status'              => 'submit',
-            'submit_at'           => now(),
-            'durasi_aktual_detik' => $durasi,
-        ]);
+                $locked->update([
+                    'status'              => 'submit',
+                    'submit_at'           => now(),
+                    'durasi_aktual_detik' => $durasi,
+                ]);
+                $wasNewSubmit = true;
+            }
+            $sesiPeserta = $locked->refresh();
+        });
 
-        // Dispatch scoring to queue — page redirects immediately
-        \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'form_submit');
+        if ($wasNewSubmit) {
+            \App\Jobs\HitungNilaiJob::dispatch($sesiPeserta->id, 'form_submit');
 
-        $this->sesiUjianRepository->logAktivitas([
-            'sesi_peserta_id' => $sesiPeserta->id,
-            'tipe_event'      => 'submit_ujian',
-            'detail'          => ['durasi' => $durasi],
-            'created_at'      => now(),
-        ]);
+            $this->sesiUjianRepository->logAktivitas([
+                'sesi_peserta_id' => $sesiPeserta->id,
+                'tipe_event'      => 'submit_ujian',
+                'detail'          => ['durasi' => $sesiPeserta->durasi_aktual_detik],
+                'created_at'      => now(),
+            ]);
 
-        // Clear cached soal
-        $paketId = $sesiPeserta->sesi->paket_id;
-        Cache::forget("paket_soal_{$paketId}_sp_{$sesiPesertaId}");
+            // Clear cached soal
+            $paketId = $sesiPeserta->sesi->paket_id;
+            Cache::forget("paket_soal_{$paketId}_sp_{$sesiPesertaId}");
+
+            // Clear cached status
+            if ($sesiPeserta->token_ujian) {
+                Cache::forget("ujian_status:{$sesiPeserta->token_ujian}");
+                Cache::forget("ujian_token:{$sesiPeserta->token_ujian}");
+            }
+        }
 
         return $this->getHasilUjian($sesiPesertaId);
     }
@@ -188,9 +203,13 @@ class UjianService
         $kosong    = max(0, $totalSoal - $terjawab);
         $ragu      = (int) $sesiPeserta->soal_ditandai;
 
-        $mulai   = $sesiPeserta->mulai_at;
-        $selesai = $sesiPeserta->submit_at ?? now();
-        $durasi  = $mulai ? (int) $mulai->diffInMinutes($selesai) . ' menit' : '-';
+        if ($sesiPeserta->durasi_aktual_detik) {
+            $durasi = (int) round($sesiPeserta->durasi_aktual_detik / 60) . ' menit';
+        } elseif ($sesiPeserta->mulai_at && $sesiPeserta->submit_at) {
+            $durasi = (int) $sesiPeserta->mulai_at->diffInMinutes($sesiPeserta->submit_at) . ' menit';
+        } else {
+            $durasi = '-';
+        }
 
         $ringkasan = compact('terjawab', 'kosong', 'ragu', 'durasi');
 
