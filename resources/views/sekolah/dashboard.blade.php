@@ -97,7 +97,7 @@
             <div class="grid grid-cols-2 gap-3">
                 @foreach([
                     ['route' => 'sekolah.peserta.import', 'label' => 'Import Peserta', 'icon' => 'upload', 'color' => 'blue'],
-                    ['route' => 'sekolah.peserta.index', 'label' => 'Data Peserta & Kartu', 'icon' => 'users', 'color' => 'amber'],
+                    ['route' => 'sekolah.kartu.index', 'label' => 'Cetak Kartu Login', 'icon' => 'tag', 'color' => 'amber'],
                     ['route' => 'sekolah.paket', 'label' => 'Paket Ujian', 'icon' => 'document', 'color' => 'purple'],
                 ] as $qa)
                 <a href="{{ route($qa['route']) }}"

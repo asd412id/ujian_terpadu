@@ -16,6 +16,22 @@ class KartuLoginController extends Controller
         protected KartuLoginService $kartuLoginService
     ) {}
 
+    public function index(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $data = $this->kartuLoginService->generateKartuLogin($user->sekolah_id, [
+            'kelas' => $request->kelas,
+            'q'     => $request->q,
+        ]);
+
+        return view('sekolah.kartu.index', [
+            'peserta'   => $data['peserta'],
+            'kelasList' => $data['kelasList'],
+        ]);
+    }
+
     public function cetakSemua(Request $request)
     {
         /** @var \App\Models\User $user */
@@ -40,14 +56,6 @@ class KartuLoginController extends Controller
             'peserta'       => $data['peserta'],
             'passwordKartu' => $data['passwordKartu'],
         ]);
-    }
-
-    public function preview(SesiUjian $sesi)
-    {
-        $sesi->load(['paket', 'sesiPeserta.peserta']);
-        abort_unless($sesi->paket?->sekolah_id === Auth::user()->sekolah_id, 403);
-
-        return view('sekolah.kartu.preview', compact('sesi'));
     }
 
     public function cetak(SesiUjian $sesi)

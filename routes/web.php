@@ -216,7 +216,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
          ->names('peserta')
          ->parameters(['peserta' => 'peserta']);
 
-    // Kartu login peserta (cetak kartu lintas sekolah)
+    // Kartu login peserta (cetak kartu dari halaman peserta)
     Route::get('/kartu/cetak-semua', [\App\Http\Controllers\Dinas\KartuLoginController::class, 'cetakSemua'])->name('kartu.cetak-semua');
     Route::get('/kartu/{peserta}', [\App\Http\Controllers\Dinas\KartuLoginController::class, 'show'])->name('kartu.show');
 });
@@ -237,8 +237,8 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
     Route::resource('peserta', PesertaController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])->names('peserta')->parameters(['peserta' => 'peserta']);
 
     // Kartu Login
+    Route::get('/kartu-login', [KartuLoginController::class, 'index'])->name('kartu.index');
     Route::get('/kartu-login/cetak-semua', [KartuLoginController::class, 'cetakSemua'])->name('kartu.cetak-semua');
-    Route::get('/kartu-login/{sesi}', [KartuLoginController::class, 'preview'])->name('kartu.preview');
     Route::get('/kartu-login/{sesi}/cetak', [KartuLoginController::class, 'cetak'])->name('kartu.cetak');
     Route::get('/kartu-login/peserta/{peserta}', [KartuLoginController::class, 'cetakSatu'])->name('kartu.satu');
     Route::get('/kartu-login/peserta/{peserta}/show', [KartuLoginController::class, 'show'])->name('kartu.show');

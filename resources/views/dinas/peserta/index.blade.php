@@ -11,10 +11,7 @@
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola peserta lintas sekolah, import data, atau cetak kartu login langsung dari daftar peserta.</p>
-        </div>
+        <h1 class="text-xl font-bold text-gray-900">Data Peserta</h1>
         <div class="flex items-center gap-2 flex-wrap">
             <a href="{{ route('dinas.peserta.import') }}"
                class="btn-secondary inline-flex items-center gap-1.5">
@@ -86,7 +83,7 @@
 
     {{-- Tabel --}}
     <div class="card overflow-hidden p-0">
-        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between text-sm text-gray-500">
+        <div class="px-5 py-3.5 border-b border-gray-100 text-sm text-gray-500">
             <span>{{ $peserta->total() }} peserta ditemukan</span>
         </div>
         {{-- Desktop table --}}
@@ -134,7 +131,7 @@
                             @endif
                         </td>
                         <td class="px-5 py-3 text-right">
-                            <div class="flex items-center justify-end gap-2 flex-wrap">
+                            <div class="flex items-center justify-end gap-2">
                                 <a href="{{ route('dinas.kartu.show', $p->id) }}"
                                    class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">Cetak Kartu</a>
                                 <a href="{{ route('dinas.peserta.edit', $p->id) }}"
@@ -189,7 +186,7 @@
                 <div class="ml-10.5 text-xs text-gray-500 mb-2">
                     {{ $p->sekolah?->nama ?? '—' }}
                 </div>
-                <div class="flex items-center gap-3 ml-10.5 flex-wrap">
+                <div class="flex items-center gap-3 ml-10.5">
                     <a href="{{ route('dinas.kartu.show', $p->id) }}"
                        class="text-amber-600 hover:text-amber-800 text-xs font-medium" target="_blank">Cetak Kartu</a>
                     <a href="{{ route('dinas.peserta.edit', $p->id) }}"
