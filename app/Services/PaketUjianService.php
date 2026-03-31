@@ -27,9 +27,9 @@ class PaketUjianService
     /**
      * Get all paket ujian with counts, paginated (Dinas view).
      */
-    public function getAllPaginated(int $perPage = 20): mixed
+    public function getAllPaginated(int $perPage = 20, ?string $search = null): mixed
     {
-        return $this->repository->getAll($perPage);
+        return $this->repository->getAll($perPage, $search);
     }
 
     /**
@@ -142,17 +142,26 @@ class PaketUjianService
     /**
      * Get soft-deleted paket ujian, paginated.
      */
-    public function getTrashedPaginated(int $perPage = 20): mixed
+    public function getTrashedPaginated(int $perPage = 20, ?string $search = null): mixed
     {
-        return $this->repository->getTrashedPaginated($perPage);
+        return $this->repository->getTrashedPaginated($perPage, $search);
     }
 
     /**
      * Get all trashed paket IDs for current trash page/filter context.
      */
-    public function getTrashedIds(): array
+    public function getTrashedIds(?string $search = null): array
     {
-        return PaketUjian::onlyTrashed()->latest('deleted_at')->pluck('id')->all();
+        $query = PaketUjian::onlyTrashed();
+        if ($search) {
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $search);
+            $query->where(function ($q) use ($escaped) {
+                $q->where('nama', 'like', "%{$escaped}%")
+                    ->orWhere('kode', 'like', "%{$escaped}%")
+                    ->orWhere('deskripsi', 'like', "%{$escaped}%");
+            });
+        }
+        return $query->latest('deleted_at')->pluck('id')->all();
     }
 
     /**

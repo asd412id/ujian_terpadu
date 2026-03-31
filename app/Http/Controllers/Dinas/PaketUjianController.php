@@ -16,9 +16,9 @@ class PaketUjianController extends Controller
         protected PaketUjianService $paketUjianService
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $paket = $this->paketUjianService->getAllPaginated(20);
+        $paket = $this->paketUjianService->getAllPaginated(20, $request->input('search'));
 
         return view('dinas.paket.index', compact('paket'));
     }
@@ -146,10 +146,11 @@ class PaketUjianController extends Controller
                          ->with('success', 'Paket ujian dihapus. Anda dapat memulihkannya dari halaman Sampah.');
     }
 
-    public function trash()
+    public function trash(Request $request)
     {
-        $paket = $this->paketUjianService->getTrashedPaginated(20);
-        $allFilteredIds = $this->paketUjianService->getTrashedIds();
+        $search = $request->input('search');
+        $paket = $this->paketUjianService->getTrashedPaginated(20, $search);
+        $allFilteredIds = $this->paketUjianService->getTrashedIds($search);
 
         return view('dinas.paket.trash', compact('paket', 'allFilteredIds'));
     }

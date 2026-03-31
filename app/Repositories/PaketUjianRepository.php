@@ -20,13 +20,22 @@ class PaketUjianRepository
     /**
      * Get all paket ujian with counts (Dinas view).
      */
-    public function getAll(int $perPage = 20): LengthAwarePaginator
+    public function getAll(int $perPage = 20, ?string $search = null): LengthAwarePaginator
     {
-        return $this->model
+        $query = $this->model
             ->with(['sekolah', 'pembuat'])
-            ->withCount(['paketSoal', 'sesi'])
-            ->latest()
-            ->paginate($perPage);
+            ->withCount(['paketSoal', 'sesi']);
+
+        if ($search) {
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $search);
+            $query->where(function ($q) use ($escaped) {
+                $q->where('nama', 'like', "%{$escaped}%")
+                    ->orWhere('kode', 'like', "%{$escaped}%")
+                    ->orWhere('deskripsi', 'like', "%{$escaped}%");
+            });
+        }
+
+        return $query->latest()->paginate($perPage);
     }
 
     /**
@@ -237,13 +246,22 @@ class PaketUjianRepository
     /**
      * Get soft-deleted paket ujian, paginated.
      */
-    public function getTrashedPaginated(int $perPage = 20): LengthAwarePaginator
+    public function getTrashedPaginated(int $perPage = 20, ?string $search = null): LengthAwarePaginator
     {
-        return $this->model::onlyTrashed()
+        $query = $this->model::onlyTrashed()
             ->with(['sekolah', 'pembuat'])
-            ->withCount(['paketSoal', 'sesi'])
-            ->latest('deleted_at')
-            ->paginate($perPage);
+            ->withCount(['paketSoal', 'sesi']);
+
+        if ($search) {
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $search);
+            $query->where(function ($q) use ($escaped) {
+                $q->where('nama', 'like', "%{$escaped}%")
+                    ->orWhere('kode', 'like', "%{$escaped}%")
+                    ->orWhere('deskripsi', 'like', "%{$escaped}%");
+            });
+        }
+
+        return $query->latest('deleted_at')->paginate($perPage);
     }
 
     /**

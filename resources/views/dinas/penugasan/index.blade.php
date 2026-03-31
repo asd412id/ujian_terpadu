@@ -22,7 +22,21 @@
     </div>
     @endif
 
-    <div class="card overflow-hidden p-0">
+    <div class="card overflow-hidden p-0" x-data="{ search: '' }">
+        <div class="px-5 py-3 border-b border-gray-100">
+            <div class="relative w-full sm:w-64">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" x-model="search" placeholder="Cari pembuat soal..."
+                       class="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <button x-show="search" x-cloak @click="search = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
         {{-- Desktop table --}}
         <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
@@ -37,7 +51,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($users as $user)
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50" x-show="!search || (@js(strtolower($user->name . ' ' . $user->email))).includes(search.toLowerCase())">
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -92,7 +106,7 @@
         {{-- Mobile cards --}}
         <div class="sm:hidden divide-y divide-gray-100">
             @forelse($users as $user)
-            <div class="px-4 py-3">
+            <div class="px-4 py-3" x-show="!search || (@js(strtolower($user->name . ' ' . $user->email))).includes(search.toLowerCase())">
                 <div class="flex items-start justify-between gap-2 mb-2">
                     <div class="flex items-center gap-2.5 min-w-0">
                         <div class="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">

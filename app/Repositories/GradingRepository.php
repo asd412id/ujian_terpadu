@@ -65,6 +65,15 @@ class GradingRepository
             $query->whereHas('sesiPeserta.peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
         }
 
+        if (!empty($filters['search'])) {
+            $search = str_replace(['%', '_'], ['\%', '\_'], $filters['search']);
+            $query->whereHas('sesiPeserta.peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
+        }
+
         $perPage = min((int) ($filters['per_page'] ?? 15), 200);
         return $query->latest()->paginate($perPage);
     }

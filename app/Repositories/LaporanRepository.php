@@ -122,6 +122,15 @@ class LaporanRepository
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
         }
 
+        if (!empty($filters['search'])) {
+            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
+        }
+
         if (!empty($filters['status'])) {
             $query->where(function ($q) use ($filters) {
                 match ($filters['status']) {
@@ -156,7 +165,7 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = $filters['search'];
+            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                     ->orWhere('nis', 'like', "%{$search}%")
@@ -196,6 +205,15 @@ class LaporanRepository
 
         if (!empty($filters['paket_id'])) {
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['search'])) {
+            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
         }
 
         if (!empty($filters['status'])) {
@@ -249,7 +267,7 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = $filters['search'];
+            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                     ->orWhere('nis', 'like', "%{$search}%")
@@ -339,6 +357,15 @@ class LaporanRepository
 
         if (!empty($filters['paket_id'])) {
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
+        }
+
+        if (!empty($filters['search'])) {
+            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%");
+            }));
         }
 
         if (!empty($filters['status'])) {

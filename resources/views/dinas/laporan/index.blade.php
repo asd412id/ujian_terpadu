@@ -54,7 +54,7 @@
                     class="btn-primary">
                 Tampilkan
             </button>
-            @if(request()->hasAny(['paket_id', 'sekolah_id', 'status']))
+            @if(request()->hasAny(['paket_id', 'sekolah_id', 'status', 'search']))
             <a href="{{ route('dinas.laporan') }}"
                class="btn-secondary">Reset</a>
             @endif
@@ -188,6 +188,28 @@
     <div class="card overflow-hidden p-0">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 border-b border-gray-100 gap-2">
             <p class="text-sm text-gray-500">Menampilkan {{ $data->count() }} dari {{ $data->total() }} data</p>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <form method="GET" action="{{ route('dinas.laporan') }}" class="relative flex-1 sm:flex-none">
+                    @foreach(request()->except(['search', 'page']) as $key => $value)
+                        @if($value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif
+                    @endforeach
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input type="text"
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Cari nama, NIS, NISN..."
+                           class="w-full sm:w-64 pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    @if(request('search'))
+                    <a href="{{ route('dinas.laporan', request()->except(['search', 'page'])) }}"
+                       class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </a>
+                    @endif
+                </form>
             <button type="button"
                     x-data
                     @click="
@@ -214,6 +236,7 @@
                 </svg>
                 <span class="btn-text">Hitung Ulang Nilai</span>
             </button>
+            </div>
         </div>
         {{-- Desktop table --}}
         <div class="hidden sm:block overflow-x-auto">
@@ -319,7 +342,7 @@
         </div>
         @endif
     </div>
-    @elseif(request()->hasAny(['paket_id', 'sekolah_id', 'status']))
+    @elseif(request()->hasAny(['paket_id', 'sekolah_id', 'status', 'search']))
     <div class="card text-center py-12 text-gray-400">Tidak ada data yang sesuai filter.</div>
     @else
     <div class="card text-center py-12 text-gray-400">
