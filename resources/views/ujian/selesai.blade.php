@@ -201,7 +201,7 @@
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500">Selesai Pukul</span>
-                        <span class="font-medium text-gray-900">{{ now()->format('H:i:s') }} WIB</span>
+                        <span class="font-medium text-gray-900">{{ ($sesiPeserta->submit_at ?? now())->format('H:i:s') }} WITA</span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500">Status Sinkronisasi</span>
@@ -275,6 +275,7 @@ window.SELESAI_CONFIG = {
     jumlahSalah: {{ $sesiPeserta->jumlah_salah ?? 'null' }},
     jumlahKosong: {{ $sesiPeserta->jumlah_kosong ?? 'null' }},
     statusUrl: '{{ route("api.ujian.status", $sesiToken) }}',
+    alreadySubmitted: {{ in_array($sesiPeserta->status, ['submit', 'dinilai']) ? 'true' : 'false' }},
 };
 
 function selesaiApp() {
@@ -375,6 +376,11 @@ function selesaiApp() {
             // If no local data at all AND no pending submit → already clean, skip to result
             if (localAnswers.length === 0 && !hasPendingSubmit) {
                 this.syncProgress = 100;
+                if (cfg.alreadySubmitted) {
+                    this.syncVerified = true;
+                    if (this.tampilkanHasil && this.nilaiAkhir === null) this.pollNilai();
+                    return;
+                }
                 await this.verifyServerCount();
                 return;
             }

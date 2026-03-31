@@ -29,7 +29,7 @@ class RekapSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
         $rows = [];
 
         $rows[] = ['LAPORAN HASIL UJIAN TERPADU'];
-        $rows[] = ['Tanggal Export: ' . now()->translatedFormat('d F Y, H:i') . ' WIB'];
+        $rows[] = ['Tanggal Export: ' . now()->translatedFormat('d F Y, H:i') . ' WITA'];
         $rows[] = [];
 
         $rows[] = ['FILTER YANG DITERAPKAN'];
