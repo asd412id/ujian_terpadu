@@ -80,6 +80,51 @@ class KartuLoginService
     }
 
     /**
+     * Generate kartu login data for dinas (cross-school, with sekolah + kelas filter).
+     */
+    public function generateKartuLoginDinas(array $filters = []): array
+    {
+        $query = \App\Models\Peserta::with('sekolah')
+            ->when(!empty($filters['sekolah_id']), fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']))
+            ->when(!empty($filters['kelas']), fn ($q) => $q->where('kelas', $filters['kelas']))
+            ->when(!empty($filters['q']), function ($q) use ($filters) {
+                $search = $filters['q'];
+                $q->where(function ($q) use ($search) {
+                    $q->where('nama', 'like', "%{$search}%")
+                      ->orWhere('nis', 'like', "%{$search}%")
+                      ->orWhere('nisn', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('sekolah_id')
+            ->orderBy('kelas')
+            ->orderBy('nama');
+
+        $peserta = $query->paginate($filters['per_page'] ?? 25)->withQueryString();
+
+        $sekolahList = \App\Models\Sekolah::orderBy('nama')->get();
+
+        return compact('peserta', 'sekolahList');
+    }
+
+    /**
+     * Get all active peserta for batch print (dinas, cross-school).
+     */
+    public function getKartuAllDinas(?string $sekolahId = null): \Illuminate\Support\Collection
+    {
+        return \App\Models\Peserta::with('sekolah')
+            ->where('is_active', true)
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->orderBy('sekolah_id')
+            ->orderBy('kelas')
+            ->orderBy('nama')
+            ->get()
+            ->map(function ($peserta) {
+                $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
+                return $peserta;
+            });
+    }
+
+    /**
      * Safely decrypt password_plain with fallback on failure.
      */
     protected function decryptPassword(?string $encrypted): string

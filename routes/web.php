@@ -215,6 +215,11 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::resource('peserta', \App\Http\Controllers\Dinas\PesertaController::class)
          ->names('peserta')
          ->parameters(['peserta' => 'peserta']);
+
+    // Kartu login peserta (cetak kartu lintas sekolah)
+    Route::get('/kartu', [\App\Http\Controllers\Dinas\KartuLoginController::class, 'index'])->name('kartu.index');
+    Route::get('/kartu/cetak-semua', [\App\Http\Controllers\Dinas\KartuLoginController::class, 'cetakSemua'])->name('kartu.cetak-semua');
+    Route::get('/kartu/{peserta}', [\App\Http\Controllers\Dinas\KartuLoginController::class, 'show'])->name('kartu.show');
 });
 
 // =============================================================
