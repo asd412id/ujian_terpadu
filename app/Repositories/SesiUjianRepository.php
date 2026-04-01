@@ -91,7 +91,19 @@ class SesiUjianRepository
     ): Builder {
         return Peserta::query()
             ->where('is_active', true)
-            ->when($excludeSesi, fn (Builder $query) => $query->whereNotIn('id', $excludeSesi->sesiPeserta()->pluck('peserta_id')))
+            ->when($excludeSesi, function (Builder $query) use ($excludeSesi) {
+                $enrolledPesertaIds = $excludeSesi->sesiPeserta()->pluck('peserta_id');
+                $query->whereNotIn('id', $enrolledPesertaIds);
+
+                // Prevent duplicate person: exclude peserta whose (nis, sekolah_id)
+                // matches any already-enrolled peserta
+                $query->whereNotIn(
+                    DB::raw("CONCAT(COALESCE(nis,''), '|', sekolah_id)"),
+                    Peserta::whereIn('id', $enrolledPesertaIds)
+                        ->whereNotNull('nis')->where('nis', '!=', '')
+                        ->select(DB::raw("CONCAT(nis, '|', sekolah_id)"))
+                );
+            })
             ->whereHas('sekolah', function ($q) use ($jenjang, $paketSekolahId, $filterSekolahId) {
                 if ($jenjang && strtoupper($jenjang) !== 'SEMUA') {
                     $q->where('jenjang', $jenjang);
