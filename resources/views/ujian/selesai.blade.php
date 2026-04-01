@@ -175,20 +175,6 @@
                                 <p class="text-xs text-gray-500 mt-1">Nilai Akhir</p>
                             </div>
 
-                            <div class="grid grid-cols-3 gap-2">
-                                <div class="bg-green-50 rounded-lg px-2 py-2 text-center">
-                                    <p class="text-lg font-bold text-green-700" x-text="jumlahBenar ?? '-'"></p>
-                                    <p class="text-[10px] text-gray-500">Benar</p>
-                                </div>
-                                <div class="bg-red-50 rounded-lg px-2 py-2 text-center">
-                                    <p class="text-lg font-bold text-red-600" x-text="jumlahSalah ?? '-'"></p>
-                                    <p class="text-[10px] text-gray-500">Salah</p>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg px-2 py-2 text-center">
-                                    <p class="text-lg font-bold text-gray-500" x-text="jumlahKosong ?? '-'"></p>
-                                    <p class="text-[10px] text-gray-500">Kosong</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </template>
