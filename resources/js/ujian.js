@@ -323,6 +323,9 @@ function ujianApp() {
                 (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
             }
 
+            // Remove select-none restriction
+            document.body.classList.remove('select-none');
+
             console.log('[AntiCheat] Destroyed — anti-curang disabled by admin');
         },
 
@@ -489,6 +492,7 @@ function ujianApp() {
         },
 
         recordViolation(type, message) {
+            if (this.antiCurangDisabled) return;
             // Debounce: ignore violations within 2s of each other
             // (single Alt+Tab can trigger fullscreenchange + resize + visibilitychange simultaneously)
             const now = Date.now();
@@ -1453,6 +1457,7 @@ function ujianApp() {
 
         // ===== ANTI-CHEAT: LOGGING =====
         onVisibilityChange() {
+            if (this.antiCurangDisabled) return;
             if (document.hidden) {
                 // Suppress false positive during orientation change on mobile
                 if (this.isMobile && this._orientationChanging) {
@@ -1465,6 +1470,7 @@ function ujianApp() {
         },
 
         logCheating(event, detail = {}) {
+            if (this.antiCurangDisabled) return;
             // Queue cheating events and send in batch to reduce requests
             this._cheatingQueue.push({ event, detail, ts: Date.now() });
 

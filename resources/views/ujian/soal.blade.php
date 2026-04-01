@@ -54,7 +54,7 @@
 
 </head>
 
-<body class="h-full bg-gray-50 font-['Inter'] overflow-hidden select-none"
+<body class="h-full bg-gray-50 font-['Inter'] overflow-hidden {{ $paket->anti_curang ? 'select-none' : '' }}"
       x-data="ujianApp()"
       x-init="init()"
       @visibilitychange.window="onVisibilityChange()"

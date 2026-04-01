@@ -117,6 +117,12 @@ class JawabanController extends Controller
             return response()->json(['ok' => false, 'error' => 'Sesi tidak ditemukan'], 404);
         }
 
+        // Skip logging if anti_curang is disabled on the paket
+        $paket = $sesiPeserta->sesi?->paket;
+        if ($paket && !$paket->anti_curang) {
+            return response()->json(['ok' => true, 'skipped' => true]);
+        }
+
         LogAktivitasUjianJob::dispatch(
             $sesiPeserta->id,
             $data['event'],
