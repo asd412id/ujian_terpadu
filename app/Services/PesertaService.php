@@ -349,6 +349,7 @@ class PesertaService
 
     /**
      * Guard against duplicate NIS/NISN within the same sekolah.
+     * Checks each field against its own column. Rejects if either already exists.
      *
      * @throws ValidationException
      */
@@ -358,22 +359,24 @@ class PesertaService
             return;
         }
 
+        $errors = [];
+
         if ($nis && $nis !== '') {
             $existing = $this->repository->findByNisAndSekolah($nis, $sekolahId, $excludeId);
             if ($existing) {
-                throw ValidationException::withMessages([
-                    'nis' => "NIS {$nis} sudah terdaftar di sekolah ini (peserta: {$existing->nama}).",
-                ]);
+                $errors['nis'] = "NIS {$nis} sudah digunakan oleh peserta lain di sekolah ini ({$existing->nama}).";
             }
         }
 
         if ($nisn && $nisn !== '') {
             $existing = $this->repository->findByNisnAndSekolah($nisn, $sekolahId, $excludeId);
             if ($existing) {
-                throw ValidationException::withMessages([
-                    'nisn' => "NISN {$nisn} sudah terdaftar di sekolah ini (peserta: {$existing->nama}).",
-                ]);
+                $errors['nisn'] = "NISN {$nisn} sudah digunakan oleh peserta lain di sekolah ini ({$existing->nama}).";
             }
+        }
+
+        if (!empty($errors)) {
+            throw ValidationException::withMessages($errors);
         }
     }
 }
