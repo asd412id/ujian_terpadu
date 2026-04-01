@@ -149,11 +149,24 @@ class PesertaRepository
     /**
      * Find peserta by NIS and sekolah.
      */
-    public function findByNisAndSekolah(string $nis, string $sekolahId): ?Peserta
+    public function findByNisAndSekolah(string $nis, string $sekolahId, ?string $excludeId = null): ?Peserta
     {
         return $this->model
             ->where('nis', $nis)
             ->where('sekolah_id', $sekolahId)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->first();
+    }
+
+    /**
+     * Find peserta by NISN and sekolah.
+     */
+    public function findByNisnAndSekolah(string $nisn, string $sekolahId, ?string $excludeId = null): ?Peserta
+    {
+        return $this->model
+            ->where('nisn', $nisn)
+            ->where('sekolah_id', $sekolahId)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->first();
     }
 

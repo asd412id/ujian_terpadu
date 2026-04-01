@@ -74,6 +74,9 @@ class PesertaService
      */
     public function create(array $data): mixed
     {
+        $sekolahId = $data['sekolah_id'] ?? null;
+        $this->guardDuplicateNisNisn($data['nis'] ?? null, $data['nisn'] ?? null, $sekolahId);
+
         // Generate username_ujian if not provided: NISN > NIS > auto
         if (empty($data['username_ujian'])) {
             $raw = $data['nisn'] ?? $data['nis'] ?? Str::random(8);
@@ -103,6 +106,9 @@ class PesertaService
     {
         $peserta = $this->repository->findById($id);
         abort_unless($peserta, 404, 'Peserta tidak ditemukan.');
+
+        $sekolahId = $data['sekolah_id'] ?? $peserta->sekolah_id;
+        $this->guardDuplicateNisNisn($data['nis'] ?? null, $data['nisn'] ?? null, $sekolahId, $id);
 
         // Hash password if provided
         if (!empty($data['password_ujian'])) {
@@ -175,7 +181,15 @@ class PesertaService
                         $existing = $this->repository->findByNisAndSekolah($nis, $sekolahId);
                         if ($existing) {
                             $skipped++;
-                            $errors[] = "Baris " . ($index + 1) . ": NIS {$nis} sudah terdaftar";
+                            $errors[] = "Baris " . ($index + 1) . ": NIS {$nis} sudah terdaftar ({$existing->nama})";
+                            continue;
+                        }
+                    }
+                    if ($nisn && $sekolahId) {
+                        $existing = $this->repository->findByNisnAndSekolah($nisn, $sekolahId);
+                        if ($existing) {
+                            $skipped++;
+                            $errors[] = "Baris " . ($index + 1) . ": NISN {$nisn} sudah terdaftar ({$existing->nama})";
                             continue;
                         }
                     }
@@ -243,6 +257,7 @@ class PesertaService
     public function createForSekolah(array $data, string $sekolahId, ?string $plainPassword = null): mixed
     {
         $data['sekolah_id'] = $sekolahId;
+        $this->guardDuplicateNisNisn($data['nis'] ?? null, $data['nisn'] ?? null, $sekolahId);
 
         $password = $plainPassword ?: Str::random(6);
         $data['username_ujian'] = Peserta::generateUsername(
@@ -264,6 +279,9 @@ class PesertaService
     {
         $peserta = $this->repository->findById($id);
         abort_unless($peserta, 404, 'Peserta tidak ditemukan.');
+
+        $sekolahId = $data['sekolah_id'] ?? $peserta->sekolah_id;
+        $this->guardDuplicateNisNisn($data['nis'] ?? null, $data['nisn'] ?? null, $sekolahId, $id);
 
         // Update username_ujian if NIS changed
         if (isset($data['nis']) && $data['nis'] !== $peserta->nis) {
@@ -327,5 +345,35 @@ class PesertaService
     public function deleteAllBySekolah(?string $sekolahId = null): int
     {
         return $this->repository->deleteAllBySekolah($sekolahId);
+    }
+
+    /**
+     * Guard against duplicate NIS/NISN within the same sekolah.
+     *
+     * @throws ValidationException
+     */
+    private function guardDuplicateNisNisn(?string $nis, ?string $nisn, ?string $sekolahId, ?string $excludeId = null): void
+    {
+        if (!$sekolahId) {
+            return;
+        }
+
+        if ($nis && $nis !== '') {
+            $existing = $this->repository->findByNisAndSekolah($nis, $sekolahId, $excludeId);
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'nis' => "NIS {$nis} sudah terdaftar di sekolah ini (peserta: {$existing->nama}).",
+                ]);
+            }
+        }
+
+        if ($nisn && $nisn !== '') {
+            $existing = $this->repository->findByNisnAndSekolah($nisn, $sekolahId, $excludeId);
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'nisn' => "NISN {$nisn} sudah terdaftar di sekolah ini (peserta: {$existing->nama}).",
+                ]);
+            }
+        }
     }
 }
