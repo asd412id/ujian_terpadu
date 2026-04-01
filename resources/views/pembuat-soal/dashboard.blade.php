@@ -205,8 +205,8 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-5 py-10 text-center text-gray-400">
-                            Belum ada soal.
+                        <td colspan="5" class="px-5 py-0">
+                            <x-empty-state icon="document" title="Belum ada penugasan" subtitle="Penugasan soal akan muncul setelah admin memberikan tugas." />
                         </td>
                     </tr>
                     @endforelse

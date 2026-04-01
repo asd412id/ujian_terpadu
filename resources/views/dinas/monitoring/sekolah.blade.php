@@ -87,8 +87,18 @@
                     </template>
                     <template x-if="!loading && filteredSekolah.length === 0">
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-gray-400">
-                                Tidak ada data sekolah
+                            <td colspan="7" class="px-4 py-0">
+                                <div class="py-14 flex flex-col items-center justify-center text-center px-4">
+                                    <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-base font-medium text-gray-500" x-show="!search && !filterStatus">Belum ada data sekolah</p>
+                                    <p class="text-sm text-gray-400 mt-1" x-show="!search && !filterStatus">Data sekolah yang terdaftar akan muncul di sini.</p>
+                                    <p class="text-base font-medium text-gray-500" x-show="search || filterStatus" x-cloak>Tidak ada sekolah yang cocok</p>
+                                    <p class="text-sm text-gray-400 mt-1" x-show="search || filterStatus" x-cloak>Coba ubah filter atau kata kunci pencarian Anda.</p>
+                                </div>
                             </td>
                         </tr>
                     </template>
@@ -148,7 +158,15 @@
                 </div>
             </template>
             <template x-if="!loading && filteredSekolah.length === 0">
-                <div class="px-4 py-8 text-center text-gray-400">Tidak ada data sekolah</div>
+                <div class="py-14 flex flex-col items-center justify-center text-center px-4">
+                    <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                    <p class="text-base font-medium text-gray-500">Tidak ada data sekolah</p>
+                    <p class="text-sm text-gray-400 mt-1">Data sekolah yang terdaftar akan muncul di sini.</p>
+                </div>
             </template>
             <template x-for="s in filteredSekolah" :key="s.id">
                 <div class="px-4 py-3">

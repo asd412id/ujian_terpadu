@@ -95,7 +95,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-5 py-10 text-center text-gray-400">Belum ada narasi. <a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a></td></tr>
+                <tr><td colspan="5" class="px-5 py-0"><x-empty-state icon="document" title="Belum ada narasi" subtitle="Tambahkan narasi baru untuk soal."><a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline text-sm">Tambah narasi baru</a></x-empty-state></td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -137,7 +137,7 @@
                 </div>
             </div>
             @empty
-            <div class="py-10 text-center text-gray-400 text-sm">Belum ada narasi. <a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a></div>
+            <x-empty-state icon="document" title="Belum ada narasi" subtitle="Tambahkan narasi baru untuk soal." compact><a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline text-sm">Tambah narasi baru</a></x-empty-state>
             @endforelse
         </div>
     </div>

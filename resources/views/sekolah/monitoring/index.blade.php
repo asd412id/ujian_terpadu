@@ -118,8 +118,18 @@
                         </tr>
                     </template>
                     <tr x-show="!loading && filteredSesiList.length === 0">
-                        <td colspan="7" class="px-5 py-10 text-center text-gray-400 text-sm">
-                            Tidak ada sesi ujian aktif saat ini.
+                        <td colspan="7" class="px-5 py-0">
+                            <div class="py-14 flex flex-col items-center justify-center text-center px-4">
+                                <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                <p class="text-base font-medium text-gray-500" x-show="!search">Belum ada sesi ujian aktif</p>
+                                <p class="text-sm text-gray-400 mt-1" x-show="!search">Sesi ujian yang sedang berlangsung akan muncul di sini secara otomatis.</p>
+                                <p class="text-base font-medium text-gray-500" x-show="search" x-cloak>Sesi tidak ditemukan</p>
+                                <p class="text-sm text-gray-400 mt-1" x-show="search" x-cloak>Coba ubah kata kunci pencarian Anda.</p>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -156,8 +166,18 @@
                        class="mt-2 block text-center text-blue-600 text-xs font-medium">Lihat Detail →</a>
                 </div>
             </template>
-            <div x-show="!loading && filteredSesiList.length === 0" class="py-10 text-center text-gray-400 text-sm">
-                Tidak ada sesi aktif.
+            <div x-show="!loading && filteredSesiList.length === 0">
+                <div class="py-14 flex flex-col items-center justify-center text-center px-4">
+                    <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <p class="text-base font-medium text-gray-500" x-show="!search">Belum ada sesi ujian aktif</p>
+                    <p class="text-sm text-gray-400 mt-1" x-show="!search">Sesi ujian yang sedang berlangsung akan muncul di sini.</p>
+                    <p class="text-base font-medium text-gray-500" x-show="search" x-cloak>Sesi tidak ditemukan</p>
+                    <p class="text-sm text-gray-400 mt-1" x-show="search" x-cloak>Coba ubah kata kunci pencarian Anda.</p>
+                </div>
             </div>
         </div>
     </div>

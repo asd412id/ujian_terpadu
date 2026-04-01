@@ -97,7 +97,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-5 py-10 text-center text-gray-400">Belum ada kategori.</td></tr>
+                <tr><td colspan="6" class="px-5 py-0"><x-empty-state icon="folder" title="Belum ada kategori" subtitle="Tambahkan kategori baru untuk mengorganisir soal." /></td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -142,7 +142,7 @@
                 </div>
             </div>
             @empty
-            <div class="py-10 text-center text-gray-400 text-sm">Belum ada kategori.</div>
+            <x-empty-state icon="folder" title="Belum ada kategori" subtitle="Tambahkan kategori baru untuk mengorganisir soal." compact />
             @endforelse
         </div>
     </div>

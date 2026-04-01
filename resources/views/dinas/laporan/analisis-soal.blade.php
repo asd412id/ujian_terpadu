@@ -22,7 +22,9 @@
     </div>
 
     @if(empty($analisis))
-    <div class="card text-center py-12 text-gray-400">Belum ada peserta yang menyelesaikan ujian pada paket ini.</div>
+    <div class="card">
+        <x-empty-state icon="chart" title="Belum ada data analisis" subtitle="Data analisis soal akan tersedia setelah peserta menyelesaikan ujian pada paket ini." />
+    </div>
     @else
 
     {{-- Summary Cards --}}

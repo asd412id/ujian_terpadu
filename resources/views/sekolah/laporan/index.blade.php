@@ -182,10 +182,12 @@
         @endif
     </div>
     @elseif(request()->hasAny(['paket_id', 'status', 'search']))
-    <div class="card text-center py-12 text-gray-400">Tidak ada data yang sesuai filter.</div>
+    <div class="card">
+        <x-empty-state icon="search" title="Tidak ada data yang sesuai filter" subtitle="Coba ubah filter atau kata kunci pencarian Anda." />
+    </div>
     @else
-    <div class="card text-center py-12 text-gray-400">
-        Belum ada peserta yang menyelesaikan ujian.
+    <div class="card">
+        <x-empty-state icon="chart" title="Belum ada data laporan" subtitle="Data laporan nilai akan muncul setelah peserta menyelesaikan ujian." />
     </div>
     @endif
 

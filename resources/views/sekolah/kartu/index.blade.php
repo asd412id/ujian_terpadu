@@ -74,7 +74,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="4" class="px-5 py-10 text-center text-gray-400">Belum ada peserta.</td></tr>
+                    <tr><td colspan="4" class="px-5 py-0"><x-empty-state icon="users" title="Belum ada peserta" subtitle="Peserta akan muncul setelah data peserta ditambahkan." /></td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -110,7 +110,7 @@
                 </div>
             </div>
             @empty
-            <div class="py-10 text-center text-gray-400 text-sm">Belum ada peserta.</div>
+            <x-empty-state icon="users" title="Belum ada peserta" subtitle="Peserta akan muncul setelah data peserta ditambahkan." compact />
             @endforelse
         </div>
 

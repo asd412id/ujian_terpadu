@@ -184,11 +184,11 @@
                     </tr>
                     @empty
                     <tr>
-                        <td :colspan="showNilai ? 8 : 7" class="px-5 py-10 text-center text-gray-400">
+                        <td :colspan="showNilai ? 8 : 7" class="px-5 py-0">
                             @if(!empty($filters['search']) || !empty($filters['status']))
-                                Tidak ada peserta yang cocok dengan filter.
+                                <x-empty-state icon="search" title="Tidak ada peserta yang cocok" subtitle="Coba ubah filter atau kata kunci pencarian Anda." />
                             @else
-                                Belum ada peserta yang login.
+                                <x-empty-state icon="users" title="Belum ada peserta" subtitle="Peserta yang terdaftar di sesi ini akan muncul saat mereka login." />
                             @endif
                         </td>
                     </tr>
@@ -247,13 +247,11 @@
                 </div>
             </div>
             @empty
-            <div class="py-10 text-center text-gray-400 text-sm">
-                @if(!empty($filters['search']) || !empty($filters['status']))
-                    Tidak ada peserta yang cocok dengan filter.
-                @else
-                    Belum ada peserta yang login.
-                @endif
-            </div>
+            @if(!empty($filters['search']) || !empty($filters['status']))
+                <x-empty-state icon="search" title="Tidak ada peserta yang cocok" subtitle="Coba ubah filter atau kata kunci pencarian Anda." compact />
+            @else
+                <x-empty-state icon="users" title="Belum ada peserta" subtitle="Peserta akan muncul saat mereka login." compact />
+            @endif
             @endforelse
         </div>
 

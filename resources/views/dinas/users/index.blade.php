@@ -115,8 +115,8 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-5 py-12 text-center text-gray-400">
-                            Belum ada pengguna.
+                        <td colspan="6" class="px-5 py-0">
+                            <x-empty-state icon="users" title="Belum ada pengguna" subtitle="Tambahkan pengguna baru untuk memulai." />
                         </td>
                     </tr>
                     @endforelse
@@ -169,7 +169,7 @@
                 </div>
             </div>
             @empty
-            <div class="py-12 text-center text-gray-400 text-sm">Belum ada pengguna.</div>
+            <x-empty-state icon="users" title="Belum ada pengguna" subtitle="Tambahkan pengguna baru untuk memulai." compact />
             @endforelse
         </div>
         @if($users->hasPages())

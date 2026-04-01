@@ -114,8 +114,8 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-5 py-12 text-center text-gray-400">
-                            Belum ada data sekolah.
+                        <td colspan="6" class="px-5 py-0">
+                            <x-empty-state icon="school" title="Belum ada data sekolah" subtitle="Tambahkan sekolah baru atau import dari file Excel." />
                         </td>
                     </tr>
                     @endforelse
@@ -156,7 +156,7 @@
                 </div>
             </div>
             @empty
-            <div class="py-12 text-center text-gray-400 text-sm">Belum ada data sekolah.</div>
+            <x-empty-state icon="school" title="Belum ada data sekolah" subtitle="Tambahkan sekolah baru atau import dari file Excel." compact />
             @endforelse
         </div>
         @if($sekolahList->hasPages())

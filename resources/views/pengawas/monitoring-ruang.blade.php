@@ -133,12 +133,8 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-5 py-10 text-center text-gray-400">
-                            @if(!empty($filters['search']) || !empty($filters['status']))
-                                Tidak ada peserta yang cocok dengan filter.
-                            @else
-                                Belum ada peserta yang login.
-                            @endif
+                        <td colspan="5" class="px-5 py-0">
+                            <x-empty-state icon="users" title="Belum ada peserta" subtitle="Peserta akan muncul saat mereka login ke sesi ujian." />
                         </td>
                     </tr>
                     @endforelse

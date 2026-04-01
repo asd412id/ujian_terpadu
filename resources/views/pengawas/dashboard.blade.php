@@ -61,9 +61,7 @@
             </a>
         </div>
         @empty
-        <div class="py-8 text-center text-gray-400 text-sm">
-            Tidak ada sesi ujian yang ditugaskan kepada Anda.
-        </div>
+        <x-empty-state icon="monitor" title="Tidak ada sesi yang ditugaskan" subtitle="Hubungi admin sekolah untuk mendapatkan penugasan pengawas." compact />
         @endforelse
     </div>
 

@@ -114,7 +114,7 @@
                     @endif
                 </div>
                 @empty
-                <p class="text-sm text-gray-400 text-center py-4">Belum ada paket ujian</p>
+                <x-empty-state icon="document" title="Belum ada paket ujian" compact />
                 @endforelse
             </div>
 
@@ -137,7 +137,7 @@
                     </span>
                 </div>
                 @empty
-                <p class="text-sm text-gray-400 text-center py-4">Belum ada peserta terdaftar</p>
+                <x-empty-state icon="users" title="Belum ada peserta terdaftar" compact />
                 @endforelse
                 @if($sekolah->peserta->count() > 10)
                 <p class="text-xs text-gray-400 text-center mt-3">... dan {{ $sekolah->peserta->count() - 10 }} peserta lainnya</p>

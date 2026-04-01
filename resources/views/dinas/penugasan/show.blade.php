@@ -119,7 +119,7 @@
         @endphp
 
         @if($assignments['soal']->isEmpty())
-            <p class="text-sm text-gray-400 py-6 text-center">Belum ada soal individual yang ditugaskan.</p>
+            <x-empty-state icon="document" title="Belum ada soal" subtitle="Pembuat soal belum menambahkan soal untuk penugasan ini." />
         @else
             <div class="overflow-x-auto -mx-4 sm:-mx-6">
                 <table class="w-full text-sm">

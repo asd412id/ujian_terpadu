@@ -134,7 +134,7 @@
 
         {{-- Sesi List --}}
         @if($paket->sesi->isEmpty())
-        <p class="text-sm text-gray-400 text-center py-6">Belum ada sesi untuk paket ini.</p>
+        <x-empty-state icon="clock" title="Belum ada sesi" subtitle="Tambahkan sesi ujian untuk paket ini." compact />
         @else
         <div class="space-y-2">
             @foreach($paket->sesi->sortBy('waktu_mulai') as $sesi)
@@ -212,7 +212,9 @@
         </div>
 
         <template x-if="selectedIds.length === 0">
-            <p class="text-sm text-gray-400 py-4 text-center">Belum ada soal dalam paket ini. Pilih dari bank soal di bawah.</p>
+            <div>
+                <x-empty-state icon="document" title="Belum ada soal" subtitle="Pilih soal dari bank soal di bawah untuk ditambahkan ke paket ini." compact />
+            </div>
         </template>
 
         <template x-if="selectedIds.length > 0">
@@ -327,7 +329,9 @@
                 </div>
             </template>
             <template x-if="!loading && bankSoal.length === 0">
-                <p class="text-sm text-gray-400 text-center py-6">Tidak ada soal yang cocok dengan filter.</p>
+                <div>
+                    <x-empty-state icon="search" title="Tidak ada soal yang cocok" subtitle="Coba ubah filter atau kata kunci pencarian." compact />
+                </div>
             </template>
         </div>
 

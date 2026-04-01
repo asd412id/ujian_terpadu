@@ -444,8 +444,14 @@
             <div x-show="narasiLoading" class="flex justify-center py-8">
                 <svg class="animate-spin w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             </div>
-            <div x-show="!narasiLoading && narasiList.length === 0" class="text-center text-gray-400 text-sm py-8">
-                Tidak ada narasi ditemukan.
+            <div x-show="!narasiLoading && narasiList.length === 0" class="py-8 flex flex-col items-center justify-center text-center px-4">
+                <div class="w-12 h-12 mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                <p class="text-sm font-medium text-gray-500">Tidak ada narasi ditemukan</p>
+                <p class="text-xs text-gray-400 mt-1">Coba ubah kata kunci pencarian.</p>
             </div>
             <template x-for="n in narasiList" :key="n.id">
                 <div @click="selectNarasi(n)"

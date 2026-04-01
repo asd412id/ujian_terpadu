@@ -135,9 +135,10 @@
         </div>
     </div>
     @empty
-    <div class="card text-center py-16">
-        <p class="text-gray-500 mb-4">Sampah kosong.</p>
-        <a href="{{ route('dinas.paket.index') }}" class="text-blue-600 hover:underline text-sm">Kembali ke Paket Ujian</a>
+    <div class="card">
+        <x-empty-state icon="trash" title="Sampah kosong" subtitle="Tidak ada paket ujian yang dihapus.">
+            <a href="{{ route('dinas.paket.index') }}" class="text-blue-600 hover:underline text-sm">Kembali ke Paket Ujian</a>
+        </x-empty-state>
     </div>
     @endforelse
 
@@ -145,9 +146,10 @@
     <div>{{ $paket->withQueryString()->links() }}</div>
     @endif
     @else
-    <div class="card text-center py-16">
-        <p class="text-gray-500 mb-4">Sampah kosong.</p>
-        <a href="{{ route('dinas.paket.index') }}" class="text-blue-600 hover:underline text-sm">Kembali ke Paket Ujian</a>
+    <div class="card">
+        <x-empty-state icon="trash" title="Sampah kosong" subtitle="Tidak ada paket ujian yang dihapus.">
+            <a href="{{ route('dinas.paket.index') }}" class="text-blue-600 hover:underline text-sm">Kembali ke Paket Ujian</a>
+        </x-empty-state>
     </div>
     @endif
 </div>

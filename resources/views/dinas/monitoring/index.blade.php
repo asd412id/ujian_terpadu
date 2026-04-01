@@ -131,8 +131,11 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-5 py-10 text-center text-gray-400 text-sm">
-                            Tidak ada sesi ujian aktif saat ini.
+                        <td colspan="8" class="px-5 py-0">
+                            <x-empty-state
+                                icon="monitor"
+                                title="Belum ada sesi ujian aktif"
+                                subtitle="Sesi ujian yang sedang berlangsung akan muncul di sini secara otomatis." />
                         </td>
                     </tr>
                     @endforelse
@@ -171,7 +174,11 @@
                    class="mt-2 block text-center text-blue-600 text-xs font-medium">Lihat Detail →</a>
             </div>
             @empty
-            <div class="py-10 text-center text-gray-400 text-sm">Tidak ada sesi aktif.</div>
+            <x-empty-state
+                icon="monitor"
+                title="Belum ada sesi ujian aktif"
+                subtitle="Sesi ujian yang sedang berlangsung akan muncul di sini."
+                compact />
             @endforelse
         </div>
     </div>

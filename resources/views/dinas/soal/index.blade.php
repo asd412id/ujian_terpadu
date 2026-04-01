@@ -304,8 +304,10 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-5 py-12 text-center text-gray-400">
-                                Belum ada soal. <a href="{{ route('dinas.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
+                            <td colspan="7" class="px-5 py-0">
+                                <x-empty-state icon="document" title="Belum ada soal" subtitle="Tambahkan soal baru untuk memulai.">
+                                    <a href="{{ route('dinas.soal.create') }}" class="text-blue-600 hover:underline text-sm">Tambah soal baru</a>
+                                </x-empty-state>
                             </td>
                         </tr>
                         @endforelse
@@ -355,9 +357,9 @@
                     </div>
                 </div>
                 @empty
-                <div class="py-12 text-center text-gray-400 text-sm">
-                    Belum ada soal. <a href="{{ route('dinas.soal.create') }}" class="text-blue-600 hover:underline">Tambah soal baru</a>
-                </div>
+                <x-empty-state icon="document" title="Belum ada soal" compact>
+                    <a href="{{ route('dinas.soal.create') }}" class="text-blue-600 hover:underline text-sm">Tambah soal baru</a>
+                </x-empty-state>
                 @endforelse
             </div>
             @if($soal->hasPages())
@@ -456,8 +458,10 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-12 text-center text-gray-400">
-                                Belum ada narasi. <a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a>
+                            <td colspan="5" class="px-5 py-0">
+                                <x-empty-state icon="document" title="Belum ada narasi" subtitle="Tambahkan narasi baru untuk soal.">
+                                    <a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline text-sm">Tambah narasi baru</a>
+                                </x-empty-state>
                             </td>
                         </tr>
                         @endforelse
@@ -496,9 +500,9 @@
                     </div>
                 </div>
                 @empty
-                <div class="py-12 text-center text-gray-400 text-sm">
-                    Belum ada narasi. <a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline">Tambah narasi baru</a>
-                </div>
+                <x-empty-state icon="document" title="Belum ada narasi" compact>
+                    <a href="{{ route('dinas.narasi.create') }}" class="text-blue-600 hover:underline text-sm">Tambah narasi baru</a>
+                </x-empty-state>
                 @endforelse
             </div>
             @if($narasis->hasPages())

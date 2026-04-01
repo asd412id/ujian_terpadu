@@ -146,15 +146,11 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-5 py-12 text-center text-gray-400">
-                            <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>
-                            </svg>
+                        <td colspan="7" class="px-5 py-0">
                             @if(request()->hasAny(['q', 'sekolah_id', 'kelas']))
-                                Tidak ada peserta yang cocok dengan filter.
+                                <x-empty-state icon="search" title="Tidak ada peserta yang cocok" subtitle="Coba ubah filter atau kata kunci pencarian Anda." />
                             @else
-                                Belum ada data peserta.
+                                <x-empty-state icon="users" title="Belum ada data peserta" subtitle="Tambahkan peserta baru atau import dari file Excel." />
                             @endif
                         </td>
                     </tr>
@@ -199,13 +195,11 @@
                 </div>
             </div>
             @empty
-            <div class="py-12 text-center text-gray-400 text-sm">
-                @if(request()->hasAny(['q', 'sekolah_id', 'kelas']))
-                    Tidak ada peserta yang cocok dengan filter.
-                @else
-                    Belum ada data peserta.
-                @endif
-            </div>
+            @if(request()->hasAny(['q', 'sekolah_id', 'kelas']))
+                <x-empty-state icon="search" title="Tidak ada peserta yang cocok" subtitle="Coba ubah filter atau kata kunci pencarian." compact />
+            @else
+                <x-empty-state icon="users" title="Belum ada data peserta" subtitle="Tambahkan peserta baru atau import dari file Excel." compact />
+            @endif
             @endforelse
         </div>
         @if($peserta->hasPages())
