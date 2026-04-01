@@ -235,9 +235,15 @@ function ujianApp() {
                     }
                 }
 
+                // Runtime anti-curang toggle — admin can disable mid-exam
+                if (data.anti_curang === false && !this.antiCurangDisabled) {
+                    console.log('[StatusPoll] Anti-curang disabled by admin, destroying anti-cheat listeners...');
+                    this.destroyAntiCheat();
+                }
+
                 // Server-side anti-cheat enforcement — sync violation count from server
                 // Prevents client-side tampering (resetting violationCount via DevTools)
-                if (data.violation_count !== undefined && data.violation_count > this.violationCount) {
+                if (!this.antiCurangDisabled && data.violation_count !== undefined && data.violation_count > this.violationCount) {
                     this.violationCount = data.violation_count;
                     if (this.violationCount >= this.maxViolations && !this._forceSubmitted) {
                         console.log('[StatusPoll] Server violation count exceeded, force submitting...');
@@ -291,6 +297,35 @@ function ujianApp() {
         },
 
         // ===== ANTI-CHEAT SYSTEM =====
+        destroyAntiCheat() {
+            this.antiCurangDisabled = true;
+            this.showViolationOverlay = false;
+            this.violationCount = 0;
+
+            // Remove bound listeners
+            if (this._acHandlers) {
+                document.removeEventListener('fullscreenchange', this._acHandlers.fullscreen);
+                document.removeEventListener('webkitfullscreenchange', this._acHandlers.fullscreen);
+                window.removeEventListener('blur', this._acHandlers.blur);
+                document.removeEventListener('copy', this._acHandlers.clipboard);
+                document.removeEventListener('cut', this._acHandlers.clipboard);
+                document.removeEventListener('paste', this._acHandlers.clipboard);
+                document.removeEventListener('keydown', this._acHandlers.keydown);
+                document.removeEventListener('contextmenu', this._acHandlers.contextmenu);
+                document.removeEventListener('keyup', this._acHandlers.printscreen);
+                window.removeEventListener('resize', this._acHandlers.resize);
+                this._acHandlers = null;
+            }
+
+            // Exit fullscreen if currently in it
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                this.markIntentionalFullscreenExit();
+                (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+            }
+
+            console.log('[AntiCheat] Destroyed — anti-curang disabled by admin');
+        },
+
         initAntiCheat() {
             // 1. Track fullscreen state
             this.isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
@@ -301,40 +336,44 @@ function ujianApp() {
                 this.ensureFullscreenOnStart();
             }
 
+            // Store bound handlers for later removal (destroyAntiCheat)
+            this._acHandlers = {
+                fullscreen:  () => this.handleFullscreenChange(),
+                blur:        () => this.handleWindowBlur(),
+                clipboard:   (e) => this.handleClipboard(e),
+                keydown:     (e) => this.handleKeydown(e),
+                contextmenu: (e) => { e.preventDefault(); this.logCheating('klik_kanan', { target: e.target?.tagName }); },
+                printscreen: (e) => { if (e.key === 'PrintScreen') this.logCheating('screenshot_attempt', { key: 'PrintScreen' }); },
+                resize:      () => this.handleResizeFullscreenCheck(),
+            };
+
             // 3. Fullscreen change listener (desktop only)
             if (!this.isMobile) {
-                document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
-                document.addEventListener('webkitfullscreenchange', () => this.handleFullscreenChange());
+                document.addEventListener('fullscreenchange', this._acHandlers.fullscreen);
+                document.addEventListener('webkitfullscreenchange', this._acHandlers.fullscreen);
             }
 
             // 4. Window blur detection
-            window.addEventListener('blur', () => this.handleWindowBlur());
+            window.addEventListener('blur', this._acHandlers.blur);
 
             // 5. Copy/Cut/Paste blocking
-            document.addEventListener('copy', (e) => this.handleClipboard(e));
-            document.addEventListener('cut', (e) => this.handleClipboard(e));
-            document.addEventListener('paste', (e) => this.handleClipboard(e));
+            document.addEventListener('copy', this._acHandlers.clipboard);
+            document.addEventListener('cut', this._acHandlers.clipboard);
+            document.addEventListener('paste', this._acHandlers.clipboard);
 
             // 6. Keyboard shortcut blocking (DevTools, etc)
-            document.addEventListener('keydown', (e) => this.handleKeydown(e));
+            document.addEventListener('keydown', this._acHandlers.keydown);
 
             // 7. Right-click blocking
-            document.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                this.logCheating('klik_kanan', { target: e.target?.tagName });
-            });
+            document.addEventListener('contextmenu', this._acHandlers.contextmenu);
 
             // 8. Print screen detection
-            document.addEventListener('keyup', (e) => {
-                if (e.key === 'PrintScreen') {
-                    this.logCheating('screenshot_attempt', { key: 'PrintScreen' });
-                }
-            });
+            document.addEventListener('keyup', this._acHandlers.printscreen);
 
             // 9. Resize fallback — detect fullscreen exit (desktop only)
             if (!this.isMobile) {
                 this._lastInnerHeight = window.innerHeight;
-                window.addEventListener('resize', () => this.handleResizeFullscreenCheck());
+                window.addEventListener('resize', this._acHandlers.resize);
             }
 
             // 10. Mobile: track orientation changes to suppress false positives

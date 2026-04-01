@@ -240,6 +240,7 @@ class JawabanService
                 'jumlah_salah'      => $sesiPeserta->jumlah_salah,
                 'jumlah_kosong'     => $sesiPeserta->jumlah_kosong,
                 'tampilkan_hasil'   => (bool) ($sesiPeserta->sesi->paket->tampilkan_hasil ?? false),
+                'anti_curang'       => (bool) ($sesiPeserta->sesi->paket->anti_curang ?? true),
             ];
         });
 
@@ -273,6 +274,7 @@ class JawabanService
             'jumlah_kosong'      => $statusData['jumlah_kosong'],
             'tampilkan_hasil'    => $statusData['tampilkan_hasil'],
             'violation_count'    => $violationCount,
+            'anti_curang'        => $statusData['anti_curang'],
         ];
     }
 
