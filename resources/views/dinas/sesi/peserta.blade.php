@@ -107,34 +107,35 @@
     @endif
 
     {{-- Search & Filter --}}
-    <form method="GET" action="{{ route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id]) }}"
-          class="flex flex-wrap gap-2 items-end">
-        <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs text-gray-600 mb-1">Cari Peserta</label>
-            <input type="text" name="search" value="{{ $search }}" placeholder="Nama, NISN, NIS, kelas, jurusan, atau sekolah..."
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <p class="text-[11px] text-gray-500 mt-1">Pencarian berlaku untuk daftar peserta terdaftar dan peserta tersedia.</p>
-        </div>
-        @if(!$paket->sekolah_id && $sekolahList->count() > 1)
-        <div class="min-w-[180px]">
-            <label class="block text-xs text-gray-600 mb-1">Sekolah</label>
-            <x-searchable-select
-                name="sekolah_id"
-                :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
-                :value="$sekolahFilter"
-                placeholder="Semua Sekolah"
-                size="md" />
-        </div>
-        @endif
-        <button type="submit"
-                class="btn-primary">
-            Filter
-        </button>
-        @if($search || $sekolahFilter)
-        <a href="{{ route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id]) }}"
-           class="text-sm text-gray-500 hover:text-gray-700 px-2 py-2">Reset</a>
-        @endif
-    </form>
+    <div>
+        <form method="GET" action="{{ route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id]) }}"
+              class="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div class="flex-1 min-w-0">
+                <label class="block text-xs text-gray-600 mb-1">Cari Peserta</label>
+                <input type="text" name="search" value="{{ $search }}" placeholder="Nama, NISN, NIS, kelas, jurusan, atau sekolah..."
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            @if(!$paket->sekolah_id && $sekolahList->count() > 1)
+            <div class="w-full sm:w-[220px] flex-shrink-0">
+                <label class="block text-xs text-gray-600 mb-1">Sekolah</label>
+                <x-searchable-select
+                    name="sekolah_id"
+                    :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
+                    :value="$sekolahFilter"
+                    placeholder="Semua Sekolah"
+                    size="md" />
+            </div>
+            @endif
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button type="submit" class="btn-primary whitespace-nowrap">Filter</button>
+                @if($search || $sekolahFilter)
+                <a href="{{ route('dinas.paket.sesi.peserta', [$paket->id, $sesi->id]) }}"
+                   class="text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap px-2 py-2">Reset</a>
+                @endif
+            </div>
+        </form>
+        <p class="text-[11px] text-gray-500 mt-1.5">Pencarian berlaku untuk daftar peserta terdaftar dan peserta tersedia.</p>
+    </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {{-- Peserta Terdaftar --}}
