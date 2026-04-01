@@ -258,7 +258,7 @@ class SesiUjianService
 
     /**
      * Sync new peserta that match paket filter but aren't enrolled yet.
-     * Works regardless of override mode — used by both auto-sync and manual sync button.
+     * Deduplicates by NIS per sekolah to prevent enrolling duplicate person records.
      */
     public function syncNewPeserta(SesiUjian $sesi): int
     {
@@ -267,7 +267,41 @@ class SesiUjianService
             $pesertaIds = $this->repository->getEligiblePesertaIds($paket->jenjang, $paket->sekolah_id);
             $existingIds = $lockedSesi->sesiPeserta()->pluck('peserta_id');
 
-            return $pesertaIds->diff($existingIds);
+            $newIds = $pesertaIds->diff($existingIds);
+
+            if ($newIds->isEmpty()) {
+                return $newIds;
+            }
+
+            // Collect NIS keys already enrolled in this sesi
+            $enrolledNisKeys = [];
+            \App\Models\Peserta::whereIn('id', $existingIds)
+                ->whereNotNull('nis')->where('nis', '!=', '')
+                ->select('nis', 'sekolah_id')
+                ->each(function ($p) use (&$enrolledNisKeys) {
+                    $enrolledNisKeys[$p->nis . '|' . $p->sekolah_id] = true;
+                });
+
+            // Deduplicate new peserta: skip if NIS+sekolah already enrolled or already seen
+            $newPeserta = \App\Models\Peserta::whereIn('id', $newIds)
+                ->orderBy('nama')
+                ->get(['id', 'nis', 'sekolah_id']);
+
+            $seenNisKeys = $enrolledNisKeys;
+            $deduped = collect();
+
+            foreach ($newPeserta as $p) {
+                if ($p->nis && $p->nis !== '') {
+                    $key = $p->nis . '|' . $p->sekolah_id;
+                    if (isset($seenNisKeys[$key])) {
+                        continue;
+                    }
+                    $seenNisKeys[$key] = true;
+                }
+                $deduped->push($p->id);
+            }
+
+            return $deduped;
         });
     }
 
