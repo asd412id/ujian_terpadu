@@ -119,18 +119,22 @@ class MonitoringRepository
      * Optionally scoped by sekolah_id for school operators.
      * Cached 10s per sesi (+ sekolah suffix when scoped).
      */
-    public function getSesiPesertaStats(string $sesiId, ?string $sekolahId = null): array
+    public function getSesiPesertaStats(string $sesiId, ?string $sekolahId = null, ?string $kelas = null): array
     {
-        $cacheKey = $sekolahId
-            ? "monitoring:sesi_stats:{$sesiId}:sekolah:{$sekolahId}"
-            : "monitoring:sesi_stats:{$sesiId}";
+        $cacheKey = "monitoring:sesi_stats:{$sesiId}"
+            . ($sekolahId ? ":sekolah:{$sekolahId}" : '')
+            . ($kelas ? ":kelas:{$kelas}" : '');
 
-        return Cache::remember($cacheKey, 10, function () use ($sesiId, $sekolahId) {
+        return Cache::remember($cacheKey, 10, function () use ($sesiId, $sekolahId, $kelas) {
             $query = SesiPeserta::where('sesi_id', $sesiId)
                 ->whereHas('peserta');
 
             if ($sekolahId) {
                 $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId));
+            }
+
+            if ($kelas) {
+                $query->whereHas('peserta', fn ($q) => $q->where('kelas', $kelas));
             }
 
             $raw = $query->selectRaw("
@@ -182,6 +186,10 @@ class MonitoringRepository
 
         if (!empty($filters['sekolah_id'])) {
             $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
+        }
+
+        if (!empty($filters['kelas'])) {
+            $query->whereHas('peserta', fn ($q) => $q->where('kelas', $filters['kelas']));
         }
 
         $perPage = min((int) ($filters['per_page'] ?? 50), 200);
@@ -436,16 +444,16 @@ class MonitoringRepository
      * Optionally scoped by sekolah_id for school operators.
      * Cached 5s per sesi (+sekolah suffix when scoped).
      */
-    public function getSesiPesertaLiveData(string $sesiId, ?string $sekolahId = null): array
+    public function getSesiPesertaLiveData(string $sesiId, ?string $sekolahId = null, ?string $kelas = null): array
     {
-        $cacheKey = $sekolahId
-            ? "sesi_live_{$sesiId}:sekolah:{$sekolahId}"
-            : "sesi_live_{$sesiId}";
+        $cacheKey = "sesi_live_{$sesiId}"
+            . ($sekolahId ? ":sekolah:{$sekolahId}" : '')
+            . ($kelas ? ":kelas:{$kelas}" : '');
 
         return Cache::remember(
             $cacheKey,
             5,
-            function () use ($sesiId, $sekolahId) {
+            function () use ($sesiId, $sekolahId, $kelas) {
                 $sesi = SesiUjian::with('paket')->findOrFail($sesiId);
                 $durasiDetik = ($sesi->paket->durasi_menit ?? 0) * 60;
 
@@ -454,6 +462,10 @@ class MonitoringRepository
 
                 if ($sekolahId) {
                     $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId));
+                }
+
+                if ($kelas) {
+                    $query->whereHas('peserta', fn ($q) => $q->where('kelas', $kelas));
                 }
 
                 return $query->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
@@ -477,5 +489,29 @@ class MonitoringRepository
                     ->toArray();
             }
         );
+    }
+
+    /**
+     * Get distinct kelas list for peserta in a specific sesi.
+     * Optionally scoped by sekolah_id.
+     * Cached 30s per sesi (+sekolah suffix).
+     */
+    public function getKelasListBySesi(string $sesiId, ?string $sekolahId = null): \Illuminate\Support\Collection
+    {
+        $cacheKey = "monitoring:kelas_by_sesi:{$sesiId}"
+            . ($sekolahId ? ":sekolah:{$sekolahId}" : '');
+
+        return Cache::remember($cacheKey, 30, function () use ($sesiId, $sekolahId) {
+            $query = SesiPeserta::where('sesi_id', $sesiId)
+                ->join('peserta', 'sesi_peserta.peserta_id', '=', 'peserta.id')
+                ->whereNotNull('peserta.kelas')
+                ->where('peserta.kelas', '!=', '');
+
+            if ($sekolahId) {
+                $query->where('peserta.sekolah_id', $sekolahId);
+            }
+
+            return $query->distinct()->orderBy('peserta.kelas')->pluck('peserta.kelas');
+        });
     }
 }

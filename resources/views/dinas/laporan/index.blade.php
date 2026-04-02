@@ -17,7 +17,7 @@
     {{-- Filter --}}
     <form method="GET" action="{{ route('dinas.laporan') }}" class="card space-y-4 p-5">
         <h2 class="font-semibold text-gray-900">Filter Laporan</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Paket Ujian</label>
                 <select name="paket_id"
@@ -29,12 +29,32 @@
                 </select>
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Sesi</label>
+                <select name="sesi_id"
+                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Sesi</option>
+                    @foreach($sesiList as $s)
+                    <option value="{{ $s->id }}" {{ request('sesi_id') == $s->id ? 'selected' : '' }}>{{ $s->nama_sesi }}{{ $s->waktu_mulai ? ' (' . $s->waktu_mulai->format('d/m/Y') . ')' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Sekolah</label>
                 <x-searchable-select
                     name="sekolah_id"
                     :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
                     :value="request('sekolah_id')"
                     placeholder="Semua Sekolah" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Kelas</label>
+                <select name="kelas"
+                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Kelas</option>
+                    @foreach($kelasList as $k)
+                    <option value="{{ $k }}" {{ request('kelas') === $k ? 'selected' : '' }}>{{ $k }}</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
@@ -54,7 +74,7 @@
                     class="btn-primary">
                 Tampilkan
             </button>
-            @if(request()->hasAny(['paket_id', 'sekolah_id', 'status', 'search']))
+            @if(request()->hasAny(['paket_id', 'sekolah_id', 'status', 'search', 'kelas', 'sesi_id']))
             <a href="{{ route('dinas.laporan') }}"
                class="btn-secondary">Reset</a>
             @endif
@@ -342,7 +362,7 @@
         </div>
         @endif
     </div>
-    @elseif(request()->hasAny(['paket_id', 'sekolah_id', 'status', 'search']))
+    @elseif(request()->hasAny(['paket_id', 'sekolah_id', 'status', 'search', 'kelas', 'sesi_id']))
     <div class="card">
         <x-empty-state icon="search" title="Tidak ada data yang sesuai filter" subtitle="Coba ubah filter atau kata kunci pencarian Anda." />
     </div>

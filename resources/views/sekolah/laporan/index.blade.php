@@ -17,7 +17,7 @@
     {{-- Filter --}}
     <form method="GET" action="{{ route('sekolah.laporan') }}" class="card space-y-4 p-5">
         <h2 class="font-semibold text-gray-900">Filter Laporan</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Paket Ujian</label>
                 <select name="paket_id"
@@ -25,6 +25,26 @@
                     <option value="">Semua Paket</option>
                     @foreach($paketList as $p)
                     <option value="{{ $p->id }}" {{ request('paket_id') == $p->id ? 'selected' : '' }}>{{ $p->nama }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Sesi</label>
+                <select name="sesi_id"
+                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Sesi</option>
+                    @foreach($sesiList as $s)
+                    <option value="{{ $s->id }}" {{ request('sesi_id') == $s->id ? 'selected' : '' }}>{{ $s->nama_sesi }}{{ $s->waktu_mulai ? ' (' . $s->waktu_mulai->format('d/m/Y') . ')' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Kelas</label>
+                <select name="kelas"
+                        class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Kelas</option>
+                    @foreach($kelasList as $k)
+                    <option value="{{ $k }}" {{ request('kelas') === $k ? 'selected' : '' }}>{{ $k }}</option>
                     @endforeach
                 </select>
             </div>
@@ -45,10 +65,17 @@
             <button type="submit" class="btn-primary">
                 Tampilkan
             </button>
-            @if(request()->hasAny(['paket_id', 'status', 'search']))
+            @if(request()->hasAny(['paket_id', 'status', 'search', 'kelas', 'sesi_id']))
             <a href="{{ route('sekolah.laporan') }}" class="btn-secondary">Reset</a>
             @endif
             <div class="sm:ml-auto flex items-center gap-2">
+                <a href="{{ route('sekolah.laporan.export', request()->query()) }}"
+                   class="btn-success inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Export Excel
+                </a>
                 <div class="relative">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -181,7 +208,7 @@
         </div>
         @endif
     </div>
-    @elseif(request()->hasAny(['paket_id', 'status', 'search']))
+    @elseif(request()->hasAny(['paket_id', 'status', 'search', 'kelas', 'sesi_id']))
     <div class="card">
         <x-empty-state icon="search" title="Tidak ada data yang sesuai filter" subtitle="Coba ubah filter atau kata kunci pencarian Anda." />
     </div>

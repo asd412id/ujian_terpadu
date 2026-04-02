@@ -251,6 +251,7 @@ Route::prefix('sekolah')->name('sekolah.')->middleware(['auth', 'role:admin_seko
 
     // Laporan Nilai (scoped ke sekolah sendiri)
     Route::get('/laporan', [SekolahLaporanController::class, 'index'])->name('laporan');
+    Route::get('/laporan/export', [SekolahLaporanController::class, 'export'])->name('laporan.export');
     // Paket Ujian (lihat dan daftarkan peserta)
     Route::get('/paket', [PaketUjianController::class, 'index'])->name('paket');
     Route::get('/paket/{paket}', [PaketUjianController::class, 'show'])->name('paket.show');

@@ -16,12 +16,14 @@ class LaporanController extends Controller
     public function index(Request $request)
     {
         $data = $this->laporanService->getHasilUjian($request->only([
-            'sekolah_id', 'paket_id', 'status', 'page', 'per_page', 'search',
+            'sekolah_id', 'paket_id', 'status', 'page', 'per_page', 'search', 'kelas', 'sesi_id',
         ]));
 
         return view('dinas.laporan.index', [
             'sekolahList' => $data['sekolahList'],
             'paketList'   => $data['paketList'],
+            'kelasList'   => $data['kelasList'],
+            'sesiList'    => $data['sesiList'],
             'data'        => $data['data'],
             'rekap'       => $data['rekap'],
         ]);
@@ -53,7 +55,7 @@ class LaporanController extends Controller
         ini_set('memory_limit', '256M');
         set_time_limit(300);
 
-        $filters = $request->only(['sekolah_id', 'paket_id', 'search', 'status']);
+        $filters = $request->only(['sekolah_id', 'paket_id', 'search', 'status', 'kelas', 'sesi_id']);
 
         $exportData = $this->laporanService->exportHasil($filters);
 

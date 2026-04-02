@@ -110,8 +110,15 @@
                     <option value="submit" {{ ($filters['status'] ?? '') === 'submit' ? 'selected' : '' }}>Submit</option>
                     <option value="belum" {{ ($filters['status'] ?? '') === 'belum' ? 'selected' : '' }}>Belum Mulai</option>
                 </select>
+                <select name="kelas" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
+                    <option value="">Semua Kelas</option>
+                    @foreach($kelasList as $k)
+                    <option value="{{ $k }}" {{ ($filters['kelas'] ?? '') === $k ? 'selected' : '' }}>{{ $k }}</option>
+                    @endforeach
+                </select>
                 <button type="submit" class="btn-primary">Cari</button>
-                @if(!empty($filters['search']) || !empty($filters['status']))
+                @if(!empty($filters['search']) || !empty($filters['status']) || !empty($filters['kelas']))
                 <a href="{{ route('sekolah.monitoring.sesi', $sesi->id) }}" class="text-xs text-gray-500 hover:text-red-500">Reset</a>
                 @endif
             </form>

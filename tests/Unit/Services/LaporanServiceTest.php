@@ -8,6 +8,8 @@ use Mockery\MockInterface;
 use App\Services\LaporanService;
 use App\Repositories\LaporanRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class LaporanServiceTest extends TestCase
 {
@@ -28,23 +30,87 @@ class LaporanServiceTest extends TestCase
     }
 
     // ── getHasilUjian ──────────────────────────────────────────
-    // Uses Eloquent directly (Sekolah, PaketUjian, SesiPeserta models).
 
-    public function test_get_hasil_ujian_returns_array(): void
+    public function test_get_hasil_ujian_returns_array_with_sesi_list(): void
     {
-        $reflection = new \ReflectionMethod($this->service, 'getHasilUjian');
-        $this->assertEquals('array', $reflection->getReturnType()->getName());
+        $this->repository->shouldReceive('getSekolahList')->once()->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getPaketList')->once()->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getHasilUjianFiltered')->once()->andReturn(new LengthAwarePaginator([], 0, 30));
+        $this->repository->shouldReceive('buildRekap')->once()->andReturn([]);
+        $this->repository->shouldReceive('getKelasListAll')->once()->andReturn(new Collection());
+        $this->repository->shouldReceive('getSesiList')->once()->with(null)->andReturn(new EloquentCollection(['sesi-1']));
+
+        $result = $this->service->getHasilUjian();
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('sesiList', $result);
+        $this->assertArrayHasKey('sekolahList', $result);
+        $this->assertArrayHasKey('paketList', $result);
+        $this->assertArrayHasKey('kelasList', $result);
+        $this->assertArrayHasKey('data', $result);
+        $this->assertArrayHasKey('rekap', $result);
     }
 
-    public function test_get_hasil_ujian_accepts_optional_filters(): void
+    public function test_get_hasil_ujian_passes_paket_id_to_sesi_list(): void
     {
-        $reflection = new \ReflectionMethod($this->service, 'getHasilUjian');
-        $params = $reflection->getParameters();
+        $this->repository->shouldReceive('getSekolahList')->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getPaketList')->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getHasilUjianFiltered')->andReturn(new LengthAwarePaginator([], 0, 30));
+        $this->repository->shouldReceive('buildRekap')->andReturn([]);
+        $this->repository->shouldReceive('getKelasListAll')->andReturn(new Collection());
+        $this->repository->shouldReceive('getSesiList')->once()->with('paket-123')->andReturn(new EloquentCollection());
 
-        $this->assertCount(1, $params);
-        $this->assertEquals('filters', $params[0]->getName());
-        $this->assertTrue($params[0]->isDefaultValueAvailable());
-        $this->assertEquals([], $params[0]->getDefaultValue());
+        $result = $this->service->getHasilUjian(['paket_id' => 'paket-123']);
+
+        $this->assertIsArray($result);
+    }
+
+    public function test_get_hasil_ujian_uses_sekolah_kelas_list_when_sekolah_filter(): void
+    {
+        $this->repository->shouldReceive('getSekolahList')->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getPaketList')->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getHasilUjianFiltered')->andReturn(new LengthAwarePaginator([], 0, 30));
+        $this->repository->shouldReceive('buildRekap')->andReturn([]);
+        $this->repository->shouldReceive('getKelasListBySekolah')->once()->with('sekolah-1')->andReturn(new Collection());
+        $this->repository->shouldReceive('getSesiList')->andReturn(new EloquentCollection());
+
+        $result = $this->service->getHasilUjian(['sekolah_id' => 'sekolah-1']);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('kelasList', $result);
+    }
+
+    // ── getHasilUjianBySekolah ─────────────────────────────────
+
+    public function test_get_hasil_ujian_by_sekolah_returns_sesi_list(): void
+    {
+        $sekolahId = 'sekolah-1';
+
+        $this->repository->shouldReceive('getPaketListBySekolah')->with($sekolahId)->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getKelasListBySekolah')->with($sekolahId)->andReturn(new Collection());
+        $this->repository->shouldReceive('getSesiListBySekolah')->once()->with($sekolahId, null)->andReturn(new EloquentCollection(['sesi-A']));
+        $this->repository->shouldReceive('getHasilUjianFilteredBySekolah')->andReturn(new LengthAwarePaginator([], 0, 30));
+        $this->repository->shouldReceive('buildRekapBySekolah')->andReturn([]);
+
+        $result = $this->service->getHasilUjianBySekolah($sekolahId);
+
+        $this->assertArrayHasKey('sesiList', $result);
+        $this->assertCount(1, $result['sesiList']);
+    }
+
+    public function test_get_hasil_ujian_by_sekolah_passes_paket_id_to_sesi_list(): void
+    {
+        $sekolahId = 'sekolah-1';
+
+        $this->repository->shouldReceive('getPaketListBySekolah')->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getKelasListBySekolah')->andReturn(new Collection());
+        $this->repository->shouldReceive('getSesiListBySekolah')->once()->with($sekolahId, 'paket-abc')->andReturn(new EloquentCollection());
+        $this->repository->shouldReceive('getHasilUjianFilteredBySekolah')->andReturn(new LengthAwarePaginator([], 0, 30));
+        $this->repository->shouldReceive('buildRekapBySekolah')->andReturn([]);
+
+        $result = $this->service->getHasilUjianBySekolah($sekolahId, ['paket_id' => 'paket-abc']);
+
+        $this->assertIsArray($result);
     }
 
     // ── getHasilBySekolah ──────────────────────────────────────
@@ -110,7 +176,6 @@ class LaporanServiceTest extends TestCase
     }
 
     // ── getStatistik ───────────────────────────────────────────
-    // Fixed: getStatistik() now accepts optional paketId and handles both cases.
 
     public function test_get_statistik_with_paket_delegates_to_repository(): void
     {
@@ -137,12 +202,17 @@ class LaporanServiceTest extends TestCase
         $this->assertEquals($expected, $result);
     }
 
-    // ── getRekapNilai ──────────────────────────────────────────
-    // Removed: getRekapNilai() no longer exists; rekap handled via getHasilUjian()/getHasilUjianBySekolah().
-
-    public function test_get_rekap_nilai_legacy_tests_removed(): void
+    public function test_get_statistik_without_paket_uses_global(): void
     {
-        $this->assertTrue(true);
+        $expected = ['total_peserta' => 100];
+
+        $this->repository
+            ->shouldReceive('getGlobalStatistik')
+            ->once()
+            ->andReturn($expected);
+
+        $result = $this->service->getStatistik(null);
+        $this->assertEquals($expected, $result);
     }
 
     // ── getDetailNilaiPeserta ──────────────────────────────────
@@ -177,7 +247,6 @@ class LaporanServiceTest extends TestCase
     }
 
     // ── exportHasil ────────────────────────────────────────────
-    // Uses Eloquent directly (SesiPeserta model).
 
     public function test_export_hasil_returns_array(): void
     {
@@ -194,5 +263,60 @@ class LaporanServiceTest extends TestCase
         $this->assertEquals('filters', $params[0]->getName());
         $this->assertTrue($params[0]->isDefaultValueAvailable());
         $this->assertEquals([], $params[0]->getDefaultValue());
+    }
+
+    // ── exportHasilBySekolah ───────────────────────────────────
+
+    public function test_export_hasil_by_sekolah_returns_array(): void
+    {
+        $reflection = new \ReflectionMethod($this->service, 'exportHasilBySekolah');
+        $this->assertEquals('array', $reflection->getReturnType()->getName());
+    }
+
+    public function test_export_hasil_by_sekolah_has_correct_signature(): void
+    {
+        $reflection = new \ReflectionMethod($this->service, 'exportHasilBySekolah');
+        $params = $reflection->getParameters();
+
+        $this->assertCount(2, $params);
+        $this->assertEquals('sekolahId', $params[0]->getName());
+        $this->assertEquals('string', $params[0]->getType()->getName());
+        $this->assertEquals('filters', $params[1]->getName());
+        $this->assertTrue($params[1]->isDefaultValueAvailable());
+        $this->assertEquals([], $params[1]->getDefaultValue());
+    }
+
+    public function test_export_hasil_by_sekolah_calls_sekolah_scoped_methods(): void
+    {
+        $sekolahId = 'sekolah-1';
+        $filters = ['paket_id' => 'paket-1'];
+
+        $this->repository->shouldReceive('chunkHasilForExportBySekolah')
+            ->once()
+            ->with($sekolahId, Mockery::type('array'), 500, Mockery::type('callable'));
+
+        $this->repository->shouldReceive('findPaketName')
+            ->once()->with('paket-1')->andReturn('Ujian Test');
+
+        $this->repository->shouldReceive('findSekolahName')
+            ->once()->with($sekolahId)->andReturn('SMA Test');
+
+        $this->repository->shouldReceive('getExportSesiPesertaIdsBySekolah')
+            ->once()->with($sekolahId, Mockery::type('array'))->andReturn(new Collection());
+
+        $this->repository->shouldReceive('buildPerSoalAnalysis')
+            ->once()->andReturn([]);
+
+        $this->repository->shouldReceive('buildRekapBySekolah')
+            ->once()->with($sekolahId, Mockery::type('array'))->andReturn([]);
+
+        $result = $this->service->exportHasilBySekolah($sekolahId, $filters);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('hasil', $result);
+        $this->assertArrayHasKey('perSoal', $result);
+        $this->assertArrayHasKey('rekap', $result);
+        $this->assertArrayHasKey('filters', $result);
+        $this->assertEquals('SMA Test', $result['filters']['sekolah_nama']);
     }
 }

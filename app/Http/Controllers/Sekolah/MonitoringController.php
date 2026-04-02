@@ -40,7 +40,7 @@ class MonitoringController extends Controller
 
         $this->authorizeSesi($sesi, $sekolah);
 
-        $filters = $request->only(['search', 'status', 'per_page']);
+        $filters = $request->only(['search', 'status', 'per_page', 'kelas']);
         $filters['sekolah_id'] = $sekolah->id;
         $data = $this->monitoringService->getPesertaStatus($sesi->id, $filters);
 
@@ -57,6 +57,7 @@ class MonitoringController extends Controller
             'pesertaList' => $data['pesertaList'],
             'stats'       => $stats,
             'filters'     => $filters,
+            'kelasList'   => $data['kelasList'] ?? collect(),
             'showNilai'   => $showNilai,
         ]);
     }

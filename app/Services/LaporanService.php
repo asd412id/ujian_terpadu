@@ -21,7 +21,13 @@ class LaporanService
         $data = $this->repository->getHasilUjianFiltered($filters);
         $rekap = $this->repository->buildRekap($filters);
 
-        return compact('sekolahList', 'paketList', 'data', 'rekap');
+        $kelasList = !empty($filters['sekolah_id'])
+            ? $this->repository->getKelasListBySekolah($filters['sekolah_id'])
+            : $this->repository->getKelasListAll();
+
+        $sesiList = $this->repository->getSesiList($filters['paket_id'] ?? null);
+
+        return compact('sekolahList', 'paketList', 'kelasList', 'sesiList', 'data', 'rekap');
     }
 
     /**
@@ -33,6 +39,8 @@ class LaporanService
 
         return [
             'paketList' => $this->repository->getPaketListBySekolah($sekolahId),
+            'kelasList' => $this->repository->getKelasListBySekolah($sekolahId),
+            'sesiList'  => $this->repository->getSesiListBySekolah($sekolahId, $filters['paket_id'] ?? null),
             'data'      => $this->repository->getHasilUjianFilteredBySekolah($sekolahId, $filters),
             'rekap'     => $this->repository->buildRekapBySekolah($sekolahId, $filters),
         ];
@@ -123,6 +131,64 @@ class LaporanService
             'hasil'      => $hasilData,
             'perSoal'    => $perSoalData,
             'rekap'      => $this->repository->buildRekap($filters),
+            'filters'    => $filterNames,
+        ];
+    }
+
+    /**
+     * Export hasil ujian for a specific sekolah (with tampilkan_hasil scoping).
+     */
+    public function exportHasilBySekolah(string $sekolahId, array $filters = []): array
+    {
+        $filters['sekolah_id'] = $sekolahId;
+        $hasilData = [];
+        $maxRows = 10000;
+
+        $this->repository->chunkHasilForExportBySekolah($sekolahId, $filters, 500, function ($chunk) use (&$hasilData, $maxRows) {
+            foreach ($chunk as $sp) {
+                if (count($hasilData) >= $maxRows) {
+                    return false;
+                }
+                $hasilData[] = [
+                    'nama_peserta'   => $sp->peserta->nama ?? '-',
+                    'nis'            => $sp->peserta->nis ?? '-',
+                    'nisn'           => $sp->peserta->nisn ?? '-',
+                    'kelas'          => $sp->peserta->kelas ?? '-',
+                    'jurusan'        => $sp->peserta->jurusan ?? '-',
+                    'sekolah'        => $sp->peserta->sekolah->nama ?? '-',
+                    'paket'          => $sp->sesi->paket->nama ?? '-',
+                    'sesi'           => $sp->sesi->nama_sesi ?? '-',
+                    'nilai_akhir'    => round($sp->nilai_akhir ?? 0, 1),
+                    'jumlah_benar'   => (int) ($sp->jumlah_benar ?? 0),
+                    'jumlah_salah'   => (int) ($sp->jumlah_salah ?? 0),
+                    'jumlah_kosong'  => (int) ($sp->jumlah_kosong ?? 0),
+                    'total_soal'     => (int) ($sp->jumlah_benar ?? 0) + (int) ($sp->jumlah_salah ?? 0) + (int) ($sp->jumlah_kosong ?? 0),
+                    'durasi_menit'   => $sp->durasi_aktual_detik ? round(abs($sp->durasi_aktual_detik) / 60, 1) : 0,
+                    'status'         => ucfirst($sp->status),
+                    'keterangan'     => NilaiStatus::label($sp->nilai_akhir),
+                    'mulai_at'       => $sp->mulai_at?->format('Y-m-d H:i:s') ?? '-',
+                    'submit_at'      => $sp->submit_at?->format('Y-m-d H:i:s') ?? '-',
+                ];
+            }
+            unset($chunk);
+        });
+
+        $filterNames = [
+            'paket_nama'   => !empty($filters['paket_id']) ? $this->repository->findPaketName($filters['paket_id']) : null,
+            'sekolah_nama' => $this->repository->findSekolahName($sekolahId),
+            'status'       => $filters['status'] ?? '',
+        ];
+
+        $perSoalData = [];
+        if (count($hasilData) < 2000) {
+            $sesiPesertaIds = $this->repository->getExportSesiPesertaIdsBySekolah($sekolahId, $filters);
+            $perSoalData = $this->repository->buildPerSoalAnalysis($sesiPesertaIds);
+        }
+
+        return [
+            'hasil'      => $hasilData,
+            'perSoal'    => $perSoalData,
+            'rekap'      => $this->repository->buildRekapBySekolah($sekolahId, $filters),
             'filters'    => $filterNames,
         ];
     }
