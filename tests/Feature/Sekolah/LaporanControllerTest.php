@@ -464,4 +464,163 @@ class LaporanControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertViewHas('data', fn ($data) => $data->count() === 1);
     }
+
+    // ─── Detail Siswa ────────────────────────────────────────────
+
+    public function test_detail_siswa_renders_for_own_school_submitted_peserta(): void
+    {
+        $user = $this->sekolahUser();
+        $data = $this->createSekolahData($user);
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $data['sp']->id));
+
+        $response->assertStatus(200);
+        $response->assertViewIs('sekolah.laporan.detail-siswa');
+        $response->assertViewHas('sesiPeserta');
+        $response->assertViewHas('detail');
+    }
+
+    public function test_detail_siswa_blocks_other_school_peserta(): void
+    {
+        $user = $this->sekolahUser();
+        // Create data for a different school
+        $otherSekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $paket = PaketUjian::factory()->aktif()->create([
+            'sekolah_id'      => $otherSekolah->id,
+            'jenjang'         => 'SMA',
+            'tampilkan_hasil' => true,
+        ]);
+        $otherPeserta = Peserta::factory()->create(['sekolah_id' => $otherSekolah->id]);
+        $sesi = SesiUjian::factory()->selesai()->create(['paket_id' => $paket->id]);
+        $sp = SesiPeserta::factory()->submit()->create([
+            'sesi_id'    => $sesi->id,
+            'peserta_id' => $otherPeserta->id,
+            'nilai_akhir' => 80,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $sp->id));
+
+        $response->assertStatus(403);
+    }
+
+    public function test_detail_siswa_blocks_when_tampilkan_hasil_false(): void
+    {
+        $user = $this->sekolahUser();
+        $data = $this->createSekolahData($user, ['tampilkan_hasil' => false]);
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $data['sp']->id));
+
+        $response->assertStatus(403);
+    }
+
+    public function test_detail_siswa_blocks_when_sesi_berlangsung_and_unfinished_peserta(): void
+    {
+        $user = $this->sekolahUser();
+        $paket = PaketUjian::factory()->aktif()->create([
+            'sekolah_id'      => $user->sekolah_id,
+            'jenjang'         => 'SMA',
+            'tampilkan_hasil' => true,
+        ]);
+        $pesertaA = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $pesertaB = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
+        $spSubmitted = SesiPeserta::factory()->submit()->create([
+            'sesi_id'    => $sesi->id,
+            'peserta_id' => $pesertaA->id,
+            'nilai_akhir' => 80,
+        ]);
+        // B is still working (not submitted)
+        SesiPeserta::factory()->mengerjakan()->create([
+            'sesi_id'    => $sesi->id,
+            'peserta_id' => $pesertaB->id,
+        ]);
+
+        // Even though A has submitted, B hasn't — so detail should be blocked
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $spSubmitted->id));
+
+        $response->assertStatus(403);
+    }
+
+    public function test_detail_siswa_allows_berlangsung_sesi_when_all_school_peserta_submitted(): void
+    {
+        $user = $this->sekolahUser();
+        $paket = PaketUjian::factory()->aktif()->create([
+            'sekolah_id'      => $user->sekolah_id,
+            'jenjang'         => 'SMA',
+            'tampilkan_hasil' => true,
+        ]);
+        $pesertaA = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $pesertaB = Peserta::factory()->create(['sekolah_id' => $user->sekolah_id]);
+        $sesi = SesiUjian::factory()->berlangsung()->create(['paket_id' => $paket->id]);
+        $sp = SesiPeserta::factory()->submit()->create([
+            'sesi_id'    => $sesi->id,
+            'peserta_id' => $pesertaA->id,
+            'nilai_akhir' => 80,
+        ]);
+        SesiPeserta::factory()->submit()->create([
+            'sesi_id'    => $sesi->id,
+            'peserta_id' => $pesertaB->id,
+            'nilai_akhir' => 70,
+        ]);
+
+        // Both submitted — detail allowed
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $sp->id));
+
+        $response->assertStatus(200);
+        $response->assertViewIs('sekolah.laporan.detail-siswa');
+    }
+
+    public function test_detail_siswa_allows_selesai_sesi(): void
+    {
+        $user = $this->sekolahUser();
+        $data = $this->createSekolahData($user);
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $data['sp']->id));
+
+        $response->assertStatus(200);
+    }
+
+    public function test_detail_siswa_returns_404_for_nonexistent_sesi_peserta(): void
+    {
+        $user = $this->sekolahUser();
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', 'nonexistent-uuid'));
+
+        $response->assertStatus(404);
+    }
+
+    public function test_guest_cannot_access_detail_siswa(): void
+    {
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $user = $this->sekolahUser($sekolah);
+        $data = $this->createSekolahData($user);
+
+        $response = $this->get(route('sekolah.laporan.detail-siswa', $data['sp']->id));
+
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_detail_siswa_works_with_dinas_paket_matching_jenjang(): void
+    {
+        $sekolah = Sekolah::factory()->create(['jenjang' => 'SMA']);
+        $user = $this->sekolahUser($sekolah);
+
+        $paket = PaketUjian::factory()->aktif()->create([
+            'sekolah_id'      => null,
+            'jenjang'         => 'SMA',
+            'tampilkan_hasil' => true,
+        ]);
+        $peserta = Peserta::factory()->create(['sekolah_id' => $sekolah->id]);
+        $sesi = SesiUjian::factory()->selesai()->create(['paket_id' => $paket->id]);
+        $sp = SesiPeserta::factory()->submit()->create([
+            'sesi_id'    => $sesi->id,
+            'peserta_id' => $peserta->id,
+            'nilai_akhir' => 90,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('sekolah.laporan.detail-siswa', $sp->id));
+
+        $response->assertStatus(200);
+        $response->assertViewIs('sekolah.laporan.detail-siswa');
+    }
 }

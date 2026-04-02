@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sekolah;
 
 use App\Exports\LaporanUjianExport;
 use App\Http\Controllers\Controller;
+use App\Models\SesiPeserta;
 use App\Services\LaporanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +57,47 @@ class LaporanController extends Controller
             filters: $exportData['filters'],
             perSoalData: $exportData['perSoal'],
         ))->download($filename);
+    }
+
+    public function detailSiswa(string $sesiPesertaId)
+    {
+        $sekolah = $this->getSekolah();
+        abort_unless($sekolah, 403, 'Anda tidak memiliki akses ke laporan ini.');
+
+        $sp = SesiPeserta::with(['peserta', 'sesi.paket'])->findOrFail($sesiPesertaId);
+
+        // Ownership: peserta must belong to this sekolah
+        abort_unless(
+            $sp->peserta && $sp->peserta->sekolah_id === $sekolah->id,
+            403,
+            'Anda tidak memiliki akses ke data peserta ini.'
+        );
+
+        // Paket must have tampilkan_hasil enabled
+        $paket = $sp->sesi->paket;
+        abort_unless(
+            $paket && $paket->tampilkan_hasil,
+            403,
+            'Hasil ujian untuk paket ini belum dipublikasikan.'
+        );
+
+        // Sesi must be selesai OR all school peserta in this sesi already submitted
+        $sesi = $sp->sesi;
+        if ($sesi->status !== 'selesai') {
+            $hasUnfinished = SesiPeserta::where('sesi_id', $sesi->id)
+                ->whereNotIn('status', ['submit', 'dinilai'])
+                ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolah->id))
+                ->exists();
+
+            abort_if($hasUnfinished, 403, 'Hasil ujian belum dapat dilihat karena masih ada peserta yang belum selesai.');
+        }
+
+        $data = $this->laporanService->getDetailSiswa($sesiPesertaId);
+
+        return view('sekolah.laporan.detail-siswa', [
+            'sesiPeserta' => $data['sesiPeserta'],
+            'detail'      => $data['detail'],
+        ]);
     }
 
     protected function getSekolah()

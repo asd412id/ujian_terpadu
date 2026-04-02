@@ -133,6 +133,7 @@
                         <th class="px-5 py-3 text-center hidden lg:table-cell">Kosong</th>
                         <th class="px-5 py-3 text-center">Nilai</th>
                         <th class="px-5 py-3 text-center">Status</th>
+                        <th class="px-5 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -140,8 +141,10 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3 text-gray-400 text-xs">{{ $data->firstItem() + $loop->index }}</td>
                         <td class="px-5 py-3">
-                            <p class="font-medium text-gray-900">{{ $hasil->peserta->nama }}</p>
-                            <p class="text-xs text-gray-400">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }}</p>
+                            <a href="{{ route('sekolah.laporan.detail-siswa', $hasil->id) }}" class="hover:text-blue-600">
+                                <p class="font-medium text-gray-900 hover:text-blue-600">{{ $hasil->peserta->nama }}</p>
+                                <p class="text-xs text-gray-400">{{ $hasil->peserta->nis ?? $hasil->peserta->nisn }}</p>
+                            </a>
                         </td>
                         <td class="px-5 py-3 hidden md:table-cell">
                             <p class="font-medium text-gray-900 text-xs">{{ $hasil->sesi->paket->nama ?? '—' }}</p>
@@ -166,7 +169,17 @@
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{{ ucfirst(str_replace('_', ' ', $hasil->status)) }}</span>
                             @endif
                         </td>
-
+                        <td class="px-5 py-3 text-center">
+                            <a href="{{ route('sekolah.laporan.detail-siswa', $hasil->id) }}"
+                               class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                               title="Detail Jawaban">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                Detail
+                            </a>
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -177,7 +190,7 @@
         <div class="sm:hidden divide-y divide-gray-100">
             @foreach($data as $hasil)
             @php $nilai = $hasil->nilai_akhir ?? 0; @endphp
-            <div class="block px-4 py-3 hover:bg-gray-50">
+            <a href="{{ route('sekolah.laporan.detail-siswa', $hasil->id) }}" class="block px-4 py-3 hover:bg-gray-50">
                 <div class="flex items-start justify-between gap-2 mb-1.5">
                     <div class="min-w-0">
                         <p class="font-medium text-gray-900 text-sm">{{ $hasil->peserta->nama }}</p>
@@ -199,7 +212,7 @@
                     @endif
                     <span class="text-xs text-gray-400 ml-auto">B:{{ $hasil->jumlah_benar ?? 0 }} S:{{ $hasil->jumlah_salah ?? 0 }}</span>
                 </div>
-            </div>
+            </a>
             @endforeach
         </div>
         @if($data->hasPages())

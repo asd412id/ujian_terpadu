@@ -339,7 +339,6 @@ class LaporanService
             $jawaban = '-';
             $jawabanDisplay = '-';
             if ($j) {
-                $raw = $j->jawaban_pg ?? $j->jawaban_teks ?? $j->jawaban_pasangan ?? null;
                 [$jawaban, $jawabanDisplay] = $this->formatJawaban($soal, $j, $remap);
             }
 
