@@ -65,6 +65,44 @@ class MonitoringControllerTest extends TestCase
         $response->assertJsonStructure(['sesiList', 'summary']);
     }
 
+    public function test_api_index_filters_by_sekolah(): void
+    {
+        $user = $this->dinasUser();
+        $sekolah = Sekolah::factory()->create();
+
+        $response = $this->actingAs($user)->getJson(
+            route('dinas.monitoring.api', ['sekolah_id' => $sekolah->id])
+        );
+
+        $response->assertOk();
+        $response->assertJsonStructure(['sesiList', 'summary']);
+    }
+
+    public function test_api_index_without_sekolah_returns_all(): void
+    {
+        $user = $this->dinasUser();
+        Sekolah::factory()->count(2)->create();
+
+        $response = $this->actingAs($user)->getJson(route('dinas.monitoring.api'));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'sesiList',
+            'summary' => ['total_sesi', 'peserta_online', 'peserta_ragu', 'sudah_submit'],
+        ]);
+    }
+
+    public function test_api_index_rejects_invalid_sekolah_id(): void
+    {
+        $user = $this->dinasUser();
+
+        $response = $this->actingAs($user)->getJson(
+            route('dinas.monitoring.api', ['sekolah_id' => 'not-a-uuid'])
+        );
+
+        $response->assertUnprocessable();
+    }
+
     public function test_api_sesi_returns_json(): void
     {
         $user = $this->dinasUser();

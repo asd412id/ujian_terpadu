@@ -28,14 +28,15 @@
                 <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 LIVE
             </span>
-            {{-- Filter Sekolah --}}
-            <select @change="filterSekolah = $event.target.value; loadData()"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Semua Sekolah</option>
-                @foreach($sekolahList as $sekolah)
-                <option value="{{ $sekolah->id }}">{{ $sekolah->nama }}</option>
-                @endforeach
-            </select>
+            {{-- Filter Sekolah (searchable) --}}
+            <div class="w-56" x-on:change="filterSekolah = $event.target.value; loadData()">
+                <x-searchable-select
+                    name="filter_sekolah"
+                    :options="$sekolahList->map(fn($s) => ['id' => $s->id, 'text' => $s->nama])"
+                    value=""
+                    placeholder="Semua Sekolah"
+                    size="sm" />
+            </div>
         </div>
     </div>
 
@@ -78,108 +79,96 @@
                         <th class="px-5 py-3 text-center">Peserta</th>
                         <th class="px-5 py-3 text-center">Online</th>
                         <th class="px-5 py-3 text-center">Submit</th>
-                        <th class="px-5 py-3 text-center">Sisa Waktu</th>
                         <th class="px-5 py-3 text-center">Status</th>
                         <th class="px-5 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                    @forelse($sesiList as $sesi)
-                    <tr class="hover:bg-gray-50 transition-colors"
-                        x-show="!search || '{{ strtolower($sesi->nama_sesi . ' ' . ($sesi->paket->nama ?? '')) }}'.includes(search.toLowerCase())">
+                    <template x-for="sesi in filteredSesi" :key="sesi.id">
+                    <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-5 py-3">
-                            <p class="font-medium text-gray-900">{{ $sesi->nama_sesi }}</p>
-                            <p class="text-xs text-gray-500">{{ $sesi->paket->nama ?? '—' }}</p>
+                            <p class="font-medium text-gray-900" x-text="sesi.nama_sesi"></p>
+                            <p class="text-xs text-gray-500" x-text="sesi.paket_nama"></p>
                         </td>
-                        <td class="px-5 py-3 text-gray-700">{{ $sesi->paket->sekolah->nama ?? '—' }}</td>
-                        <td class="px-5 py-3 text-center font-medium text-gray-900">{{ $sesi->total_peserta ?? 0 }}</td>
+                        <td class="px-5 py-3 text-gray-700" x-text="sesi.sekolah_nama"></td>
+                        <td class="px-5 py-3 text-center font-medium text-gray-900" x-text="sesi.total_peserta"></td>
                         <td class="px-5 py-3 text-center">
                             <span class="flex items-center justify-center gap-1 text-green-600 font-medium">
                                 <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                {{ $sesi->peserta_online ?? 0 }}
+                                <span x-text="sesi.peserta_online"></span>
                             </span>
                         </td>
-                        <td class="px-5 py-3 text-center font-medium text-blue-600">{{ $sesi->sudah_submit ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center font-medium text-blue-600" x-text="sesi.sudah_submit"></td>
                         <td class="px-5 py-3 text-center">
-                            @php
-                                $sisaMenit = $sesi->sisa_waktu_menit ?? null;
-                            @endphp
-                            @if($sisaMenit !== null)
-                                <span class="{{ $sisaMenit <= 10 ? 'text-red-600 font-bold' : 'text-gray-700' }}">
-                                    {{ floor($sisaMenit / 60) }}:{{ str_pad($sisaMenit % 60, 2, '0', STR_PAD_LEFT) }}
-                                </span>
-                            @else
-                                <span class="text-gray-400">—</span>
-                            @endif
-                        </td>
-                        <td class="px-5 py-3 text-center">
-                            @if($sesi->status === 'berlangsung')
+                            <template x-if="sesi.status === 'berlangsung'">
                                 <span class="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                     Berlangsung
                                 </span>
-                            @elseif($sesi->status === 'persiapan')
+                            </template>
+                            <template x-if="sesi.status === 'persiapan'">
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Persiapan</span>
-                            @else
+                            </template>
+                            <template x-if="sesi.status !== 'berlangsung' && sesi.status !== 'persiapan'">
                                 <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Selesai</span>
-                            @endif
+                            </template>
                         </td>
                         <td class="px-5 py-3 text-right">
-                            <a href="{{ route('dinas.monitoring.sesi', $sesi->id) }}"
-                               class="text-blue-600 hover:text-blue-800 text-xs font-medium">Detail →</a>
+                            <a :href="`{{ url('dinas/monitoring/sesi') }}/${sesi.id}`"
+                               class="text-blue-600 hover:text-blue-800 text-xs font-medium">Detail &rarr;</a>
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8" class="px-5 py-0">
+                    </template>
+                    <tr x-show="filteredSesi.length === 0">
+                        <td colspan="7" class="px-5 py-0">
                             <x-empty-state
                                 icon="monitor"
                                 title="Belum ada sesi ujian aktif"
                                 subtitle="Sesi ujian yang sedang berlangsung akan muncul di sini secara otomatis." />
                         </td>
                     </tr>
-                    @endforelse
                 </tbody>
             </table>
         </div>
 
         {{-- Mobile cards --}}
         <div class="sm:hidden divide-y divide-gray-100">
-            @forelse($sesiList as $sesi)
+            <template x-for="sesi in filteredSesi" :key="sesi.id">
             <div class="px-4 py-4">
                 <div class="flex items-start justify-between gap-2 mb-2">
                     <div>
-                        <p class="font-medium text-gray-900 text-sm">{{ $sesi->nama_sesi }}</p>
-                        <p class="text-xs text-gray-500">{{ $sesi->paket->nama ?? '—' }}</p>
+                        <p class="font-medium text-gray-900 text-sm" x-text="sesi.nama_sesi"></p>
+                        <p class="text-xs text-gray-500" x-text="sesi.paket_nama"></p>
                     </div>
-                    @if($sesi->status === 'berlangsung')
+                    <template x-if="sesi.status === 'berlangsung'">
                         <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full flex-shrink-0">Live</span>
-                    @endif
+                    </template>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center text-xs">
                     <div class="bg-gray-50 rounded-lg p-2">
-                        <p class="font-bold text-gray-900">{{ $sesi->total_peserta ?? 0 }}</p>
+                        <p class="font-bold text-gray-900" x-text="sesi.total_peserta"></p>
                         <p class="text-gray-500">Total</p>
                     </div>
                     <div class="bg-green-50 rounded-lg p-2">
-                        <p class="font-bold text-green-700">{{ $sesi->peserta_online ?? 0 }}</p>
+                        <p class="font-bold text-green-700" x-text="sesi.peserta_online"></p>
                         <p class="text-gray-500">Online</p>
                     </div>
                     <div class="bg-blue-50 rounded-lg p-2">
-                        <p class="font-bold text-blue-700">{{ $sesi->sudah_submit ?? 0 }}</p>
+                        <p class="font-bold text-blue-700" x-text="sesi.sudah_submit"></p>
                         <p class="text-gray-500">Submit</p>
                     </div>
                 </div>
-                <a href="{{ route('dinas.monitoring.sesi', $sesi->id) }}"
-                   class="mt-2 block text-center text-blue-600 text-xs font-medium">Lihat Detail →</a>
+                <a :href="`{{ url('dinas/monitoring/sesi') }}/${sesi.id}`"
+                   class="mt-2 block text-center text-blue-600 text-xs font-medium">Lihat Detail &rarr;</a>
             </div>
-            @empty
-            <x-empty-state
-                icon="monitor"
-                title="Belum ada sesi ujian aktif"
-                subtitle="Sesi ujian yang sedang berlangsung akan muncul di sini."
-                compact />
-            @endforelse
+            </template>
+            <div x-show="filteredSesi.length === 0">
+                <x-empty-state
+                    icon="monitor"
+                    title="Belum ada sesi ujian aktif"
+                    subtitle="Sesi ujian yang sedang berlangsung akan muncul di sini."
+                    compact />
+            </div>
         </div>
     </div>
 
@@ -192,6 +181,16 @@ function monitoringApp() {
         filterSekolah: '',
         lastUpdate: '',
         summary: {},
+        sesiList: @js($sesiList->map(fn($s) => [
+            'id' => $s->id,
+            'nama_sesi' => $s->nama_sesi,
+            'paket_nama' => $s->paket->nama ?? '—',
+            'sekolah_nama' => $s->paket->sekolah->nama ?? '—',
+            'total_peserta' => $s->total_peserta ?? 0,
+            'peserta_online' => $s->peserta_online ?? 0,
+            'sudah_submit' => $s->sudah_submit ?? 0,
+            'status' => $s->status,
+        ])),
         pollInterval: null,
         _loading: false,
 
@@ -208,6 +207,14 @@ function monitoringApp() {
             this.lastUpdate = new Date().toLocaleTimeString('id-ID');
         },
 
+        get filteredSesi() {
+            if (!this.search) return this.sesiList;
+            const s = this.search.toLowerCase();
+            return this.sesiList.filter(sesi =>
+                (sesi.nama_sesi + ' ' + sesi.paket_nama).toLowerCase().includes(s)
+            );
+        },
+
         async loadData() {
             if (this._loading) return;
             this._loading = true;
@@ -219,6 +226,16 @@ function monitoringApp() {
                 if (res.ok) {
                     const data = await res.json();
                     this.summary = data.summary ?? {};
+                    this.sesiList = (data.sesiList ?? []).map(s => ({
+                        id: s.id,
+                        nama_sesi: s.nama_sesi,
+                        paket_nama: s.paket?.nama ?? '—',
+                        sekolah_nama: s.paket?.sekolah?.nama ?? '—',
+                        total_peserta: s.total_peserta ?? 0,
+                        peserta_online: s.peserta_online ?? 0,
+                        sudah_submit: s.sudah_submit ?? 0,
+                        status: s.status,
+                    }));
                     this.updateTime();
                 }
             } catch (e) { /* offline / error */ }

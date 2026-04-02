@@ -54,9 +54,15 @@ class MonitoringController extends Controller
         ]);
     }
 
-    public function apiIndex()
+    public function apiIndex(Request $request)
     {
-        $data = $this->monitoringService->getDashboardMonitoring();
+        $request->validate(['sekolah_id' => 'nullable|uuid|exists:sekolah,id']);
+
+        $sekolahId = $request->input('sekolah_id');
+
+        $data = $sekolahId
+            ? $this->monitoringService->getSekolahMonitoring($sekolahId)
+            : $this->monitoringService->getDashboardMonitoring();
 
         return response()->json([
             'sesiList' => $data['sesiList'],
