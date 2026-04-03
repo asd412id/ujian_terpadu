@@ -8,6 +8,7 @@ use App\Models\NarasiSoal;
 use App\Models\Soal;
 use App\Jobs\ImportSoalWordJob;
 use App\Repositories\KategoriSoalRepository;
+use App\Services\ExportSoalWordService;
 use App\Services\SoalService;
 use App\Support\HtmlDisplay;
 use Illuminate\Http\Request;
@@ -22,7 +23,8 @@ class SoalController extends Controller
 {
     public function __construct(
         protected SoalService $soalService,
-        protected KategoriSoalRepository $kategoriSoalRepository
+        protected KategoriSoalRepository $kategoriSoalRepository,
+        protected ExportSoalWordService $exportService,
     ) {}
 
     public function index(Request $request)
@@ -49,7 +51,11 @@ class SoalController extends Controller
         $trashedCount = Soal::onlyTrashed()->count();
         $trashedNarasiCount = NarasiSoal::onlyTrashed()->count();
 
-        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount', 'trashedNarasiCount'));
+        $soalCounts = Soal::selectRaw('kategori_id, count(*) as total')
+            ->groupBy('kategori_id')
+            ->pluck('total', 'kategori_id');
+
+        return view('dinas.soal.index', compact('soal', 'kategori', 'narasis', 'trashedCount', 'trashedNarasiCount', 'soalCounts'));
     }
 
     public function create()
@@ -428,6 +434,34 @@ class SoalController extends Controller
             'progress'       => $job->progress_percent,
             'errors'         => $job->errors ?? [],
             'message'        => $job->catatan ?? '',
+        ]);
+    }
+
+    public function exportWord(Request $request): StreamedResponse
+    {
+        $request->validate([
+            'kategori_soal_id' => 'required|exists:kategori_soal,id',
+        ]);
+
+        $kategori = \App\Models\KategoriSoal::findOrFail($request->kategori_soal_id);
+        $soalList = $this->soalService->getExportableSoal($request->kategori_soal_id);
+
+        if ($soalList->count() > 1000) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'kategori_soal_id' => 'Kategori ini memiliki ' . $soalList->count() . ' soal. Maksimal 1000 soal per export untuk menghindari timeout.',
+            ]);
+        }
+
+        $phpWord = $this->exportService->generate($soalList);
+
+        $safeNama = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $kategori->nama);
+        $fileName = 'export_soal_' . $safeNama . '_' . date('Y-m-d') . '.docx';
+
+        return response()->streamDownload(function () use ($phpWord) {
+            $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ]);
     }
 

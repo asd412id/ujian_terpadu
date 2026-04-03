@@ -74,6 +74,33 @@
                         Sampah ({{ $trashedCount }})
                     </a>
                     @endif
+                    @if($soalCounts->sum() > 0)
+                    <div x-data="{ openExport: false }" class="relative">
+                        <button @click="openExport = !openExport" type="button"
+                                class="btn-secondary inline-flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Export Word
+                            <svg class="w-3 h-3 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="openExport" x-cloak @mousedown.outside="openExport = false" x-transition
+                             class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 py-2">
+                            <p class="px-4 py-1 text-xs text-gray-400 uppercase tracking-wider">Pilih Kategori</p>
+                            @foreach($kategori as $kat)
+                            @if(($soalCounts[$kat->id] ?? 0) > 0)
+                            <a href="{{ route('dinas.soal.export.word', ['kategori_soal_id' => $kat->id]) }}"
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                {{ $kat->nama }}
+                                <span class="text-xs text-gray-400">({{ $soalCounts[$kat->id] }} soal)</span>
+                            </a>
+                            @endif
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                     <a href="{{ route('dinas.soal.import') }}"
                        class="btn-secondary inline-flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

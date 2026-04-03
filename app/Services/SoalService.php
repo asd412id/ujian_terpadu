@@ -6,6 +6,7 @@ use App\Models\NarasiSoal;
 use App\Models\Soal;
 use App\Repositories\SoalRepository;
 use App\Repositories\KategoriSoalRepository;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -769,6 +770,46 @@ class SoalService
             'errors'   => $errors,
             'total'    => count($rows),
         ];
+    }
+
+    /**
+     * Get soal for export, ordered for roundtrip compatibility.
+     * Eager loads all relations needed by ExportSoalWordService.
+     */
+    public function getExportableSoal(string $kategoriId, ?string $createdBy = null): Collection
+    {
+        $query = Soal::with(['opsiJawaban', 'pasangan', 'narasi', 'kategori'])
+            ->where('kategori_id', $kategoriId);
+
+        if ($createdBy) {
+            $query->where('created_by', $createdBy);
+        }
+
+        return $query
+            ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Get exportable soal for a pembuat soal (own + assigned kategori).
+     */
+    public function getExportableSoalForUser(string $kategoriId, string $userId): Collection
+    {
+        return Soal::with(['opsiJawaban', 'pasangan', 'narasi', 'kategori'])
+            ->where('kategori_id', $kategoriId)
+            ->where(function ($q) use ($userId) {
+                $q->where('created_by', $userId)
+                  ->orWhereIn('soal.id', function ($sub) use ($userId) {
+                      $sub->select('soal_id')->from('soal_user')->where('user_id', $userId);
+                  })
+                  ->orWhereIn('soal.kategori_id', function ($sub) use ($userId) {
+                      $sub->select('kategori_soal_id')->from('kategori_soal_user')->where('user_id', $userId);
+                  });
+            })
+            ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
+            ->orderBy('id')
+            ->get();
     }
 
     /**

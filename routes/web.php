@@ -130,6 +130,7 @@ Route::prefix('dinas')->name('dinas.')->middleware(['auth', 'role:super_admin,ad
     Route::get('/soal/import/status/{job}', [\App\Http\Controllers\Dinas\SoalController::class, 'importStatus'])->name('soal.import.status');
     Route::get('/soal/import/template/word', [\App\Http\Controllers\Dinas\SoalController::class, 'templateWord'])->name('soal.import.template.word');
     Route::get('/soal/import/template/zip', [\App\Http\Controllers\Dinas\SoalController::class, 'templateZip'])->name('soal.import.template.zip');
+    Route::get('/soal/export/word', [\App\Http\Controllers\Dinas\SoalController::class, 'exportWord'])->name('soal.export.word');
     Route::delete('/soal/destroy-all', [\App\Http\Controllers\Dinas\SoalController::class, 'destroyAll'])->name('soal.destroy-all');
     Route::get('/soal/trash', [\App\Http\Controllers\Dinas\SoalController::class, 'trash'])->name('soal.trash');
     Route::delete('/soal/trash/empty', [\App\Http\Controllers\Dinas\SoalController::class, 'emptyTrash'])->name('soal.empty-trash');
@@ -281,6 +282,7 @@ Route::prefix('pembuat-soal')->name('pembuat-soal.')->middleware(['auth', 'role:
     Route::get('/soal/import/status/{job}', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'importStatus'])->name('soal.import.status');
     Route::get('/soal/import/template/word', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'templateWord'])->name('soal.import.template.word');
     Route::get('/soal/import/template/zip', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'templateZip'])->name('soal.import.template.zip');
+    Route::get('/soal/export/word', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'exportWord'])->name('soal.export.word');
     Route::get('/soal/preview-all', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'previewAll'])->name('soal.preview-all');
     Route::get('/soal/trash', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'trash'])->name('soal.trash');
     Route::delete('/soal/trash/empty', [\App\Http\Controllers\PembuatSoal\SoalController::class, 'emptyTrash'])->name('soal.empty-trash');

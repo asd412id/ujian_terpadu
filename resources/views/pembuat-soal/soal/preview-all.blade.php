@@ -23,6 +23,15 @@
             <p class="text-sm text-gray-500 mt-1">{{ $soalList->count() }} soal ditampilkan</p>
         </div>
         <div class="flex items-center gap-2">
+            @if(request('kategori') && $soalList->count() > 0)
+            <a href="{{ route('pembuat-soal.soal.export.word', ['kategori_soal_id' => request('kategori')]) }}"
+               class="btn-secondary inline-flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Export Word
+            </a>
+            @endif
             <a href="{{ route('pembuat-soal.soal.index') }}"
                class="btn-secondary inline-flex items-center gap-2 text-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
