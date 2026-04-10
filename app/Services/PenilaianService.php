@@ -11,6 +11,9 @@ class PenilaianService
     /** @var array<string, array<string, string>> soalId → [displayLabel → originalLabel] */
     private array $labelRemap = [];
 
+    /** Whether partial scoring is enabled for this scoring run. */
+    private bool $scoringPartial = true;
+
     public function __construct(
         protected JawabanRepository $jawabanRepository
     ) {}
@@ -19,6 +22,7 @@ class PenilaianService
     {
         $sesiPeserta->loadMissing(['jawaban.soal.opsiJawaban', 'jawaban.soal.pasangan', 'sesi.paket.paketSoal.soal']);
         $paket = $sesiPeserta->sesi->paket;
+        $this->scoringPartial = $paket->scoring_partial ?? true;
 
         // Build label-remap per soal: display-label → original-label
         // During the exam, opsi are shuffled and relabeled A,B,C,D...
@@ -133,6 +137,8 @@ class PenilaianService
 
         if ($pilihan === $jawabanBenar) return $bobot;
 
+        if (! $this->scoringPartial) return 0;
+
         // Partial scoring: 50% jika sebagian benar
         $benarCount = count(array_intersect($pilihan, $jawabanBenar));
         $totalBenar = count($jawabanBenar);
@@ -176,6 +182,10 @@ class PenilaianService
             }
         }
 
+        if (! $this->scoringPartial) {
+            return $benarCount === $totalPernyataan ? $bobot : 0;
+        }
+
         return round(($benarCount / $totalPernyataan) * $bobot, 2);
     }
 
@@ -201,6 +211,10 @@ class PenilaianService
                     $benar++;
                 }
             }
+        }
+
+        if (! $this->scoringPartial) {
+            return $benar === $total ? $bobot : 0;
         }
 
         return $total > 0 ? round(($benar / $total) * $bobot, 2) : 0;

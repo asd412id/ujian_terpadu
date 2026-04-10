@@ -17,8 +17,8 @@ class PaketUjian extends Model
         'sekolah_id', 'created_by', 'nama', 'kode',
         'jenis_ujian', 'jenjang', 'deskripsi', 'durasi_menit',
         'jumlah_soal', 'acak_soal', 'acak_opsi',
-        'tampilkan_hasil', 'boleh_kembali', 'anti_curang', 'max_peserta',
-        'tanggal_mulai', 'tanggal_selesai', 'status',
+        'tampilkan_hasil', 'boleh_kembali', 'anti_curang', 'scoring_partial',
+        'max_peserta', 'tanggal_mulai', 'tanggal_selesai', 'status',
     ];
 
     protected $casts = [
@@ -27,6 +27,7 @@ class PaketUjian extends Model
         'tampilkan_hasil' => 'boolean',
         'boleh_kembali'   => 'boolean',
         'anti_curang'     => 'boolean',
+        'scoring_partial' => 'boolean',
         'tanggal_mulai'   => 'datetime',
         'tanggal_selesai' => 'datetime',
     ];

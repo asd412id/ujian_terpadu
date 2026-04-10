@@ -27,6 +27,7 @@ class PaketUjianFactory extends Factory
             'acak_opsi'        => false,
             'tampilkan_hasil'  => true,
             'boleh_kembali'    => true,
+            'scoring_partial'  => true,
             'max_peserta'      => null,
             'tanggal_mulai'    => now(),
             'tanggal_selesai'  => now()->addDays(7),

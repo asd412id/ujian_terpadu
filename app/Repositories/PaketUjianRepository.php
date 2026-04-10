@@ -347,6 +347,7 @@ class PaketUjianRepository
             'tampilkan_hasil' => $source->tampilkan_hasil,
             'boleh_kembali'   => $source->boleh_kembali,
             'anti_curang'     => $source->anti_curang,
+            'scoring_partial' => $source->scoring_partial,
             'max_peserta'     => $source->max_peserta,
             'tanggal_mulai'   => $source->tanggal_mulai,
             'tanggal_selesai' => $source->tanggal_selesai,

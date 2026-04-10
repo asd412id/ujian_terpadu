@@ -43,6 +43,7 @@ class PaketUjianController extends Controller
             'tampilkan_hasil'  => 'boolean',
             'boleh_kembali'    => 'boolean',
             'anti_curang'      => 'boolean',
+            'scoring_partial'  => 'boolean',
             'tanggal_mulai'    => 'nullable|date',
             'tanggal_selesai'  => 'nullable|date|after_or_equal:tanggal_mulai',
             'sekolah_id'       => 'nullable|exists:sekolah,id',
@@ -50,7 +51,7 @@ class PaketUjianController extends Controller
         ]);
 
         // Ensure unchecked checkboxes default to false
-        foreach (['acak_soal', 'acak_opsi', 'tampilkan_hasil', 'boleh_kembali', 'anti_curang'] as $bool) {
+        foreach (['acak_soal', 'acak_opsi', 'tampilkan_hasil', 'boleh_kembali', 'anti_curang', 'scoring_partial'] as $bool) {
             $data[$bool] = $data[$bool] ?? false;
         }
 
@@ -121,6 +122,7 @@ class PaketUjianController extends Controller
             'tampilkan_hasil' => 'boolean',
             'boleh_kembali'   => 'boolean',
             'anti_curang'     => 'boolean',
+            'scoring_partial' => 'boolean',
             'tanggal_mulai'   => 'nullable|date',
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
             'sekolah_id'      => 'nullable|exists:sekolah,id',
@@ -128,7 +130,7 @@ class PaketUjianController extends Controller
         ]);
 
         // Ensure unchecked checkboxes default to false
-        foreach (['acak_soal', 'acak_opsi', 'tampilkan_hasil', 'boleh_kembali', 'anti_curang'] as $bool) {
+        foreach (['acak_soal', 'acak_opsi', 'tampilkan_hasil', 'boleh_kembali', 'anti_curang', 'scoring_partial'] as $bool) {
             $data[$bool] = $data[$bool] ?? false;
         }
 

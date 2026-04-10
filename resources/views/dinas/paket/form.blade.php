@@ -188,6 +188,15 @@
                     <p class="text-xs text-gray-400">Fullscreen, blokir tab switch, blokir copy/paste, deteksi pelanggaran & auto-submit</p>
                 </div>
             </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="scoring_partial" value="1"
+                       {{ old('scoring_partial', $paket->scoring_partial ?? true) ? 'checked' : '' }}
+                       class="w-4 h-4 rounded border-gray-300 text-blue-600">
+                <div>
+                    <span class="text-sm text-gray-700">Aktifkan scoring partial</span>
+                    <p class="text-xs text-gray-400">PG Kompleks, Benar-Salah, dan Menjodohkan mendapat nilai proporsional. Jika dimatikan, hanya bernilai penuh atau 0.</p>
+                </div>
+            </label>
         </div>
     </div>
 

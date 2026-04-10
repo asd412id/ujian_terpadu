@@ -702,14 +702,18 @@ class PenilaianServiceTest extends TestCase
     // FORMULA & EDGE CASES
     // =========================================================================
 
-    public function test_hasil_status_selalu_submit(): void
+    public function test_hasil_berisi_semua_kunci_wajib(): void
     {
         $paket = PaketUjian::factory()->create();
         $sp    = $this->createSesiPeserta($paket);
 
         $result = $this->service->hitungNilai($sp);
 
-        $this->assertEquals('submit', $result['status']);
+        $this->assertArrayHasKey('nilai_akhir', $result);
+        $this->assertArrayHasKey('nilai_benar', $result);
+        $this->assertArrayHasKey('jumlah_benar', $result);
+        $this->assertArrayHasKey('jumlah_salah', $result);
+        $this->assertArrayHasKey('jumlah_kosong', $result);
     }
 
     public function test_soal_tanpa_record_jawaban_tetap_masuk_total_bobot(): void
@@ -943,6 +947,196 @@ class PenilaianServiceTest extends TestCase
 
         $result = $this->service->hitungNilai($sp);
 
+        $this->assertEquals(1, $result['jumlah_benar']);
+    }
+
+    // =========================================================================
+    // SCORING PARTIAL DISABLED
+    // =========================================================================
+
+    public function test_pgk_partial_disabled_exact_match_full_score(): void
+    {
+        $paket = PaketUjian::factory()->create(['scoring_partial' => false]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->pgKompleks()->create(['bobot' => 2.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+        OpsiJawaban::factory()->benar()->create(['soal_id' => $soal->id, 'label' => 'A']);
+        OpsiJawaban::factory()->benar()->create(['soal_id' => $soal->id, 'label' => 'C']);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'B', 'is_benar' => false]);
+
+        JawabanPeserta::factory()->create([
+            'sesi_peserta_id' => $sp->id,
+            'soal_id'         => $soal->id,
+            'jawaban_pg'      => ['A', 'C'],
+            'is_terjawab'     => true,
+        ]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        $this->assertEquals(1, $result['jumlah_benar']);
+        $this->assertEquals(2.0, $result['nilai_benar']);
+        $this->assertEquals(100.00, $result['nilai_akhir']);
+    }
+
+    public function test_pgk_partial_disabled_subset_benar_skor_nol(): void
+    {
+        $paket = PaketUjian::factory()->create(['scoring_partial' => false]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->pgKompleks()->create(['bobot' => 2.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+        OpsiJawaban::factory()->benar()->create(['soal_id' => $soal->id, 'label' => 'A']);
+        OpsiJawaban::factory()->benar()->create(['soal_id' => $soal->id, 'label' => 'C']);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'B', 'is_benar' => false]);
+
+        // Only pick A (subset of [A,C]) -> with partial disabled -> score = 0
+        JawabanPeserta::factory()->create([
+            'sesi_peserta_id' => $sp->id,
+            'soal_id'         => $soal->id,
+            'jawaban_pg'      => ['A'],
+            'is_terjawab'     => true,
+        ]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        $this->assertEquals(0.0, $result['nilai_benar']);
+        $this->assertEquals(0, $result['jumlah_benar']);
+        $this->assertEquals(1, $result['jumlah_salah']);
+    }
+
+    public function test_benar_salah_partial_disabled_semua_benar_full_score(): void
+    {
+        $paket = PaketUjian::factory()->create(['scoring_partial' => false]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->benarSalah()->create(['bobot' => 4.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'A', 'is_benar' => true]);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'B', 'is_benar' => false]);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'C', 'is_benar' => true]);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'D', 'is_benar' => false]);
+
+        JawabanPeserta::factory()->benarSalah([
+            'A' => 'benar',
+            'B' => 'salah',
+            'C' => 'benar',
+            'D' => 'salah',
+        ])->create(['sesi_peserta_id' => $sp->id, 'soal_id' => $soal->id]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        $this->assertEquals(1, $result['jumlah_benar']);
+        $this->assertEquals(4.0, $result['nilai_benar']);
+        $this->assertEquals(100.00, $result['nilai_akhir']);
+    }
+
+    public function test_benar_salah_partial_disabled_sebagian_salah_skor_nol(): void
+    {
+        $paket = PaketUjian::factory()->create(['scoring_partial' => false]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->benarSalah()->create(['bobot' => 4.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'A', 'is_benar' => true]);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'B', 'is_benar' => false]);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'C', 'is_benar' => true]);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'D', 'is_benar' => false]);
+
+        // 3/4 correct — but with partial disabled, score = 0
+        JawabanPeserta::factory()->benarSalah([
+            'A' => 'salah',   // wrong (key: benar)
+            'B' => 'salah',   // correct
+            'C' => 'benar',   // correct
+            'D' => 'salah',   // correct
+        ])->create(['sesi_peserta_id' => $sp->id, 'soal_id' => $soal->id]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        $this->assertEquals(0.0, $result['nilai_benar']);
+        $this->assertEquals(0, $result['jumlah_benar']);
+        $this->assertEquals(1, $result['jumlah_salah']);
+    }
+
+    public function test_menjodohkan_partial_disabled_semua_benar_full_score(): void
+    {
+        $paket = PaketUjian::factory()->create(['scoring_partial' => false]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->menjodohkan()->create(['bobot' => 3.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+
+        $p1 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+        $p2 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+        $p3 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+
+        JawabanPeserta::factory()->menjodohkan([
+            [$p1->id, $p1->id],
+            [$p2->id, $p2->id],
+            [$p3->id, $p3->id],
+        ])->create(['sesi_peserta_id' => $sp->id, 'soal_id' => $soal->id]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        $this->assertEquals(1, $result['jumlah_benar']);
+        $this->assertEquals(3.0, $result['nilai_benar']);
+        $this->assertEquals(100.00, $result['nilai_akhir']);
+    }
+
+    public function test_menjodohkan_partial_disabled_sebagian_salah_skor_nol(): void
+    {
+        $paket = PaketUjian::factory()->create(['scoring_partial' => false]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->menjodohkan()->create(['bobot' => 4.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+
+        $p1 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+        $p2 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+        $p3 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+        $p4 = PasanganSoal::factory()->create(['soal_id' => $soal->id]);
+
+        // 2/4 correct — with partial disabled -> score = 0
+        JawabanPeserta::factory()->menjodohkan([
+            [$p1->id, $p1->id],  // correct
+            [$p2->id, $p2->id],  // correct
+            [$p3->id, $p4->id],  // wrong
+            [$p4->id, $p3->id],  // wrong
+        ])->create(['sesi_peserta_id' => $sp->id, 'soal_id' => $soal->id]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        $this->assertEquals(0.0, $result['nilai_benar']);
+        $this->assertEquals(0, $result['jumlah_benar']);
+        $this->assertEquals(1, $result['jumlah_salah']);
+    }
+
+    public function test_scoring_partial_default_enabled_perilaku_tetap(): void
+    {
+        // Default scoring_partial = true, existing partial behavior must be preserved
+        $paket = PaketUjian::factory()->create(['scoring_partial' => true]);
+        $sp    = $this->createSesiPeserta($paket);
+
+        $soal = Soal::factory()->pgKompleks()->create(['bobot' => 2.0]);
+        PaketSoal::factory()->create(['paket_id' => $paket->id, 'soal_id' => $soal->id]);
+        OpsiJawaban::factory()->benar()->create(['soal_id' => $soal->id, 'label' => 'A']);
+        OpsiJawaban::factory()->benar()->create(['soal_id' => $soal->id, 'label' => 'C']);
+        OpsiJawaban::factory()->create(['soal_id' => $soal->id, 'label' => 'B', 'is_benar' => false]);
+
+        // Only pick A (subset) -> with partial enabled -> partial score
+        JawabanPeserta::factory()->create([
+            'sesi_peserta_id' => $sp->id,
+            'soal_id'         => $soal->id,
+            'jawaban_pg'      => ['A'],
+            'is_terjawab'     => true,
+        ]);
+
+        $result = $this->service->hitungNilai($sp);
+
+        // (1/2) * 2.0 * 0.5 = 0.50 partial credit
+        $this->assertEquals(0.50, $result['nilai_benar']);
         $this->assertEquals(1, $result['jumlah_benar']);
     }
 }
