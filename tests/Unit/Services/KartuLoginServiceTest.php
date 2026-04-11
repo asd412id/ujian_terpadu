@@ -7,17 +7,20 @@ use Mockery;
 use Mockery\MockInterface;
 use App\Services\KartuLoginService;
 use App\Repositories\PesertaRepository;
+use App\Repositories\SesiUjianRepository;
 
 class KartuLoginServiceTest extends TestCase
 {
     protected KartuLoginService $service;
     protected MockInterface $repository;
+    protected MockInterface $sesiUjianRepository;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = Mockery::mock(PesertaRepository::class);
-        $this->service = new KartuLoginService($this->repository);
+        $this->sesiUjianRepository = Mockery::mock(SesiUjianRepository::class);
+        $this->service = new KartuLoginService($this->repository, $this->sesiUjianRepository);
     }
 
     protected function tearDown(): void
@@ -34,8 +37,9 @@ class KartuLoginServiceTest extends TestCase
         $constructor = $reflection->getConstructor();
         $params = $constructor->getParameters();
 
-        $this->assertCount(1, $params);
+        $this->assertCount(2, $params);
         $this->assertEquals('repository', $params[0]->getName());
+        $this->assertEquals('sesiUjianRepository', $params[1]->getName());
     }
 
     // ── generateKartuLogin ─────────────────────────────────────

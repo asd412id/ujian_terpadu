@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Ujian;
 
 use App\Http\Controllers\Controller;
 use App\Models\SesiPeserta;
+use App\Services\JawabanService;
 use App\Services\UjianService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class UjianController extends Controller
 {
     public function __construct(
-        protected UjianService $ujianService
+        protected UjianService $ujianService,
+        protected JawabanService $jawabanService
     ) {}
 
     public function konfirmasi(SesiPeserta $sesiPeserta)
@@ -130,11 +133,11 @@ class UjianController extends Controller
             try {
                 $answers = json_decode($request->input('answers_json'), true);
                 if (is_array($answers) && count($answers) > 0) {
-                    app(\App\Services\JawabanService::class)
+                    $this->jawabanService
                         ->syncOfflineAnswers($sesiPeserta->token_ujian, $answers, [], true);
                 }
             } catch (\Exception $e) {
-                \Log::warning('Final sync failed during submit', [
+                Log::warning('Final sync failed during submit', [
                     'error' => $e->getMessage(),
                     'sesi_peserta' => $sesiPeserta->id,
                 ]);

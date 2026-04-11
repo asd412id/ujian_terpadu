@@ -13,7 +13,7 @@ class DinasPendidikanFactory extends Factory
     {
         return [
             'nama'           => 'Dinas Pendidikan ' . fake()->city(),
-            'kode_wilayah'   => fake()->numerify('##.##'),
+            'kode_wilayah'   => fake()->unique()->numerify('##.##'),
             'kota'           => fake()->city(),
             'provinsi'       => fake()->state(),
             'alamat'         => fake()->address(),

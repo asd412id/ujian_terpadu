@@ -23,7 +23,7 @@ class SesiPesertaTest extends TestCase
     {
         $sp = new SesiPeserta();
         $expected = [
-            'sesi_id', 'peserta_id', 'token_ujian', 'urutan_soal',
+            'sesi_id', 'peserta_id', 'token_ujian', 'urutan_soal', 'urutan_opsi',
             'status', 'ip_address', 'browser_info', 'device_type',
             'mulai_at', 'submit_at', 'durasi_aktual_detik',
             'soal_terjawab', 'soal_ditandai',
@@ -99,6 +99,9 @@ class SesiPesertaTest extends TestCase
     {
         $sp = SesiPeserta::factory()->create(['mulai_at' => null]);
 
-        $this->assertEquals(0, $sp->sisa_waktu_detik);
+        // When mulai_at is null, model returns full duration (not started yet)
+        $sesi = $sp->sesi;
+        $durasi = $sesi->paket->durasi_menit * 60;
+        $this->assertEquals($durasi, $sp->sisa_waktu_detik);
     }
 }

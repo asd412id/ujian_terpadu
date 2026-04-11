@@ -148,6 +148,9 @@ class KategoriSoalServiceTest extends TestCase
     public function test_delete_kategori_delegates_to_repository(): void
     {
         $kategori = Mockery::mock(KategoriSoal::class);
+        $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+        $kategori->shouldReceive('soal')->once()->andReturn($relation);
+        $relation->shouldReceive('count')->once()->andReturn(0);
 
         $this->repository
             ->shouldReceive('delete')
@@ -163,6 +166,9 @@ class KategoriSoalServiceTest extends TestCase
     public function test_delete_kategori_returns_false_on_failure(): void
     {
         $kategori = Mockery::mock(KategoriSoal::class);
+        $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+        $kategori->shouldReceive('soal')->once()->andReturn($relation);
+        $relation->shouldReceive('count')->once()->andReturn(0);
 
         $this->repository
             ->shouldReceive('delete')

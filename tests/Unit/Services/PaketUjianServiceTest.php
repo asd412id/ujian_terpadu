@@ -59,7 +59,7 @@ class PaketUjianServiceTest extends TestCase
         $this->repository
             ->shouldReceive('getAll')
             ->once()
-            ->with(20)
+            ->with(20, null)
             ->andReturn($paginator);
 
         $result = $this->service->getAllPaginated();
@@ -74,7 +74,7 @@ class PaketUjianServiceTest extends TestCase
         $this->repository
             ->shouldReceive('getAll')
             ->once()
-            ->with(10)
+            ->with(10, null)
             ->andReturn($paginator);
 
         $result = $this->service->getAllPaginated(10);
@@ -354,6 +354,17 @@ class PaketUjianServiceTest extends TestCase
     public function test_draft_paket_sets_status_draft(): void
     {
         $paket = Mockery::mock(PaketUjian::class);
+
+        DB::shouldReceive('transaction')->once()->andReturnUsing(fn ($cb) => $cb());
+
+        // sesi() for forceSubmitActivePeserta lookup
+        $sesiQuery = Mockery::mock();
+        $paket->shouldReceive('sesi')->andReturn($sesiQuery);
+        $sesiQuery->shouldReceive('where')->with('status', 'berlangsung')->andReturnSelf();
+        $sesiQuery->shouldReceive('get')->andReturn(new Collection());
+        // sesi() for stopping pending
+        $sesiQuery->shouldReceive('whereIn')->with('status', ['persiapan', 'berlangsung'])->andReturnSelf();
+        $sesiQuery->shouldReceive('update')->with(['status' => 'selesai'])->andReturn(0);
 
         $this->repository
             ->shouldReceive('update')

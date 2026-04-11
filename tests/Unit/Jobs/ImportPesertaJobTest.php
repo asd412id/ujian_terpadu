@@ -8,12 +8,36 @@ use App\Models\Peserta;
 use App\Models\Sekolah;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class ImportPesertaJobTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Create a real XLSX file from row data and store it via Storage.
+     */
+    private function createXlsx(string $storagePath, array $rows): void
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        foreach ($rows as $rowIndex => $row) {
+            foreach ($row as $colIndex => $value) {
+                $sheet->setCellValueByColumnAndRow($colIndex + 1, $rowIndex + 1, $value);
+            }
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
+
+        // Put the real XLSX binary content into Storage
+        Storage::disk('local')->put($storagePath, file_get_contents($tempFile));
+        @unlink($tempFile);
+    }
 
     // =========================================================
     // SEKOLAH IMPORT TESTS (format lama tanpa NPSN)
@@ -34,18 +58,13 @@ class ImportPesertaJobTest extends TestCase
     {
         $importJob = $this->createSekolahImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta.xlsx', 'dummy');
-
         $rows = [
             ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['Budi Santoso', '111111', '1111111111', 'XII-1', 'IPA', 'L', '2005-05-15'],
             ['Ani Wijaya', '222222', '2222222222', 'XII-2', 'IPS', 'P', '2005-08-20'],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -65,17 +84,12 @@ class ImportPesertaJobTest extends TestCase
     {
         $importJob = $this->createSekolahImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta.xlsx', 'dummy');
-
         $rows = [
             ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['', '111111', '1111111111', 'XII-1', 'IPA', 'L', '2005-05-15'],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -95,17 +109,12 @@ class ImportPesertaJobTest extends TestCase
 
         $importJob = $this->createSekolahImportJob($sekolah);
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta.xlsx', 'dummy');
-
         $rows = [
             ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['Another Budi', '111111', '9999999999', 'XII-1', 'IPA', 'L', '2005-05-15'],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -120,14 +129,9 @@ class ImportPesertaJobTest extends TestCase
     {
         $importJob = $this->createSekolahImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta.xlsx', 'dummy');
-
         $rows = [['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir']];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -141,17 +145,12 @@ class ImportPesertaJobTest extends TestCase
     {
         $importJob = $this->createSekolahImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta.xlsx', 'dummy');
-
         $rows = [
             ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['Test User', '999888', null, 'XII-1', null, null, null],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -185,9 +184,6 @@ class ImportPesertaJobTest extends TestCase
 
         $importJob = $this->createDinasImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta_dinas.xlsx', 'dummy');
-
         $rows = [
             ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['20100001', 'Budi Santoso', '111111', '1111111111', 'XII-1', 'IPA', 'L', '2005-05-15'],
@@ -195,9 +191,7 @@ class ImportPesertaJobTest extends TestCase
             ['20100002', 'Charlie Putra', '333333', '3333333333', 'XI-1', 'IPA', 'L', '2006-01-10'],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta_dinas.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -219,18 +213,13 @@ class ImportPesertaJobTest extends TestCase
 
         $importJob = $this->createDinasImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta_dinas.xlsx', 'dummy');
-
         $rows = [
             ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['20100001', 'Budi Santoso', '111111', null, 'XII-1', null, 'L', null],
             ['99999999', 'Unknown School', '222222', null, 'XII-1', null, 'P', null],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta_dinas.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -245,17 +234,12 @@ class ImportPesertaJobTest extends TestCase
     {
         $importJob = $this->createDinasImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta_dinas.xlsx', 'dummy');
-
         $rows = [
             ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['', 'No NPSN User', '111111', null, 'XII-1', null, 'L', null],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta_dinas.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -284,17 +268,12 @@ class ImportPesertaJobTest extends TestCase
             'meta'       => ['mode' => 'replace_all', 'source' => 'dinas'],
         ]);
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta_dinas.xlsx', 'dummy');
-
         $rows = [
             ['npsn', 'nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['20100001', 'New A1', '111111', null, 'XII-1', null, 'L', null],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta_dinas.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
         $job->handle();
@@ -302,9 +281,9 @@ class ImportPesertaJobTest extends TestCase
         $importJob->refresh();
         $this->assertEquals(1, $importJob->success_rows);
 
-        // Old peserta from sekolah A should be deleted, replaced with new
-        $this->assertDatabaseMissing('peserta', ['nama' => 'Old A1']);
-        $this->assertDatabaseMissing('peserta', ['nama' => 'Old A2']);
+        // Old peserta from sekolah A should be soft-deleted, replaced with new
+        $this->assertSoftDeleted('peserta', ['nama' => 'Old A1']);
+        $this->assertSoftDeleted('peserta', ['nama' => 'Old A2']);
         $this->assertDatabaseHas('peserta', ['nama' => 'New A1', 'sekolah_id' => $sekolahA->id]);
 
         // Sekolah B NOT in file, so Old B1 should still exist
@@ -315,18 +294,13 @@ class ImportPesertaJobTest extends TestCase
     {
         $importJob = $this->createDinasImportJob();
 
-        Storage::fake('local');
-        Storage::disk('local')->put('imports/test_peserta_dinas.xlsx', 'dummy');
-
         // Using sekolah format (without NPSN) for dinas import should fail
         $rows = [
             ['nama', 'nis', 'nisn', 'kelas', 'jurusan', 'jenis_kelamin', 'tanggal_lahir'],
             ['Budi', '111111', null, null, null, null, null],
         ];
 
-        Excel::shouldReceive('toArray')
-            ->once()
-            ->andReturn([$rows]);
+        $this->createXlsx('imports/test_peserta_dinas.xlsx', $rows);
 
         $job = new ImportPesertaJob($importJob);
 

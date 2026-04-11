@@ -89,7 +89,7 @@
         @if($jawaban->soal->pembahasan)
         <div class="bg-green-50 border border-green-100 rounded-xl p-4">
             <p class="text-xs text-green-600 font-medium uppercase tracking-wide mb-2">Panduan Penilaian</p>
-            <p class="text-sm text-gray-700">{{ $jawaban->soal->pembahasan }}</p>
+            <p class="text-sm text-gray-700 formatted-content ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($jawaban->soal->pembahasan) !!}</p>
         </div>
         @endif
 

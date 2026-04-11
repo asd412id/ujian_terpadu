@@ -24,7 +24,7 @@ class ImportJobTest extends TestCase
         $expected = [
             'created_by', 'sekolah_id', 'tipe', 'filename', 'filepath',
             'status', 'total_rows', 'processed_rows', 'success_rows',
-            'error_rows', 'errors', 'catatan', 'started_at', 'completed_at',
+            'error_rows', 'errors', 'catatan', 'meta', 'started_at', 'completed_at',
         ];
         $this->assertEquals($expected, $job->getFillable());
     }

@@ -18,6 +18,8 @@ class RecalculateNilaiJob implements ShouldQueue
 
     public int $tries = 2;
 
+    public array $backoff = [10, 60];
+
     public int $timeout = 900; // 15 minutes max
 
     protected string $cacheKey;
@@ -126,6 +128,23 @@ class RecalculateNilaiJob implements ShouldQueue
             'total'   => $total,
             'updated' => $updated,
             'changed' => $changed,
+        ]);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Cache::put($this->cacheKey, [
+            'status'  => 'failed',
+            'error'   => $exception->getMessage(),
+            'total'   => 0,
+            'updated' => 0,
+            'changed' => 0,
+        ], 3600);
+
+        Log::error('[Recalculate] Job failed permanently', [
+            'filters' => $this->filters,
+            'user_id' => $this->userId,
+            'error'   => $exception->getMessage(),
         ]);
     }
 }

@@ -6,20 +6,28 @@ use App\Jobs\LogAktivitasUjianJob;
 use App\Models\SesiPeserta;
 use App\Repositories\JawabanRepository;
 use App\Repositories\SoalRepository;
+use App\Traits\ParsesJawaban;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class JawabanService
 {
+    use ParsesJawaban;
+
     public function __construct(
         protected JawabanRepository $repository,
         protected SoalRepository $soalRepository,
-        protected PenilaianService $penilaianService
+        protected PenilaianService $penilaianService,
+        protected RedisExamService $redisExam
     ) {}
 
     /**
      * Simpan jawaban (single answer save).
+     *
+     * @deprecated Only used in tests. Student hot path uses syncOfflineAnswers() which
+     *             routes through Redis (RedisExamService). Do NOT use in new code.
      */
     public function simpanJawaban(string $sesiPesertaId, string $soalId, mixed $jawaban, ?string $idempotencyKey = null): mixed
     {
@@ -46,6 +54,10 @@ class JawabanService
 
     /**
      * Sync offline answers — batch save from IndexedDB.
+     *
+     * Hot path: writes to Redis buffer (0 DB queries).
+     * A background job (FlushJawabanToDbJob) persists to MariaDB every few seconds.
+     * For already-submitted sessions, falls back to direct DB write for safety.
      */
     public function syncOfflineAnswers(string $sesiToken, array $answers, array $requestMeta = [], bool $isFinalSubmit = false, ?SesiPeserta $preloadedSesiPeserta = null): array
     {
@@ -96,12 +108,80 @@ class JawabanService
         });
         $answers = array_values($answers);
 
-        $errors  = [];
+        // For already-submitted sessions, use direct DB write (safety: scoring may be in-flight)
+        if ($isAlreadySubmitted) {
+            return $this->syncDirectToDb($sesiPeserta, $answers, $requestMeta, $isAlreadySubmitted);
+        }
+
+        // When Redis is unavailable (test env, dev without Redis), go direct to DB
+        if (!$this->redisExam->isAvailable()) {
+            return $this->syncDirectToDb($sesiPeserta, $answers, $requestMeta, false);
+        }
+
+        // Hot path: write to Redis buffer (0 DB queries)
+        try {
+            $result = $this->redisExam->saveAnswers(
+                $sesiPeserta->id,
+                $answers,
+                $requestMeta['tandai_list'] ?? null,
+                isset($requestMeta['soal_ditandai']) ? (int) $requestMeta['soal_ditandai'] : null
+            );
+
+            $synced  = $result['synced'];
+            $skipped = $result['skipped'];
+
+            LogAktivitasUjianJob::dispatch(
+                $sesiPeserta->id,
+                'sync_offline',
+                ['synced' => $synced, 'skipped' => $skipped, 'via' => 'redis'],
+                $requestMeta['ip_address'] ?? null,
+            );
+
+            return [
+                'accepted'    => true,
+                'synced'      => $synced,
+                'skipped'     => $skipped,
+                'errors'      => [],
+                'server_time' => now()->timestamp,
+            ];
+        } catch (\Exception $e) {
+            // Redis failure: fall back to direct DB write
+            Log::warning('[JawabanService] Redis sync failed, falling back to DB', [
+                'error' => $e->getMessage(),
+                'sesi_peserta_id' => $sesiPeserta->id,
+            ]);
+
+            return $this->syncDirectToDb($sesiPeserta, $answers, $requestMeta, $isAlreadySubmitted);
+        }
+    }
+
+    /**
+     * Direct-to-DB sync (fallback path and for already-submitted sessions).
+     * Preserves the original transaction-based approach with deadlock retry.
+     */
+    private function syncDirectToDb(SesiPeserta $sesiPeserta, array $answers, array $requestMeta, bool $isAlreadySubmitted): array
+    {
         $synced  = 0;
         $skipped = 0;
+        $errors  = [];
         $maxRetries = 5;
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            // Re-check session status on retry to avoid writing to a
+            // concurrently submitted/scored session
+            if ($attempt > 1) {
+                $freshStatus = DB::table('sesi_peserta')->where('id', $sesiPeserta->id)->value('status');
+                if (in_array($freshStatus, ['dinilai'], true)) {
+                    return [
+                        'accepted'    => false,
+                        'synced'      => 0,
+                        'skipped'     => count($answers),
+                        'errors'      => ['Sesi sudah dinilai, jawaban tidak dapat disimpan.'],
+                        'server_time' => now()->timestamp,
+                    ];
+                }
+            }
+
             DB::beginTransaction();
             try {
                 $incomingKeys = array_filter(array_column($answers, 'idempotency_key'));
@@ -146,7 +226,8 @@ class JawabanService
                 }
                 DB::table('sesi_peserta')->where('id', $sesiPeserta->id)->update($updateData);
 
-                if (!empty($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
+                // Always sync tandai_list when provided (empty array clears flags)
+                if (isset($requestMeta['tandai_list']) && is_array($requestMeta['tandai_list'])) {
                     $this->repository->syncTandaiList($sesiPeserta->id, $requestMeta['tandai_list']);
                 }
 
@@ -155,7 +236,7 @@ class JawabanService
                 LogAktivitasUjianJob::dispatch(
                     $sesiPeserta->id,
                     'sync_offline',
-                    ['synced' => $synced, 'skipped' => $skipped, 'late_sync' => $isAlreadySubmitted],
+                    ['synced' => $synced, 'skipped' => $skipped, 'late_sync' => $isAlreadySubmitted, 'via' => 'db'],
                     $requestMeta['ip_address'] ?? null,
                 );
 
@@ -173,7 +254,6 @@ class JawabanService
                 break;
             } catch (\Illuminate\Database\QueryException $e) {
                 DB::rollBack();
-                // Retry on lock wait timeout (1205), deadlock (1213), or record changed (1020)
                 if (in_array($e->errorInfo[1] ?? null, [1020, 1205, 1213]) && $attempt < $maxRetries) {
                     usleep(random_int(20000, 80000) * $attempt);
                     continue;
@@ -219,6 +299,7 @@ class JawabanService
      * Get ujian status by token (server-authoritative).
      * Core status data cached 5s per token to reduce DB load at 7000 peserta scale.
      * Violation count cached separately (15s) since it changes less frequently.
+     * soal_terjawab is read from Redis counter (realtime) when available.
      */
     public function getStatusByToken(string $token): array
     {
@@ -244,6 +325,10 @@ class JawabanService
             ];
         });
 
+        // Override soal_terjawab with realtime Redis counter (instant, not delayed by flush)
+        $redisTerjawab = $this->redisExam->getAnsweredCount($statusData['sp_id']);
+        $soalTerjawab = $redisTerjawab !== null ? $redisTerjawab : $statusData['soal_terjawab'];
+
         // Compute time-sensitive values fresh (not cached — depends on current time)
         $elapsed = $statusData['mulai_at']
             ? now()->timestamp - $statusData['mulai_at'] : 0;
@@ -265,7 +350,7 @@ class JawabanService
             'remaining_seconds'  => $remaining,
             'durasi_menit'       => $statusData['durasi_menit'],
             'waktu_selesai_sesi' => $statusData['waktu_selesai_sesi'],
-            'soal_terjawab'      => $statusData['soal_terjawab'],
+            'soal_terjawab'      => $soalTerjawab,
             'server_timestamp'   => now()->timestamp,
             'is_active'          => $statusData['is_active'],
             'nilai_akhir'        => $statusData['nilai_akhir'],
@@ -280,6 +365,7 @@ class JawabanService
 
     /**
      * Submit ujian via API token.
+     * Force-flushes Redis buffer to DB before scoring to guarantee data completeness.
      */
     public function submitByToken(string $token, array $finalAnswers = []): array
     {
@@ -326,6 +412,9 @@ class JawabanService
             }
         }
 
+        // Force flush all buffered answers from Redis to DB before submit transition
+        $this->redisExam->forceFlush($sesiPeserta->id, $this->repository);
+
         $wasNewSubmit = false;
         DB::transaction(function () use (&$sesiPeserta, &$wasNewSubmit) {
             $locked = SesiPeserta::whereKey($sesiPeserta->id)->lockForUpdate()->firstOrFail();
@@ -359,42 +448,6 @@ class JawabanService
             'synced'          => $syncResult['synced'] ?? 0,
             'skipped'         => $syncResult['skipped'] ?? 0,
             'soal_terjawab'   => $sesiPeserta->soal_terjawab,
-        ];
-    }
-
-    /**
-     * Parse jawaban to determine type and structure.
-     */
-    private function parseJawaban(mixed $jawaban): array
-    {
-        $isTerjawab = !empty($jawaban);
-
-        if (is_array($jawaban)) {
-            $isPasangan = isset($jawaban[0]) && is_array($jawaban[0]);
-            $isBenarSalah = !$isPasangan && !array_is_list($jawaban);
-
-            if ($isBenarSalah) {
-                return [
-                    'jawaban_pg'       => $jawaban,
-                    'jawaban_pasangan' => null,
-                    'jawaban_teks'     => null,
-                    'is_terjawab'      => $isTerjawab,
-                ];
-            }
-
-            return [
-                'jawaban_pg'       => $isPasangan ? null : $jawaban,
-                'jawaban_pasangan' => $isPasangan ? $jawaban : null,
-                'jawaban_teks'     => null,
-                'is_terjawab'      => $isTerjawab,
-            ];
-        }
-
-        return [
-            'jawaban_pg'       => null,
-            'jawaban_pasangan' => null,
-            'jawaban_teks'     => (string) $jawaban,
-            'is_terjawab'      => $isTerjawab && trim((string) $jawaban) !== '',
         ];
     }
 

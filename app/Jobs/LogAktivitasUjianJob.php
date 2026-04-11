@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class LogAktivitasUjianJob implements ShouldQueue
 {
@@ -24,6 +25,7 @@ class LogAktivitasUjianJob implements ShouldQueue
         protected string $tipeEvent,
         protected array $detail = [],
         protected ?string $ipAddress = null,
+        protected ?string $createdAt = null,
     ) {
         $this->onQueue('logging');
     }
@@ -35,7 +37,16 @@ class LogAktivitasUjianJob implements ShouldQueue
             'tipe_event'      => $this->tipeEvent,
             'detail'          => $this->detail,
             'ip_address'      => $this->ipAddress,
-            'created_at'      => now(),
+            'created_at'      => $this->createdAt ? \Carbon\Carbon::parse($this->createdAt) : now(),
+        ]);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('[LogAktivitas] Job failed', [
+            'sesi_peserta_id' => $this->sesiPesertaId,
+            'tipe_event'      => $this->tipeEvent,
+            'error'           => $exception->getMessage(),
         ]);
     }
 }

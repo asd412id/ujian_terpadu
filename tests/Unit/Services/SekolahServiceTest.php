@@ -5,18 +5,14 @@ namespace Tests\Unit\Services;
 use Tests\TestCase;
 use Mockery;
 use Mockery\MockInterface;
-use App\Models\DinasPendidikan;
 use App\Models\Sekolah;
 use App\Services\SekolahService;
 use App\Repositories\SekolahRepository;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class SekolahServiceTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected SekolahService $service;
     protected MockInterface $repository;
 
@@ -99,9 +95,13 @@ class SekolahServiceTest extends TestCase
 
     public function test_create_sekolah_sets_dinas_id_and_creates(): void
     {
-        // Create a real DinasPendidikan record since DinasPendidikan::first()
-        // is a static Eloquent call that cannot be cleanly mocked.
-        $dinas = DinasPendidikan::factory()->create();
+        $dinas = Mockery::mock(\App\Models\DinasPendidikan::class)->makePartial();
+        $dinas->id = 'dinas-uuid-1';
+
+        $this->repository
+            ->shouldReceive('getDefaultDinas')
+            ->once()
+            ->andReturn($dinas);
 
         $sekolah = Mockery::mock(Sekolah::class);
 

@@ -6,6 +6,7 @@ use App\Models\JawabanPeserta;
 use App\Models\PaketUjian;
 use App\Models\Sekolah;
 use Illuminate\Database\Eloquent\Collection;
+use App\Support\SearchHelper;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class GradingRepository
@@ -66,11 +67,11 @@ class GradingRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\%', '\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('sesiPeserta.peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -93,6 +94,7 @@ class GradingRepository
     {
         $row = $this->model
             ->whereHas('soal', fn ($q) => $q->where('tipe_soal', 'essay'))
+            ->whereHas('sesiPeserta', fn ($q) => $q->whereIn('status', ['submit', 'dinilai']))
             ->selectRaw('
                 COUNT(CASE WHEN jawaban_teks IS NOT NULL AND jawaban_teks != \'\' THEN 1 END) as total_essay,
                 COUNT(CASE WHEN skor_manual IS NOT NULL THEN 1 END) as sudah_dinilai,

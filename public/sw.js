@@ -46,6 +46,16 @@ self.addEventListener('fetch', event => {
     // Skip chrome-extension dan non-http
     if (!url.protocol.startsWith('http')) return;
 
+    // ---- Admin/auth pages: NetworkOnly (never cache) ----
+    if (url.pathname.startsWith('/dinas/') ||
+        url.pathname.startsWith('/sekolah/') ||
+        url.pathname.startsWith('/pengawas/') ||
+        url.pathname.startsWith('/pembuat-soal/') ||
+        url.pathname === '/login' ||
+        url.pathname.startsWith('/login')) {
+        return;
+    }
+
     // ---- Gambar soal: CacheFirst ----
     if (url.pathname.startsWith('/storage/soal/') ||
         url.pathname.startsWith('/storage/peserta/')) {

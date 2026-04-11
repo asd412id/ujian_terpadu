@@ -1,5 +1,9 @@
 import Dexie from 'dexie';
 
+// Debug logging — only outputs in non-production environments
+const DEBUG = document.querySelector('meta[name="app-debug"]')?.content === 'true';
+const dbg = (...args) => { if (DEBUG) console.log(...args); };
+
 // ===== IndexedDB Schema =====
 const db = new Dexie('UjianTerpaduDB');
 db.version(1).stores({
@@ -179,7 +183,7 @@ function ujianApp() {
 
                 // If sesi is no longer berlangsung, force submit
                 if (data.sesi_status && data.sesi_status !== 'berlangsung') {
-                    console.log('[StatusPoll] Sesi status:', data.sesi_status, '- force submitting...');
+                    dbg('[StatusPoll] Sesi status:', data.sesi_status, '- force submitting...');
                     this._forceSubmitted = true;
                     clearInterval(this._statusCheckInterval);
                     await this.doSubmit();
@@ -188,7 +192,7 @@ function ujianApp() {
 
                 // If peserta status is already submit/dinilai server-side (admin forced)
                 if (data.status && ['submit', 'dinilai'].includes(data.status)) {
-                    console.log('[StatusPoll] Peserta status:', data.status, '- redirecting...');
+                    dbg('[StatusPoll] Peserta status:', data.status, '- redirecting...');
                     this._forceSubmitted = true;
                     clearInterval(this._statusCheckInterval);
                     this.markIntentionalFullscreenExit();
@@ -215,7 +219,7 @@ function ujianApp() {
                     if (newDurasiDetik !== this.durasiDetik) {
                         const oldMenit = Math.round(this.durasiDetik / 60);
                         const newMenit = data.durasi_menit;
-                        console.log(`[StatusPoll] Duration changed: ${oldMenit} → ${newMenit} menit`);
+                        dbg(`[StatusPoll] Duration changed: ${oldMenit} → ${newMenit} menit`);
                         this.durasiDetik = newDurasiDetik;
 
                         // Force-sync sisaWaktu from server immediately
@@ -237,7 +241,7 @@ function ujianApp() {
 
                 // Runtime anti-curang toggle — admin can disable mid-exam
                 if (data.anti_curang === false && !this.antiCurangDisabled) {
-                    console.log('[StatusPoll] Anti-curang disabled by admin, destroying anti-cheat listeners...');
+                    dbg('[StatusPoll] Anti-curang disabled by admin, destroying anti-cheat listeners...');
                     this.destroyAntiCheat();
                 }
 
@@ -246,7 +250,7 @@ function ujianApp() {
                 if (!this.antiCurangDisabled && data.violation_count !== undefined && data.violation_count > this.violationCount) {
                     this.violationCount = data.violation_count;
                     if (this.violationCount >= this.maxViolations && !this._forceSubmitted) {
-                        console.log('[StatusPoll] Server violation count exceeded, force submitting...');
+                        dbg('[StatusPoll] Server violation count exceeded, force submitting...');
                         this._forceSubmitted = true;
                         clearInterval(this._statusCheckInterval);
                         this.violationMessage = 'Anda telah melakukan pelanggaran sebanyak ' + this.maxViolations + ' kali. Ujian akan otomatis dikumpulkan.';
@@ -326,7 +330,7 @@ function ujianApp() {
             // Remove select-none restriction
             document.body.classList.remove('select-none');
 
-            console.log('[AntiCheat] Destroyed — anti-curang disabled by admin');
+            dbg('[AntiCheat] Destroyed — anti-curang disabled by admin');
         },
 
         initAntiCheat() {
@@ -573,7 +577,7 @@ function ujianApp() {
         },
 
         async autoSubmitViolation() {
-            console.log('[Anti-Cheat] Max violations reached, auto-submit...');
+            dbg('[Anti-Cheat] Max violations reached, auto-submit...');
             await this.doSubmit();
         },
 
@@ -585,7 +589,7 @@ function ujianApp() {
                     .toArray();
                 if (staleAnswers.length > 0) {
                     await db.exam_answers.bulkDelete(staleAnswers.map(a => a.id));
-                    console.log(`[Init] Cleared ${staleAnswers.length} stale IDB answer rows`);
+                    dbg(`[Init] Cleared ${staleAnswers.length} stale IDB answer rows`);
                 }
 
                 // Delete all exam_state rows NOT belonging to the current session
@@ -593,7 +597,7 @@ function ujianApp() {
                 const staleStates = allStates.filter(s => s.sesiPesertaId !== currentSesiPesertaId);
                 if (staleStates.length > 0) {
                     await db.exam_state.bulkDelete(staleStates.map(s => s.sesiPesertaId));
-                    console.log(`[Init] Cleared ${staleStates.length} stale IDB state rows`);
+                    dbg(`[Init] Cleared ${staleStates.length} stale IDB state rows`);
                 }
             } catch (e) {
                 console.warn('[Init] Could not clear stale IDB sessions:', e.message);
@@ -628,7 +632,7 @@ function ujianApp() {
                 || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0)
                 || (Array.isArray(state?.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
             if (localAnswers.length > 0 && serverAnswerCount === 0 && !hasPendingSubmit) {
-                console.log(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} — exam was reset, clearing IDB`);
+                dbg(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} — exam was reset, clearing IDB`);
                 try {
                     await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId).delete();
                     await db.exam_state.delete(sesiPesertaId);
@@ -1219,7 +1223,7 @@ function ujianApp() {
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     const reg = await navigator.serviceWorker.ready;
                     await reg.sync.register('jawaban-sync');
-                    console.log('[Sync] Background sync registered');
+                    dbg('[Sync] Background sync registered');
                 }
             } catch (e) {
                 console.warn('[Sync] Background sync registration failed:', e.message);
@@ -1417,13 +1421,13 @@ function ujianApp() {
                 // Reset isSubmitting so button is usable if navigation somehow fails
                 setTimeout(() => { this.isSubmitting = false; }, 5000);
                 if (this.showSubmitModal) {
-                    this.showSubmitModal = true;
+                    this.showSubmitModal = false;
                 }
             }
         },
 
         async autoSubmit() {
-            console.log('[Timer] Waktu habis, auto-submit...');
+            dbg('[Timer] Waktu habis, auto-submit...');
             await this.doSubmit();
         },
 

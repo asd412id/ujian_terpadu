@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\SesiPeserta;
 use App\Services\PenilaianService;
+use App\Services\RedisExamService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,7 +28,7 @@ class HitungNilaiJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(PenilaianService $penilaianService): void
+    public function handle(PenilaianService $penilaianService, RedisExamService $redisExam): void
     {
         $sesiPeserta = SesiPeserta::find($this->sesiPesertaId);
 
@@ -49,10 +50,22 @@ class HitungNilaiJob implements ShouldQueue
             Cache::forget("ujian_status:{$sesiPeserta->token_ujian}");
         }
 
+        // Cleanup Redis exam buffer (answers already flushed to DB before scoring)
+        $redisExam->cleanupSession($this->sesiPesertaId);
+
         Log::info('[HitungNilai] Scored successfully', [
             'sesi_peserta_id' => $this->sesiPesertaId,
             'reason'          => $this->reason,
             'nilai_akhir'     => $hasil['nilai_akhir'],
+        ]);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('[HitungNilai] Job failed permanently', [
+            'sesi_peserta_id' => $this->sesiPesertaId,
+            'reason'          => $this->reason,
+            'error'           => $exception->getMessage(),
         ]);
     }
 }

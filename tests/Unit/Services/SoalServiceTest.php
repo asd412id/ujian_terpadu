@@ -15,6 +15,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Mews\Purifier\Facades\Purifier;
 
 class SoalServiceTest extends TestCase
 {
@@ -45,7 +46,7 @@ class SoalServiceTest extends TestCase
         $this->repository
             ->shouldReceive('getFilteredSoal')
             ->once()
-            ->with('kategori-1', 'pg', 'mudah', 'test', 15)
+            ->with('kategori-1', 'pg', 'mudah', 'test', 15, null, null)
             ->andReturn($paginator);
 
         $result = $this->service->getFilteredSoal('kategori-1', 'pg', 'mudah', 'test', 15);
@@ -60,7 +61,7 @@ class SoalServiceTest extends TestCase
         $this->repository
             ->shouldReceive('getFilteredSoal')
             ->once()
-            ->with(null, null, null, null, 20)
+            ->with(null, null, null, null, 20, null, null)
             ->andReturn($paginator);
 
         $result = $this->service->getFilteredSoal();
@@ -118,6 +119,9 @@ class SoalServiceTest extends TestCase
 
     public function test_create_soal_pg_creates_soal_and_saves_opsi(): void
     {
+        // Mock Purifier for normalizeEditorContent
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $validated = [
             'kategori_soal_id'  => 'kat-1',
             'jenis_soal'        => 'pilihan_ganda',
@@ -129,7 +133,8 @@ class SoalServiceTest extends TestCase
         $user = Mockery::mock();
         $user->id = 'user-1';
         $user->sekolah_id = 'sekolah-1';
-        Auth::shouldReceive('user')->once()->andReturn($user);
+        $user->shouldReceive('isPembuatSoal')->andReturn(false);
+        Auth::shouldReceive('user')->andReturn($user);
 
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('hasFile')->with('gambar_pertanyaan')->andReturn(false);
@@ -175,6 +180,9 @@ class SoalServiceTest extends TestCase
 
     public function test_create_soal_isian_does_not_save_opsi(): void
     {
+        // Mock Purifier for normalizeEditorContent
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $validated = [
             'kategori_soal_id'  => 'kat-1',
             'jenis_soal'        => 'isian',
@@ -186,10 +194,13 @@ class SoalServiceTest extends TestCase
         $user = Mockery::mock();
         $user->id = 'user-1';
         $user->sekolah_id = 'sekolah-1';
-        Auth::shouldReceive('user')->once()->andReturn($user);
+        $user->shouldReceive('isPembuatSoal')->andReturn(false);
+        Auth::shouldReceive('user')->andReturn($user);
 
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('hasFile')->with('gambar_pertanyaan')->andReturn(false);
+        // saveKunciJawaban calls $request->input('kunci_jawaban')
+        $request->shouldReceive('input')->with('kunci_jawaban')->andReturn(null);
 
         $soal = Mockery::mock(Soal::class);
 
@@ -201,8 +212,9 @@ class SoalServiceTest extends TestCase
             ->andReturn($soal);
 
         // For isian type, saveOpsiJawaban and savePasangan should NOT be called
-        $this->repository->shouldNotReceive('saveOpsiJawaban');
         $this->repository->shouldNotReceive('savePasangan');
+        // saveKunciJawaban may call saveOpsiJawaban only if kunci_jawaban is not empty
+        // Since we return null above, it won't be called
 
         $result = $this->service->createSoal($validated, $request);
 
@@ -211,6 +223,9 @@ class SoalServiceTest extends TestCase
 
     public function test_create_soal_menjodohkan_saves_pasangan(): void
     {
+        // Mock Purifier for normalizeEditorContent
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $validated = [
             'kategori_soal_id'  => 'kat-1',
             'jenis_soal'        => 'menjodohkan',
@@ -222,12 +237,20 @@ class SoalServiceTest extends TestCase
         $user = Mockery::mock();
         $user->id = 'user-1';
         $user->sekolah_id = 'sekolah-1';
-        Auth::shouldReceive('user')->once()->andReturn($user);
+        $user->shouldReceive('isPembuatSoal')->andReturn(false);
+        Auth::shouldReceive('user')->andReturn($user);
 
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('hasFile')->with('gambar_pertanyaan')->andReturn(false);
-        $request->shouldReceive('input')->with('pasangan_kiri_teks', [])->andReturn(['Kiri 1', 'Kiri 2']);
-        $request->shouldReceive('input')->with('pasangan_kanan_teks', [])->andReturn(['Kanan 1', 'Kanan 2']);
+        // savePasangan uses $request->input('pasangan', []) with ['kiri'=>..., 'kanan'=>...]
+        $request->shouldReceive('input')->with('pasangan', [])->andReturn([
+            ['kiri' => 'Kiri 1', 'kanan' => 'Kanan 1'],
+            ['kiri' => 'Kiri 2', 'kanan' => 'Kanan 2'],
+        ]);
+        $request->shouldReceive('file')->with('pasangan.0.kiri_gambar')->andReturn(null);
+        $request->shouldReceive('file')->with('pasangan.0.kanan_gambar')->andReturn(null);
+        $request->shouldReceive('file')->with('pasangan.1.kiri_gambar')->andReturn(null);
+        $request->shouldReceive('file')->with('pasangan.1.kanan_gambar')->andReturn(null);
 
         $soal = Mockery::mock(Soal::class);
 
@@ -258,8 +281,22 @@ class SoalServiceTest extends TestCase
 
     public function test_update_soal_clears_old_opsi_and_saves_new(): void
     {
+        // Mock Purifier for normalizeEditorContent
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $soal = Mockery::mock(Soal::class)->makePartial();
-        $soal->gambar_pertanyaan = null;
+        $soal->gambar_soal = null;
+
+        // Mock load for opsiJawaban + pasangan
+        $soal->shouldReceive('load')->with(['opsiJawaban', 'pasangan'])->andReturnSelf();
+        // Set empty relations for deleteOpsiAndPasanganImages
+        $soal->shouldReceive('getAttribute')->with('opsiJawaban')->andReturn(new Collection());
+        $soal->shouldReceive('getAttribute')->with('pasangan')->andReturn(new Collection());
+        // Mock fresh() which updateSoal returns
+        $soal->shouldReceive('fresh')->with(['opsiJawaban', 'pasangan', 'kategori'])->andReturn($soal);
+
+        // Mock Auth::check() and Auth::user() for verification reset check
+        Auth::shouldReceive('check')->andReturn(false);
 
         $validated = [
             'kategori_soal_id'  => 'kat-2',
@@ -271,6 +308,7 @@ class SoalServiceTest extends TestCase
 
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('hasFile')->with('gambar_pertanyaan')->andReturn(false);
+        $request->shouldReceive('boolean')->with('hapus_gambar_pertanyaan')->andReturn(false);
         $request->shouldReceive('input')->with('opsi', [])->andReturn([
             ['teks' => 'Opsi A', 'benar' => '1'],
             ['teks' => 'Opsi B', 'benar' => '0'],
@@ -292,8 +330,22 @@ class SoalServiceTest extends TestCase
 
     public function test_update_soal_deletes_old_image_when_replacing(): void
     {
+        // Mock Purifier for normalizeEditorContent
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $soal = Mockery::mock(Soal::class)->makePartial();
-        $soal->gambar_pertanyaan = 'soal/gambar/old.jpg';
+        $soal->gambar_soal = 'soal/gambar/old.jpg';
+
+        // Mock load for opsiJawaban + pasangan
+        $soal->shouldReceive('load')->with(['opsiJawaban', 'pasangan'])->andReturnSelf();
+        // Set empty relations for deleteOpsiAndPasanganImages
+        $soal->shouldReceive('getAttribute')->with('opsiJawaban')->andReturn(new Collection());
+        $soal->shouldReceive('getAttribute')->with('pasangan')->andReturn(new Collection());
+        // Mock fresh() which updateSoal returns
+        $soal->shouldReceive('fresh')->with(['opsiJawaban', 'pasangan', 'kategori'])->andReturn($soal);
+
+        // Mock Auth::check() and Auth::user() for verification reset check
+        Auth::shouldReceive('check')->andReturn(false);
 
         $validated = [
             'kategori_soal_id'  => 'kat-1',
@@ -311,6 +363,8 @@ class SoalServiceTest extends TestCase
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('hasFile')->with('gambar_pertanyaan')->andReturn(true);
         $request->shouldReceive('file')->with('gambar_pertanyaan')->andReturn($uploadedFile);
+        // saveKunciJawaban calls $request->input('kunci_jawaban')
+        $request->shouldReceive('input')->with('kunci_jawaban')->andReturn(null);
 
         Storage::shouldReceive('disk')->with('public')->andReturnSelf();
         Storage::shouldReceive('delete')->once()->with('soal/gambar/old.jpg');
@@ -331,7 +385,6 @@ class SoalServiceTest extends TestCase
     public function test_delete_soal_calls_repository_delete(): void
     {
         $soal = Mockery::mock(Soal::class)->makePartial();
-        $soal->gambar_pertanyaan = null;
 
         DB::shouldReceive('transaction')->once()->andReturnUsing(fn ($cb) => $cb());
 
@@ -346,15 +399,15 @@ class SoalServiceTest extends TestCase
         $this->assertTrue($result);
     }
 
-    public function test_delete_soal_removes_image_file(): void
+    public function test_delete_soal_soft_deletes_without_removing_images(): void
     {
+        // deleteSoal is now a soft-delete — images should NOT be removed
         $soal = Mockery::mock(Soal::class)->makePartial();
-        $soal->gambar_pertanyaan = 'soal/gambar/image.jpg';
 
         DB::shouldReceive('transaction')->once()->andReturnUsing(fn ($cb) => $cb());
 
-        Storage::shouldReceive('disk')->with('public')->andReturnSelf();
-        Storage::shouldReceive('delete')->once()->with('soal/gambar/image.jpg');
+        // Storage should NOT be called at all — soft delete preserves assets
+        Storage::shouldReceive('disk')->never();
 
         $this->repository
             ->shouldReceive('delete')
@@ -403,6 +456,9 @@ class SoalServiceTest extends TestCase
 
     public function test_import_soal_returns_summary(): void
     {
+        // Mock Purifier for normalizeEditorContent
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $rows = [
             ['teks_soal' => 'Soal 1', 'tipe_soal' => 'pg', 'bobot' => 1, 'a' => 'Opsi A', 'b' => 'Opsi B', 'jawaban_benar' => 'A'],
             ['teks_soal' => 'Soal 2', 'tipe_soal' => 'pg', 'bobot' => 1, 'a' => 'Opsi A', 'jawaban_benar' => 'A'],
@@ -435,13 +491,17 @@ class SoalServiceTest extends TestCase
 
     public function test_import_soal_skips_rows_with_empty_teks(): void
     {
+        // Mock Purifier for normalizeEditorContent (called but returns null for empty)
+        Purifier::shouldReceive('clean')->andReturnUsing(fn ($html, $config) => $html);
+
         $rows = [
             ['teks_soal' => '', 'tipe_soal' => 'pg'],
             ['pertanyaan' => null, 'tipe_soal' => 'pg'],
         ];
 
         DB::shouldReceive('beginTransaction')->once();
-        DB::shouldReceive('commit')->once();
+        // No imported rows and no hard errors → rollBack (the else branch)
+        DB::shouldReceive('rollBack')->once();
 
         $this->repository->shouldNotReceive('create');
 

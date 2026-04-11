@@ -16,7 +16,7 @@ class GradingController extends Controller
 
     public function index(Request $request)
     {
-        $data = $this->gradingService->getPendingGrading($request->all());
+        $data = $this->gradingService->getPendingGrading($request->only(['paket_id', 'sekolah_id', 'page', 'per_page']));
 
         return view('dinas.grading.index', [
             'jawabans'          => $data['jawabans'],

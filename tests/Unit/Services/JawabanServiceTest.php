@@ -6,18 +6,32 @@ use Tests\TestCase;
 use Mockery;
 use Mockery\MockInterface;
 use App\Services\JawabanService;
+use App\Services\PenilaianService;
+use App\Services\RedisExamService;
 use App\Repositories\JawabanRepository;
+use App\Repositories\SoalRepository;
 
 class JawabanServiceTest extends TestCase
 {
     protected JawabanService $service;
     protected MockInterface $repository;
+    protected MockInterface $soalRepository;
+    protected MockInterface $penilaianService;
+    protected MockInterface $redisExam;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = Mockery::mock(JawabanRepository::class);
-        $this->service = new JawabanService($this->repository);
+        $this->soalRepository = Mockery::mock(SoalRepository::class);
+        $this->penilaianService = Mockery::mock(PenilaianService::class);
+        $this->redisExam = Mockery::mock(RedisExamService::class);
+        $this->service = new JawabanService(
+            $this->repository,
+            $this->soalRepository,
+            $this->penilaianService,
+            $this->redisExam
+        );
     }
 
     protected function tearDown(): void
@@ -47,7 +61,7 @@ class JawabanServiceTest extends TestCase
     public function test_get_jawaban_by_sesi_delegates_to_repository(): void
     {
         $sesiPesertaId = 'sesi-peserta-1';
-        $expected = collect(['jawaban1', 'jawaban2']);
+        $expected = new \Illuminate\Database\Eloquent\Collection(['jawaban1', 'jawaban2']);
 
         $this->repository
             ->shouldReceive('getBySesiPeserta')
@@ -62,7 +76,7 @@ class JawabanServiceTest extends TestCase
     public function test_get_jawaban_by_sesi_returns_empty_collection(): void
     {
         $sesiPesertaId = 'sesi-peserta-empty';
-        $expected = collect([]);
+        $expected = new \Illuminate\Database\Eloquent\Collection([]);
 
         $this->repository
             ->shouldReceive('getBySesiPeserta')
@@ -179,10 +193,12 @@ class JawabanServiceTest extends TestCase
         $reflection = new \ReflectionMethod($this->service, 'syncOfflineAnswers');
         $params = $reflection->getParameters();
 
-        $this->assertCount(3, $params);
+        $this->assertCount(5, $params);
         $this->assertEquals('sesiToken', $params[0]->getName());
         $this->assertEquals('answers', $params[1]->getName());
         $this->assertEquals('requestMeta', $params[2]->getName());
+        $this->assertEquals('isFinalSubmit', $params[3]->getName());
+        $this->assertEquals('preloadedSesiPeserta', $params[4]->getName());
         $this->assertEquals('array', $reflection->getReturnType()->getName());
     }
 

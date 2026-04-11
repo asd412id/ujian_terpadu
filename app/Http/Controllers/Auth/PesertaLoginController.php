@@ -33,7 +33,12 @@ class PesertaLoginController extends Controller
             'password' => $request->password,
         ]);
 
-        $request->session()->regenerate();
+        try {
+            $request->session()->regenerate();
+        } catch (\Throwable $e) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
         $request->session()->put('device_token', $result['device_token']);
 
         return redirect()->route('ujian.lobby');

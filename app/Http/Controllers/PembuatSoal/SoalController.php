@@ -319,7 +319,7 @@ class SoalController extends Controller
             $query->where('kategori_id', $request->kategori);
         }
 
-        $soalList = $query->get();
+        $soalList = $query->limit(500)->get();
 
         return view('pembuat-soal.soal.preview-all', compact('soalList', 'kategori', 'soalCounts'));
     }

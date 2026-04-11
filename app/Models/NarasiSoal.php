@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\HtmlDisplay;
+use App\Support\SearchHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -44,19 +45,22 @@ class NarasiSoal extends Model
 
         $terms = preg_split('/\s+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
-        return $query->where(function (Builder $narasiQuery) use ($search, $terms) {
-            $narasiQuery->where('judul', 'like', "%{$search}%");
+        $escapedSearch = SearchHelper::escapeLike($search);
+        $escapedTerms = array_map([SearchHelper::class, 'escapeLike'], $terms);
+
+        return $query->where(function (Builder $narasiQuery) use ($escapedSearch, $escapedTerms, $search, $terms) {
+            $narasiQuery->where('judul', 'like', "%{$escapedSearch}%");
 
             if (static::supportsKontenPlainColumn()) {
-                $narasiQuery->orWhere(function (Builder $kontenQuery) use ($search, $terms) {
-                    $kontenQuery->where('konten_plain', 'like', "%{$search}%")
-                        ->orWhere(function (Builder $fallbackQuery) use ($terms, $search) {
+                $narasiQuery->orWhere(function (Builder $kontenQuery) use ($escapedSearch, $escapedTerms, $search, $terms) {
+                    $kontenQuery->where('konten_plain', 'like', "%{$escapedSearch}%")
+                        ->orWhere(function (Builder $fallbackQuery) use ($escapedTerms, $terms, $escapedSearch, $search) {
                             $fallbackQuery->where(function (Builder $missingPlainQuery) {
                                 $missingPlainQuery->whereNull('konten_plain')
                                     ->orWhere('konten_plain', '');
                             });
 
-                            foreach ($terms !== [] ? $terms : [$search] as $term) {
+                            foreach ($escapedTerms !== [] ? $escapedTerms : [$escapedSearch] as $term) {
                                 $fallbackQuery->where('konten', 'like', "%{$term}%");
                             }
                         });
@@ -65,8 +69,8 @@ class NarasiSoal extends Model
                 return;
             }
 
-            $narasiQuery->orWhere(function (Builder $fallbackQuery) use ($terms, $search) {
-                foreach ($terms !== [] ? $terms : [$search] as $term) {
+            $narasiQuery->orWhere(function (Builder $fallbackQuery) use ($escapedTerms, $escapedSearch) {
+                foreach ($escapedTerms !== [] ? $escapedTerms : [$escapedSearch] as $term) {
                     $fallbackQuery->where('konten', 'like', "%{$term}%");
                 }
             });

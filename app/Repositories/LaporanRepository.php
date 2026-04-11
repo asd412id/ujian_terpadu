@@ -9,6 +9,7 @@ use App\Models\SesiPeserta;
 use App\Models\Sekolah;
 use App\Models\SesiUjian;
 use App\Support\NilaiStatus;
+use App\Support\SearchHelper;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -20,8 +21,9 @@ class LaporanRepository
      */
     protected function getSekolahJenjang(string $sekolahId): ?string
     {
-        static $cache = [];
-        return $cache[$sekolahId] ??= Sekolah::where('id', $sekolahId)->value('jenjang');
+        return Cache::remember("sekolah_jenjang:{$sekolahId}", 300, function () use ($sekolahId) {
+            return Sekolah::where('id', $sekolahId)->value('jenjang');
+        });
     }
 
     /**
@@ -166,11 +168,11 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -236,11 +238,11 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -287,11 +289,11 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -374,11 +376,11 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -475,11 +477,11 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -544,11 +546,11 @@ class LaporanRepository
         }
 
         if (!empty($filters['search'])) {
-            $search = str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']);
+            $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 

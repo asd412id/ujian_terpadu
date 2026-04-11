@@ -38,7 +38,15 @@ class LoginController extends Controller
             'remember' => $request->boolean('remember'),
         ]);
 
-        $request->session()->regenerate();
+        // Regenerate session after successful auth to prevent session fixation
+        try {
+            $request->session()->regenerate();
+        } catch (\Exception $e) {
+            // If session regeneration fails (e.g. Redis down), logout to prevent
+            // authenticated state without a fresh session
+            $this->authService->logout('web');
+            return back()->withErrors(['email' => 'Terjadi kesalahan saat login. Silakan coba lagi.']);
+        }
 
         return redirect()->route($result['dashboard_route']);
     }

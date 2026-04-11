@@ -6,11 +6,17 @@ use App\Models\Sekolah;
 use App\Models\SesiUjian;
 use App\Models\SesiPeserta;
 use App\Models\LogAktivitasUjian;
+use App\Services\RedisExamService;
+use App\Support\SearchHelper;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class MonitoringRepository
 {
+    public function __construct(
+        protected RedisExamService $redisExam
+    ) {}
+
     /**
      * Get dashboard sesi list with peserta counts.
      * Cached 10s — shared across all admin viewers.
@@ -167,9 +173,9 @@ class MonitoringRepository
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -357,8 +363,8 @@ class MonitoringRepository
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search));
             }));
         }
 
@@ -450,7 +456,7 @@ class MonitoringRepository
             . ($sekolahId ? ":sekolah:{$sekolahId}" : '')
             . ($kelas ? ":kelas:{$kelas}" : '');
 
-        return Cache::remember(
+        $cached = Cache::remember(
             $cacheKey,
             5,
             function () use ($sesiId, $sekolahId, $kelas) {
@@ -468,27 +474,39 @@ class MonitoringRepository
                     $query->whereHas('peserta', fn ($q) => $q->where('kelas', $kelas));
                 }
 
-                return $query->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir'])
-                    ->map(function ($sp) use ($durasiDetik) {
-                        $sisaWaktu = 0;
-                        if ($sp->mulai_at && in_array($sp->status, ['login', 'mengerjakan'])) {
-                            $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
-                            $sisaWaktu = max(0, $durasiDetik - $elapsed);
-                        }
+                $rows = $query->get(['id', 'status', 'soal_terjawab', 'soal_ditandai', 'mulai_at', 'nilai_akhir']);
 
-                        return [
-                            'id'             => $sp->id,
-                            'status'         => $sp->status,
-                            'soal_terjawab'  => $sp->soal_terjawab ?? 0,
-                            'soal_ditandai'  => $sp->soal_ditandai ?? 0,
-                            'sisa_waktu'     => $sisaWaktu,
-                            'nilai_akhir'    => $sp->nilai_akhir,
-                        ];
-                    })
-                    ->keyBy('id')
-                    ->toArray();
+                // Return DB rows + metadata; Redis overlay happens outside cache
+                return ['rows' => $rows, 'durasiDetik' => $durasiDetik];
             }
         );
+
+        // Overlay realtime Redis counters OUTSIDE cache closure so they're
+        // always fresh (Redis reads are sub-ms, no point caching them)
+        $rows = $cached['rows'];
+        $durasiDetik = $cached['durasiDetik'];
+
+        $activeSpIds = $rows->filter(fn ($sp) => in_array($sp->status, ['login', 'mengerjakan']))->pluck('id')->all();
+        $redisCounts = $this->redisExam->getAnsweredCountBatch($activeSpIds);
+
+        return $rows->map(function ($sp) use ($durasiDetik, $redisCounts) {
+                $sisaWaktu = 0;
+                if ($sp->mulai_at && in_array($sp->status, ['login', 'mengerjakan'])) {
+                    $elapsed = (int) $sp->mulai_at->diffInSeconds(now(), false);
+                    $sisaWaktu = max(0, $durasiDetik - $elapsed);
+                }
+
+                return [
+                    'id'             => $sp->id,
+                    'status'         => $sp->status,
+                    'soal_terjawab'  => $redisCounts[$sp->id] ?? ($sp->soal_terjawab ?? 0),
+                    'soal_ditandai'  => $sp->soal_ditandai ?? 0,
+                    'sisa_waktu'     => $sisaWaktu,
+                    'nilai_akhir'    => $sp->nilai_akhir,
+                ];
+            })
+            ->keyBy('id')
+            ->toArray();
     }
 
     /**

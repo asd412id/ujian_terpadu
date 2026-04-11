@@ -2,10 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\LogAktivitasUjianJob;
 use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
-use App\Models\LogAktivitasUjian;
+use App\Repositories\JawabanRepository;
+use App\Services\RedisExamService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class AutoSubmitExpiredExams extends Command
 {
@@ -16,6 +19,8 @@ class AutoSubmitExpiredExams extends Command
     {
         $now = now();
         $count = 0;
+        $redisExam = app(RedisExamService::class);
+        $jawabanRepo = app(JawabanRepository::class);
 
         // --- Phase 1: Auto-end sesi that passed waktu_selesai ---
         // Transition berlangsung → selesai when waktu_selesai has passed
@@ -34,8 +39,16 @@ class AutoSubmitExpiredExams extends Command
         SesiPeserta::whereIn('status', ['login', 'mengerjakan'])
             ->whereHas('sesi', fn ($q) => $q->where('status', 'selesai'))
             ->with(['sesi.paket'])
-            ->chunkById(50, function ($chunk) use ($now, &$sesiSelesaiCount) {
+            ->chunkById(50, function ($chunk) use ($now, &$sesiSelesaiCount, $redisExam, $jawabanRepo) {
                 foreach ($chunk as $sp) {
+                    // Flush any buffered answers from Redis to DB before submitting
+                    if (!$redisExam->forceFlush($sp->id, $jawabanRepo)) {
+                        Log::warning('[AutoSubmit] Redis flush failed, proceeding with DB data', [
+                            'sesi_peserta_id' => $sp->id,
+                            'phase' => 'sesi_ended',
+                        ]);
+                    }
+
                     $submitAt = $sp->sesi->waktu_selesai ?? $now;
                     $durasiDetik = $sp->mulai_at
                         ? (int) $sp->mulai_at->diffInSeconds($submitAt, false)
@@ -49,16 +62,17 @@ class AutoSubmitExpiredExams extends Command
 
                     \App\Jobs\HitungNilaiJob::dispatch($sp->id, 'auto_submit_sesi_ended');
 
-                    LogAktivitasUjian::create([
-                        'sesi_peserta_id' => $sp->id,
-                        'tipe_event'      => 'submit_ujian',
-                        'detail'          => [
+                    LogAktivitasUjianJob::dispatch(
+                        $sp->id,
+                        'submit_ujian',
+                        [
                             'reason'  => 'auto_submit_sesi_ended',
                             'durasi'  => max(0, $durasiDetik),
                             'trigger' => 'sesi_waktu_selesai',
                         ],
-                        'created_at'      => $submitAt,
-                    ]);
+                        null,
+                        $submitAt instanceof \Carbon\Carbon ? $submitAt->toIso8601String() : null,
+                    );
 
                     $sesiSelesaiCount++;
                 }
@@ -72,13 +86,21 @@ class AutoSubmitExpiredExams extends Command
             ->whereHas('sesi', fn ($q) => $q->where('status', 'berlangsung'))
             ->whereHas('sesi.paket', fn ($q) => $q->where('durasi_menit', '>', 0))
             ->with(['sesi.paket'])
-            ->chunkById(50, function ($chunk) use ($now, &$durasiCount) {
+            ->chunkById(50, function ($chunk) use ($now, &$durasiCount, $redisExam, $jawabanRepo) {
                 foreach ($chunk as $sp) {
                     $durasiDetik = ($sp->sesi->paket->durasi_menit ?? 0) * 60;
                     if ($durasiDetik <= 0) continue;
 
                     $elapsed = (int) $sp->mulai_at->diffInSeconds($now, false);
                     if ($elapsed <= $durasiDetik) continue;
+
+                    // Flush any buffered answers from Redis to DB before submitting
+                    if (!$redisExam->forceFlush($sp->id, $jawabanRepo)) {
+                        Log::warning('[AutoSubmit] Redis flush failed, proceeding with DB data', [
+                            'sesi_peserta_id' => $sp->id,
+                            'phase' => 'durasi_expired',
+                        ]);
+                    }
 
                     $submitAt = $sp->mulai_at->copy()->addSeconds($durasiDetik);
 
@@ -98,15 +120,16 @@ class AutoSubmitExpiredExams extends Command
 
                     \App\Jobs\HitungNilaiJob::dispatch($sp->id, 'auto_submit_server_timeout');
 
-                    LogAktivitasUjian::create([
-                        'sesi_peserta_id' => $sp->id,
-                        'tipe_event'      => 'submit_ujian',
-                        'detail'          => [
+                    LogAktivitasUjianJob::dispatch(
+                        $sp->id,
+                        'submit_ujian',
+                        [
                             'reason' => 'auto_submit_server_timeout',
                             'durasi' => max(0, $durasiAktual),
                         ],
-                        'created_at'      => $submitAt,
-                    ]);
+                        null,
+                        $submitAt->toIso8601String(),
+                    );
 
                     $durasiCount++;
                 }

@@ -283,7 +283,7 @@ services:
       redis-server
       --appendonly yes
       --maxmemory 1024mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy volatile-lru
       --save 900 1
       --save 300 10
       --tcp-backlog 511
@@ -294,7 +294,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "sh", "-c", "REDISCLI_AUTH=$REDIS_PASSWORD redis-cli ping"]
       interval: 10s
       timeout: 5s
       retries: 5

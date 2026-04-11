@@ -11,7 +11,13 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Verify that API requests contain a valid ujian token (sesi_token or URL token).
  * Prevents unauthenticated access to /api/ujian/* endpoints.
- * Uses Redis cache (30s TTL) to avoid DB query on every request.
+ *
+ * Uses a two-tier cache strategy:
+ * 1. Cache the sesi_peserta ID by token (cheap lookup, 30s TTL)
+ * 2. On cache hit, load model by primary key (faster than WHERE token_ujian=?)
+ *
+ * Caches a plain array (not Eloquent model) to be safe under Octane's
+ * long-lived workers.
  */
 class VerifyUjianToken
 {
@@ -26,15 +32,19 @@ class VerifyUjianToken
         }
 
         $cacheKey = "ujian_token:{$token}";
-        $sesiPeserta = Cache::get($cacheKey);
+        $cached = Cache::get($cacheKey);
 
-        if ($sesiPeserta instanceof SesiPeserta) {
-            // Cached model — ensure relations are still loaded
-            if (! $sesiPeserta->relationLoaded('sesi')) {
-                $sesiPeserta->load('sesi.paket');
+        if (is_array($cached)) {
+            // Cache hit — load by primary key (indexed, fast) instead of WHERE token_ujian
+            $sesiPeserta = SesiPeserta::with('sesi.paket')->find($cached['id']);
+
+            // If model disappeared (deleted/reset), invalidate cache
+            if (! $sesiPeserta || $sesiPeserta->token_ujian !== $token) {
+                Cache::forget($cacheKey);
+                $sesiPeserta = null;
             }
         } else {
-            // Cache miss or stale ID — fetch from DB with eager-loaded relations
+            // Cache miss — lookup by token (slower, uses WHERE clause)
             $sesiPeserta = SesiPeserta::with('sesi.paket')
                 ->where('token_ujian', $token)
                 ->first();
@@ -45,8 +55,14 @@ class VerifyUjianToken
             return response()->json(['error' => 'Sesi ujian tidak ditemukan.'], 401);
         }
 
-        // Cache the full model (with relations) for 30s
-        Cache::put($cacheKey, $sesiPeserta, 30);
+        // Cache only scalar fields — safe for Octane long-lived workers
+        Cache::put($cacheKey, [
+            'id'        => $sesiPeserta->id,
+            'token'     => $sesiPeserta->token_ujian,
+            'status'    => $sesiPeserta->status,
+            'sesi_id'   => $sesiPeserta->sesi_id,
+            'peserta_id'=> $sesiPeserta->peserta_id,
+        ], 30);
 
         $request->attributes->set('sesiPeserta', $sesiPeserta);
         $request->attributes->set('ujianToken', $token);

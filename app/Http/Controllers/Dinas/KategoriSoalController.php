@@ -96,7 +96,7 @@ class KategoriSoalController extends Controller
             $newKategori = $this->kategoriSoalService->cloneKategori($kategori);
         } catch (\Throwable $e) {
             return redirect()->route('dinas.kategori.index')
-                             ->with('error', 'Gagal menyalin kategori: ' . $e->getMessage());
+                             ->with('error', 'Gagal menyalin kategori. Silakan coba lagi.');
         }
 
         return redirect()->route('dinas.kategori.index')

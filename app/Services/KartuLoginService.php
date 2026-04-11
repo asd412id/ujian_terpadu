@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Repositories\PesertaRepository;
 use App\Repositories\SesiUjianRepository;
+use App\Support\SearchHelper;
 
 class KartuLoginService
 {
@@ -90,9 +91,9 @@ class KartuLoginService
             ->when(!empty($filters['q']), function ($q) use ($filters) {
                 $search = $filters['q'];
                 $q->where(function ($q) use ($search) {
-                    $q->where('nama', 'like', "%{$search}%")
-                      ->orWhere('nis', 'like', "%{$search}%")
-                      ->orWhere('nisn', 'like', "%{$search}%");
+                    $q->where('nama', 'like', SearchHelper::containsLike($search))
+                      ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                      ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
                 });
             })
             ->orderBy('sekolah_id')

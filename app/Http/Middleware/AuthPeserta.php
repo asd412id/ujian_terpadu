@@ -29,7 +29,9 @@ class AuthPeserta
 
         $sessionToken = $request->session()->get('device_token');
 
-        if ($peserta->device_token && $sessionToken !== $peserta->device_token) {
+        // Only enforce device_token check when DB has a non-null token
+        // (null device_token means student hasn't completed login flow)
+        if ($peserta->device_token !== null && $sessionToken !== $peserta->device_token) {
             Auth::guard('peserta')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

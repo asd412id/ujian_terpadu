@@ -284,7 +284,7 @@ class PaketUjianController extends Controller
                              ->with('success', $msg);
         } catch (\Throwable $e) {
             return redirect()->route('dinas.paket.index')
-                             ->with('error', 'Gagal menyalin paket: ' . $e->getMessage());
+                             ->with('error', 'Gagal menyalin paket. Silakan coba lagi.');
         }
     }
 }

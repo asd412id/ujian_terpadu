@@ -22,7 +22,7 @@ class UserTest extends TestCase
     {
         $user = new User();
         $this->assertEquals(
-            ['name', 'email', 'password', 'role', 'sekolah_id', 'is_active', 'last_login_at', 'avatar'],
+            ['name', 'email', 'password', 'role', 'sekolah_id', 'is_active', 'must_change_password', 'last_login_at', 'avatar'],
             $user->getFillable()
         );
     }

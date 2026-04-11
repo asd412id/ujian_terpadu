@@ -71,21 +71,22 @@ else
 fi
 
 # --- Ensure infra services are running (don't restart if already up) ---
-log "Ensuring MySQL, Redis are running..."
-docker compose up -d mysql redis
+log "Ensuring MariaDB, Redis are running..."
+docker compose up -d mariadb redis
 
-log "Recreating app container with new image..."
-docker compose up -d --no-deps --force-recreate app
+log "Recreating app, horizon, and scheduler containers..."
+docker compose up -d --no-deps --force-recreate app horizon scheduler 2>/dev/null || \
+    docker compose up -d --no-deps --force-recreate app
 
 # --- Wait for app to be ready (entrypoint handles migrations, caching, etc.) ---
 log "Waiting for app to be ready..."
 for i in $(seq 1 60); do
-    STATUS=$(docker inspect --format='{{.State.Health.Status}}' ujian_app 2>/dev/null || echo "starting")
-    if [ "$STATUS" = "healthy" ]; then
+    STATUS=$(docker compose ps app --format '{{.Status}}' 2>/dev/null | head -1)
+    if echo "$STATUS" | grep -qi 'healthy'; then
         log "App is healthy!"
         break
     fi
-    if [ "$STATUS" = "unhealthy" ]; then
+    if echo "$STATUS" | grep -qi 'unhealthy'; then
         warn "App is unhealthy — check logs: docker compose logs -f app"
         break
     fi

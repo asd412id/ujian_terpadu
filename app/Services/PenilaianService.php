@@ -8,12 +8,6 @@ use App\Repositories\JawabanRepository;
 
 class PenilaianService
 {
-    /** @var array<string, array<string, string>> soalId → [displayLabel → originalLabel] */
-    private array $labelRemap = [];
-
-    /** Whether partial scoring is enabled for this scoring run. */
-    private bool $scoringPartial = true;
-
     public function __construct(
         protected JawabanRepository $jawabanRepository
     ) {}
@@ -22,12 +16,14 @@ class PenilaianService
     {
         $sesiPeserta->loadMissing(['jawaban.soal.opsiJawaban', 'jawaban.soal.pasangan', 'sesi.paket.paketSoal.soal']);
         $paket = $sesiPeserta->sesi->paket;
-        $this->scoringPartial = $paket->scoring_partial ?? true;
+
+        // Local variables instead of instance properties — safe under Octane/queue retry
+        $scoringPartial = $paket->scoring_partial ?? true;
 
         // Build label-remap per soal: display-label → original-label
         // During the exam, opsi are shuffled and relabeled A,B,C,D...
         // Student answers use these relabeled keys, so we must map back.
-        $this->labelRemap = $this->buildLabelRemap($sesiPeserta);
+        $labelRemap = $this->buildLabelRemap($sesiPeserta);
 
         $jumlahBenar  = 0;
         $jumlahSalah  = 0;
@@ -51,7 +47,7 @@ class PenilaianService
                 continue;
             }
 
-            $skor = $this->hitungSkorSatu($jawaban, $bobot);
+            $skor = $this->hitungSkorSatu($jawaban, $bobot, $labelRemap, $scoringPartial);
 
             if ($jawaban->soal->tipe_soal === 'essay') {
                 $updates[] = ['id' => $jawaban->id, 'skor_auto' => 0];
@@ -93,32 +89,32 @@ class PenilaianService
         ];
     }
 
-    private function hitungSkorSatu(JawabanPeserta $jawaban, float $bobot): float
+    private function hitungSkorSatu(JawabanPeserta $jawaban, float $bobot, array $labelRemap, bool $scoringPartial): float
     {
         $soal = $jawaban->soal;
 
         return match ($soal->tipe_soal) {
-            'pg'          => $this->skorPG($jawaban, $bobot),
-            'pg_kompleks' => $this->skorPGKompleks($jawaban, $bobot),
-            'benar_salah' => $this->skorBenarSalah($jawaban, $bobot),
-            'menjodohkan' => $this->skorMenjodohkan($jawaban, $bobot),
+            'pg'          => $this->skorPG($jawaban, $bobot, $labelRemap),
+            'pg_kompleks' => $this->skorPGKompleks($jawaban, $bobot, $labelRemap, $scoringPartial),
+            'benar_salah' => $this->skorBenarSalah($jawaban, $bobot, $labelRemap, $scoringPartial),
+            'menjodohkan' => $this->skorMenjodohkan($jawaban, $bobot, $scoringPartial),
             'isian'       => $this->skorIsian($jawaban, $bobot),
             default       => 0,
         };
     }
 
-    private function skorPG(JawabanPeserta $jawaban, float $bobot): float
+    private function skorPG(JawabanPeserta $jawaban, float $bobot, array $labelRemap): float
     {
         $benar = $jawaban->soal->opsiJawaban->where('is_benar', true)->pluck('label')->first();
         $pilihan = $jawaban->jawaban_pg[0] ?? null;
         // Remap display label back to original label
         if ($pilihan !== null) {
-            $pilihan = $this->remapLabel($jawaban->soal_id, $pilihan);
+            $pilihan = $this->remapLabel($jawaban->soal_id, $pilihan, $labelRemap);
         }
         return $pilihan === $benar ? $bobot : 0;
     }
 
-    private function skorPGKompleks(JawabanPeserta $jawaban, float $bobot): float
+    private function skorPGKompleks(JawabanPeserta $jawaban, float $bobot, array $labelRemap, bool $scoringPartial): float
     {
         $jawabanBenar = $jawaban->soal->opsiJawaban
             ->where('is_benar', true)
@@ -130,14 +126,14 @@ class PenilaianService
         // Remap display labels back to original labels
         $soalId = $jawaban->soal_id;
         $pilihan = collect($jawaban->jawaban_pg ?? [])
-            ->map(fn ($label) => $this->remapLabel($soalId, $label))
+            ->map(fn ($label) => $this->remapLabel($soalId, $label, $labelRemap))
             ->sort()
             ->values()
             ->toArray();
 
         if ($pilihan === $jawabanBenar) return $bobot;
 
-        if (! $this->scoringPartial) return 0;
+        if (! $scoringPartial) return 0;
 
         // Partial scoring: 50% jika sebagian benar
         $benarCount = count(array_intersect($pilihan, $jawabanBenar));
@@ -149,7 +145,7 @@ class PenilaianService
         return 0;
     }
 
-    private function skorBenarSalah(JawabanPeserta $jawaban, float $bobot): float
+    private function skorBenarSalah(JawabanPeserta $jawaban, float $bobot, array $labelRemap, bool $scoringPartial): float
     {
         $opsiList = $jawaban->soal->opsiJawaban;
         $totalPernyataan = $opsiList->count();
@@ -165,7 +161,7 @@ class PenilaianService
         $soalId = $jawaban->soal_id;
         $remapped = [];
         foreach ($jawabanPeserta as $displayLabel => $value) {
-            $originalLabel = $this->remapLabel($soalId, (string) $displayLabel);
+            $originalLabel = $this->remapLabel($soalId, (string) $displayLabel, $labelRemap);
             $remapped[$originalLabel] = $value;
         }
 
@@ -182,14 +178,14 @@ class PenilaianService
             }
         }
 
-        if (! $this->scoringPartial) {
+        if (! $scoringPartial) {
             return $benarCount === $totalPernyataan ? $bobot : 0;
         }
 
         return round(($benarCount / $totalPernyataan) * $bobot, 2);
     }
 
-    private function skorMenjodohkan(JawabanPeserta $jawaban, float $bobot): float
+    private function skorMenjodohkan(JawabanPeserta $jawaban, float $bobot, bool $scoringPartial): float
     {
         $pasanganList = $jawaban->soal->pasangan;
         $pasanganPilihan = collect($jawaban->jawaban_pasangan ?? []);
@@ -213,7 +209,7 @@ class PenilaianService
             }
         }
 
-        if (! $this->scoringPartial) {
+        if (! $scoringPartial) {
             return $benar === $total ? $bobot : 0;
         }
 
@@ -277,8 +273,8 @@ class PenilaianService
     /**
      * Remap a display label (A,B,C...) back to the original opsi label.
      */
-    private function remapLabel(string $soalId, string $displayLabel): string
+    private function remapLabel(string $soalId, string $displayLabel, array $labelRemap): string
     {
-        return $this->labelRemap[$soalId][$displayLabel] ?? $displayLabel;
+        return $labelRemap[$soalId][$displayLabel] ?? $displayLabel;
     }
 }

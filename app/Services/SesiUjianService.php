@@ -4,17 +4,23 @@ namespace App\Services;
 
 use App\Models\PaketUjian;
 use App\Models\SesiUjian;
+use App\Repositories\JawabanRepository;
 use App\Repositories\SesiUjianRepository;
 use App\Repositories\SekolahRepository;
+use App\Support\SearchHelper;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SesiUjianService
 {
     public function __construct(
         protected PenilaianService $penilaianService,
         protected SesiUjianRepository $repository,
-        protected SekolahRepository $sekolahRepository
+        protected SekolahRepository $sekolahRepository,
+        protected RedisExamService $redisExam,
+        protected JawabanRepository $jawabanRepository
     ) {}
 
     public function createSesi(PaketUjian $paket, array $data): SesiUjian
@@ -73,6 +79,14 @@ class SesiUjianService
             ->whereIn('status', ['login', 'mengerjakan'])
             ->chunkById(100, function ($chunk) use (&$count, $sesi) {
                 foreach ($chunk as $sp) {
+                    // Flush buffered answers from Redis to DB before scoring
+                    if (!$this->redisExam->forceFlush($sp->id, $this->jawabanRepository)) {
+                        Log::warning('[SesiUjian] Redis flush failed during force submit, proceeding with DB data', [
+                            'sesi_peserta_id' => $sp->id,
+                            'sesi_id'         => $sesi->id,
+                        ]);
+                    }
+
                     $submitAt = now();
                     $durasiDetik = $sp->mulai_at
                         ? (int) $sp->mulai_at->diffInSeconds($submitAt, false)
@@ -110,7 +124,7 @@ class SesiUjianService
      */
     public function resetSesiPeserta(\App\Models\SesiPeserta $sp): void
     {
-        \Illuminate\Support\Facades\DB::transaction(function () use ($sp) {
+        DB::transaction(function () use ($sp) {
             // 1. Hapus jawaban peserta
             $sp->jawaban()->delete();
 
@@ -138,16 +152,19 @@ class SesiUjianService
                 'jumlah_kosong'       => null,
             ]);
 
-            // 4. Clear cache soal dan monitoring jika ada
+            // 4. Clean up Redis exam buffer (prevent stale data being re-flushed)
+            $this->redisExam->cleanupSession($sp->id);
+
+            // 5. Clear cache soal dan monitoring jika ada
             $paketId = $sp->sesi?->paket_id;
             if ($paketId) {
-                \Illuminate\Support\Facades\Cache::forget("paket_soal_{$paketId}_sp_{$sp->id}");
+                Cache::forget("paket_soal_{$paketId}_sp_{$sp->id}");
             }
             if ($sp->sesi_id) {
-                \Illuminate\Support\Facades\Cache::forget("sesi_live_{$sp->sesi_id}");
+                Cache::forget("sesi_live_{$sp->sesi_id}");
             }
 
-            // 5. Log aktivitas reset
+            // 6. Log aktivitas reset
             $this->repository->logAktivitas([
                 'sesi_peserta_id' => $sp->id,
                 'tipe_event'      => 'reset_ujian',
@@ -202,12 +219,13 @@ class SesiUjianService
     {
         return $sesi->peserta()
             ->when($search, fn($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nisn', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%")
-                  ->orWhere('kelas', 'like', "%{$search}%")
-                  ->orWhere('jurusan', 'like', "%{$search}%")
-                  ->orWhereHas('sekolah', fn ($sekolahQuery) => $sekolahQuery->where('nama', 'like', "%{$search}%"));
+                $s = SearchHelper::containsLike($search);
+                $q->where('nama', 'like', $s)
+                  ->orWhere('nisn', 'like', $s)
+                  ->orWhere('nis', 'like', $s)
+                  ->orWhere('kelas', 'like', $s)
+                  ->orWhere('jurusan', 'like', $s)
+                  ->orWhereHas('sekolah', fn ($sekolahQuery) => $sekolahQuery->where('nama', 'like', $s));
             }))
             ->with('sekolah')
             ->orderBy('nama')

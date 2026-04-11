@@ -53,7 +53,10 @@ class SesiPeserta extends Model
     // Capped by sesi_ujian.waktu_selesai — jika sesi berakhir lebih dulu, itu yang dipakai
     public function getSisaWaktuDetikAttribute(): int
     {
-        $durasi = $this->sesi->paket->durasi_menit * 60;
+        $durasiMenit = $this->sesi?->paket?->durasi_menit;
+        if ($durasiMenit === null) return 0;
+
+        $durasi = $durasiMenit * 60;
         if (! $this->mulai_at) return $durasi;
 
         $now = now();
@@ -61,7 +64,7 @@ class SesiPeserta extends Model
         $sisaByDurasi = max(0, $durasi - $elapsed);
 
         // Cap by sesi waktu_selesai if set
-        $waktuSelesai = $this->sesi->waktu_selesai;
+        $waktuSelesai = $this->sesi?->waktu_selesai;
         if ($waktuSelesai) {
             $sisaBySesi = max(0, (int) $now->diffInSeconds($waktuSelesai, false));
             return min($sisaByDurasi, $sisaBySesi);

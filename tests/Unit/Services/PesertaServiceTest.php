@@ -7,6 +7,7 @@ use Mockery;
 use Mockery\MockInterface;
 use App\Services\PesertaService;
 use App\Repositories\PesertaRepository;
+use App\Repositories\SekolahRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -17,12 +18,14 @@ class PesertaServiceTest extends TestCase
 {
     protected PesertaService $service;
     protected MockInterface $repository;
+    protected MockInterface $sekolahRepository;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = Mockery::mock(PesertaRepository::class);
-        $this->service = new PesertaService($this->repository);
+        $this->sekolahRepository = Mockery::mock(SekolahRepository::class);
+        $this->service = new PesertaService($this->repository, $this->sekolahRepository);
     }
 
     protected function tearDown(): void
@@ -32,17 +35,19 @@ class PesertaServiceTest extends TestCase
     }
 
     // ── getAll ─────────────────────────────────────────────────
-    // BUG: getAll() passes array $filters to getFiltered(string $sekolahId, ...).
-    // This causes a TypeError at runtime. We document this as a known issue.
 
-    public function test_get_all_throws_type_error_due_to_argument_mismatch(): void
+    public function test_get_all_delegates_to_repository_all_filtered(): void
     {
-        $this->repository
-            ->shouldReceive('getFiltered')
-            ->andReturn(new LengthAwarePaginator([], 0, 25));
+        $expected = new LengthAwarePaginator([], 0, 25);
 
-        $this->expectException(\TypeError::class);
-        $this->service->getAll(['q' => 'test']);
+        $this->repository
+            ->shouldReceive('getAllFiltered')
+            ->once()
+            ->with(null, 'test', null)
+            ->andReturn($expected);
+
+        $result = $this->service->getAll(['q' => 'test']);
+        $this->assertSame($expected, $result);
     }
 
     // ── getBySekolah ───────────────────────────────────────────
@@ -117,16 +122,21 @@ class PesertaServiceTest extends TestCase
     public function test_get_by_id_returns_peserta_with_relations(): void
     {
         $id = 'peserta-uuid-1';
-        $expected = (object) ['id' => $id, 'nama' => 'John'];
+        $peserta = Mockery::mock(\App\Models\Peserta::class)->makePartial();
 
         $this->repository
-            ->shouldReceive('findWithRelations')
+            ->shouldReceive('findById')
             ->once()
-            ->with($id, ['sekolah'])
-            ->andReturn($expected);
+            ->with($id)
+            ->andReturn($peserta);
+
+        $peserta->shouldReceive('load')
+            ->once()
+            ->with('sekolah')
+            ->andReturnSelf();
 
         $result = $this->service->getById($id);
-        $this->assertEquals($expected, $result);
+        $this->assertSame($peserta, $result);
     }
 
     // ── create ─────────────────────────────────────────────────
@@ -139,6 +149,10 @@ class PesertaServiceTest extends TestCase
         Hash::shouldReceive('make')
             ->once()
             ->andReturn('hashed-password');
+
+        // guardDuplicateNisNisn calls
+        $this->repository->shouldReceive('findByNisAndSekolah')->once()->andReturn(null);
+        $this->repository->shouldReceive('findByNisnAndSekolah')->never();
 
         $this->repository
             ->shouldReceive('create')
@@ -171,6 +185,8 @@ class PesertaServiceTest extends TestCase
             ->with('mypassword')
             ->andReturn('hashed-mypassword');
 
+        // no sekolah_id => guard skipped
+
         $this->repository
             ->shouldReceive('create')
             ->once()
@@ -191,6 +207,7 @@ class PesertaServiceTest extends TestCase
         $createdPeserta = Mockery::mock(\App\Models\Peserta::class);
 
         Hash::shouldReceive('make')->once()->andReturn('h');
+        // no sekolah_id => guard skipped
 
         $captured = null;
         $this->repository
@@ -212,6 +229,7 @@ class PesertaServiceTest extends TestCase
         $createdPeserta = Mockery::mock(\App\Models\Peserta::class);
 
         Hash::shouldReceive('make')->once()->andReturn('h');
+        // no sekolah_id => guard skipped
 
         $captured = null;
         $this->repository
@@ -233,6 +251,7 @@ class PesertaServiceTest extends TestCase
         $createdPeserta = Mockery::mock(\App\Models\Peserta::class);
 
         Hash::shouldReceive('make')->once()->andReturn('hashed');
+        // no sekolah_id => guard skipped
 
         $captured = null;
         $this->repository
@@ -256,7 +275,8 @@ class PesertaServiceTest extends TestCase
     {
         $id = 'peserta-1';
         $data = ['nama' => 'Updated', 'password_ujian' => 'newpass'];
-        $peserta = Mockery::mock(\App\Models\Peserta::class);
+        $peserta = Mockery::mock(\App\Models\Peserta::class)->makePartial();
+        $peserta->sekolah_id = 's1';
         $freshPeserta = Mockery::mock(\App\Models\Peserta::class);
 
         Hash::shouldReceive('make')
@@ -269,6 +289,10 @@ class PesertaServiceTest extends TestCase
             ->once()
             ->with($id)
             ->andReturn($peserta);
+
+        // guardDuplicateNisNisn — no nis/nisn in data, guard calls nothing relevant
+        $this->repository->shouldReceive('findByNisAndSekolah')->never();
+        $this->repository->shouldReceive('findByNisnAndSekolah')->never();
 
         $this->repository
             ->shouldReceive('update')
@@ -293,7 +317,8 @@ class PesertaServiceTest extends TestCase
     {
         $id = 'peserta-1';
         $data = ['nama' => 'Updated', 'password_ujian' => ''];
-        $peserta = Mockery::mock(\App\Models\Peserta::class);
+        $peserta = Mockery::mock(\App\Models\Peserta::class)->makePartial();
+        $peserta->sekolah_id = 's1';
         $freshPeserta = Mockery::mock(\App\Models\Peserta::class);
 
         $this->repository
@@ -301,6 +326,9 @@ class PesertaServiceTest extends TestCase
             ->once()
             ->with($id)
             ->andReturn($peserta);
+
+        $this->repository->shouldReceive('findByNisAndSekolah')->never();
+        $this->repository->shouldReceive('findByNisnAndSekolah')->never();
 
         $this->repository
             ->shouldReceive('update')
@@ -324,7 +352,8 @@ class PesertaServiceTest extends TestCase
     {
         $id = 'peserta-1';
         $data = ['nama' => 'Only Name'];
-        $peserta = Mockery::mock(\App\Models\Peserta::class);
+        $peserta = Mockery::mock(\App\Models\Peserta::class)->makePartial();
+        $peserta->sekolah_id = 's1';
         $freshPeserta = Mockery::mock(\App\Models\Peserta::class);
 
         $this->repository
@@ -332,6 +361,9 @@ class PesertaServiceTest extends TestCase
             ->once()
             ->with($id)
             ->andReturn($peserta);
+
+        $this->repository->shouldReceive('findByNisAndSekolah')->never();
+        $this->repository->shouldReceive('findByNisnAndSekolah')->never();
 
         $captured = null;
         $this->repository
@@ -530,7 +562,8 @@ class PesertaServiceTest extends TestCase
         ];
         $meta = ['sekolah_id' => 'sekolah-1'];
 
-        $existingPeserta = Mockery::mock(\App\Models\Peserta::class);
+        $existingPeserta = Mockery::mock(\App\Models\Peserta::class)->makePartial();
+        $existingPeserta->nama = 'Existing';
         $this->repository
             ->shouldReceive('findByNisAndSekolah')
             ->once()

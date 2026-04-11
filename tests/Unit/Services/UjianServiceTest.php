@@ -7,6 +7,7 @@ use Mockery;
 use Mockery\MockInterface;
 use App\Services\UjianService;
 use App\Services\PenilaianService;
+use App\Services\RedisExamService;
 use App\Repositories\SesiUjianRepository;
 use App\Repositories\JawabanRepository;
 
@@ -16,6 +17,7 @@ class UjianServiceTest extends TestCase
     protected MockInterface $sesiUjianRepository;
     protected MockInterface $jawabanRepository;
     protected MockInterface $penilaianService;
+    protected MockInterface $redisExam;
 
     protected function setUp(): void
     {
@@ -23,10 +25,12 @@ class UjianServiceTest extends TestCase
         $this->sesiUjianRepository = Mockery::mock(SesiUjianRepository::class);
         $this->jawabanRepository = Mockery::mock(JawabanRepository::class);
         $this->penilaianService = Mockery::mock(PenilaianService::class);
+        $this->redisExam = Mockery::mock(RedisExamService::class);
         $this->service = new UjianService(
             $this->sesiUjianRepository,
             $this->jawabanRepository,
-            $this->penilaianService
+            $this->penilaianService,
+            $this->redisExam
         );
     }
 
@@ -38,16 +42,17 @@ class UjianServiceTest extends TestCase
 
     // ── Service construction ───────────────────────────────────
 
-    public function test_service_requires_three_dependencies(): void
+    public function test_service_requires_four_dependencies(): void
     {
         $reflection = new \ReflectionClass(UjianService::class);
         $constructor = $reflection->getConstructor();
         $params = $constructor->getParameters();
 
-        $this->assertCount(3, $params);
+        $this->assertCount(4, $params);
         $this->assertEquals('sesiUjianRepository', $params[0]->getName());
         $this->assertEquals('jawabanRepository', $params[1]->getName());
         $this->assertEquals('penilaianService', $params[2]->getName());
+        $this->assertEquals('redisExam', $params[3]->getName());
     }
 
     // ── startUjian ─────────────────────────────────────────────

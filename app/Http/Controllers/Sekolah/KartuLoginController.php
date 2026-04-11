@@ -61,7 +61,12 @@ class KartuLoginController extends Controller
     public function cetak(SesiUjian $sesi)
     {
         $sesi->load('paket');
-        abort_unless($sesi->paket?->sekolah_id === Auth::user()->sekolah_id, 403);
+        $user = Auth::user();
+        // Allow access if: paket belongs to user's sekolah, OR paket is dinas-level (null sekolah_id)
+        abort_unless(
+            $sesi->paket && ($sesi->paket->sekolah_id === null || $sesi->paket->sekolah_id === $user->sekolah_id),
+            403
+        );
 
         $data = $this->kartuLoginService->getKartuBySesi($sesi->id);
 

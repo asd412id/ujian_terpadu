@@ -14,7 +14,8 @@ class UjianService
     public function __construct(
         protected SesiUjianRepository $sesiUjianRepository,
         protected JawabanRepository $jawabanRepository,
-        protected PenilaianService $penilaianService
+        protected PenilaianService $penilaianService,
+        protected RedisExamService $redisExam
     ) {}
 
     /**
@@ -50,8 +51,11 @@ class UjianService
             abort(403, 'Sesi ujian tidak sedang berlangsung.');
         }
 
+        // Track whether this is a fresh start (before status changes to 'mengerjakan')
+        $wasFreshStart = in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login']);
+
         // Set status mengerjakan + catat waktu mulai (use lock to prevent race condition)
-        if (in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login'])) {
+        if ($wasFreshStart) {
             $this->sesiUjianRepository->startSesiPesertaWithLock($sesiPeserta->id, [
                 'status'       => 'mengerjakan',
                 'mulai_at'     => $sesiPeserta->mulai_at ?? now(),
@@ -75,8 +79,8 @@ class UjianService
         // Cache soal for performance (include sesiPeserta id to avoid stale data on retake)
         $cacheKey = "paket_soal_{$paket->id}_sp_{$sesiPeserta->id}";
 
-        // Always bust stale cache when starting fresh to ensure correct soal order after reset
-        if (in_array($sesiPeserta->status, ['terdaftar', 'belum_login', 'login'])) {
+        // Bust stale cache on fresh start — check was_fresh flag since status already changed to 'mengerjakan'
+        if ($wasFreshStart) {
             Cache::forget($cacheKey);
         }
 
@@ -147,6 +151,9 @@ class UjianService
         if (in_array($sesiPeserta->status, ['submit', 'dinilai'])) {
             return $this->getHasilUjian($sesiPesertaId);
         }
+
+        // Force flush all buffered answers from Redis to DB before submit
+        $this->redisExam->forceFlush($sesiPesertaId, $this->jawabanRepository);
 
         $wasNewSubmit = false;
         \Illuminate\Support\Facades\DB::transaction(function () use (&$sesiPeserta, &$wasNewSubmit) {

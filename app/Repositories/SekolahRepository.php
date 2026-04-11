@@ -6,7 +6,9 @@ use App\Models\DinasPendidikan;
 use App\Models\ImportJob;
 use App\Models\Sekolah;
 use Illuminate\Database\Eloquent\Collection;
+use App\Support\SearchHelper;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class SekolahRepository
 {
@@ -39,9 +41,9 @@ class SekolahRepository
             ->where('is_active', true)
             ->withCount(['peserta', 'soal'])
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('npsn', 'like', "%{$search}%")
-                  ->orWhere('kota', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                  ->orWhere('npsn', 'like', SearchHelper::containsLike($search))
+                  ->orWhere('kota', 'like', SearchHelper::containsLike($search));
             }))
             ->when($jenjang, fn ($q) => $q->where('jenjang', $jenjang))
             ->orderBy('nama')
@@ -130,11 +132,13 @@ class SekolahRepository
      */
     public function deleteAllWithCursor(): int
     {
-        $count = $this->model->count();
-        foreach ($this->model->cursor() as $sekolah) {
-            $sekolah->delete();
-        }
-        return $count;
+        return DB::transaction(function () {
+            $count = $this->model->count();
+            foreach ($this->model->cursor() as $sekolah) {
+                $sekolah->delete();
+            }
+            return $count;
+        });
     }
 
     /**

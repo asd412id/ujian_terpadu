@@ -4,18 +4,20 @@ namespace Tests\Unit\Services;
 
 use Tests\TestCase;
 use Mockery;
+use Mockery\MockInterface;
 use App\Services\DashboardService;
+use App\Repositories\DashboardRepository;
 
 class DashboardServiceTest extends TestCase
 {
     protected DashboardService $service;
+    protected MockInterface $repository;
 
     protected function setUp(): void
     {
         parent::setUp();
-        // DashboardService has no constructor dependencies.
-        // All methods use Eloquent models and Cache directly.
-        $this->service = new DashboardService();
+        $this->repository = Mockery::mock(DashboardRepository::class);
+        $this->service = new DashboardService($this->repository);
     }
 
     protected function tearDown(): void
@@ -82,15 +84,15 @@ class DashboardServiceTest extends TestCase
 
     // ── Class structure ────────────────────────────────────────
 
-    public function test_service_has_no_constructor_dependencies(): void
+    public function test_service_requires_dashboard_repository(): void
     {
         $reflection = new \ReflectionClass(DashboardService::class);
         $constructor = $reflection->getConstructor();
 
-        // No constructor or empty constructor
-        $this->assertTrue(
-            $constructor === null || count($constructor->getParameters()) === 0
-        );
+        $this->assertNotNull($constructor);
+        $params = $constructor->getParameters();
+        $this->assertCount(1, $params);
+        $this->assertEquals('repository', $params[0]->getName());
     }
 
     public function test_service_exposes_three_public_dashboard_methods(): void

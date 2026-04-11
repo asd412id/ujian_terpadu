@@ -7,6 +7,7 @@ use App\Models\SesiPeserta;
 use App\Models\SesiUjian;
 use App\Models\User;
 use App\Models\LogAktivitasUjian;
+use App\Support\SearchHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -117,12 +118,12 @@ class SesiUjianRepository
             })
             ->when($search, function (Builder $query) use ($search) {
                 $query->where(function (Builder $searchQuery) use ($search) {
-                    $searchQuery->where('nama', 'like', "%{$search}%")
-                        ->orWhere('nisn', 'like', "%{$search}%")
-                        ->orWhere('nis', 'like', "%{$search}%")
-                        ->orWhere('kelas', 'like', "%{$search}%")
-                        ->orWhere('jurusan', 'like', "%{$search}%")
-                        ->orWhereHas('sekolah', fn (Builder $sekolahQuery) => $sekolahQuery->where('nama', 'like', "%{$search}%"));
+                    $searchQuery->where('nama', 'like', SearchHelper::containsLike($search))
+                        ->orWhere('nisn', 'like', SearchHelper::containsLike($search))
+                        ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                        ->orWhere('kelas', 'like', SearchHelper::containsLike($search))
+                        ->orWhere('jurusan', 'like', SearchHelper::containsLike($search))
+                        ->orWhereHas('sekolah', fn (Builder $sekolahQuery) => $sekolahQuery->where('nama', 'like', SearchHelper::containsLike($search)));
                 });
             });
     }

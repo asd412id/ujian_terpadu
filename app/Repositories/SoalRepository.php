@@ -7,6 +7,7 @@ use App\Models\OpsiJawaban;
 use App\Models\PasanganSoal;
 use App\Models\ImportJob;
 use Illuminate\Database\Eloquent\Builder;
+use App\Support\SearchHelper;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -33,7 +34,7 @@ class SoalRepository
             ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
             ->when($tipe, fn ($q) => $q->where('tipe_soal', $tipe))
             ->when($kesulitan, fn ($q) => $q->where('tingkat_kesulitan', $kesulitan))
-            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', SearchHelper::containsLike($search)))
             ->when($createdBy, fn ($q) => $q->where('created_by', $createdBy))
             ->when($isVerified !== null, fn ($q) => $q->where('is_verified', $isVerified))
             ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
@@ -71,7 +72,7 @@ class SoalRepository
             ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
             ->when($tipe, fn ($q) => $q->where('tipe_soal', $tipe))
             ->when($kesulitan, fn ($q) => $q->where('tingkat_kesulitan', $kesulitan))
-            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', SearchHelper::containsLike($search)))
             ->orderByRaw('COALESCE(nomor_urut_import, 999999) ASC')
             ->latest()
             ->paginate($perPage)
@@ -191,7 +192,7 @@ class SoalRepository
             ->where('is_active', true);
 
         if (!empty($filters['search'])) {
-            $query->where('pertanyaan', 'like', '%' . $filters['search'] . '%');
+            $query->where('pertanyaan', 'like', '%' . SearchHelper::escapeLike($filters['search']) . '%');
         }
         if (!empty($filters['jenis'])) {
             $query->where('tipe_soal', $filters['jenis']);
@@ -254,7 +255,7 @@ class SoalRepository
         return $this->model->onlyTrashed()
             ->when($createdBy, fn ($q) => $q->where('created_by', $createdBy))
             ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
-            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"));
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', SearchHelper::containsLike($search)));
     }
 
     /**

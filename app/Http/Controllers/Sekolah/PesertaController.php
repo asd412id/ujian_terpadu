@@ -118,6 +118,7 @@ class PesertaController extends Controller
     {
         /** @var \App\Models\User $user */
         $user   = Auth::user();
+        abort_unless($user->sekolah_id, 403);
         $jumlah = $this->pesertaService->deleteAllBySekolah($user->sekolah_id);
 
         return redirect()->route('sekolah.peserta.index')

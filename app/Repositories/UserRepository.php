@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\User;
+use App\Support\SearchHelper;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -32,8 +33,8 @@ class UserRepository
             ->with('sekolah')
             ->when($role, fn ($q) => $q->where('role', $role))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
-                $sub->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                $sub->where('name', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('email', 'like', SearchHelper::containsLike($search));
             }))
             ->when($isActive !== null, fn ($q) => $q->where('is_active', $isActive))
             ->orderBy('role')

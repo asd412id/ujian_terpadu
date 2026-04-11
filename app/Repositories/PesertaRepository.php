@@ -7,7 +7,9 @@ use App\Models\ImportJob;
 use App\Models\SesiPeserta;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Support\SearchHelper;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\DB;
 
 class PesertaRepository
 {
@@ -38,9 +40,9 @@ class PesertaRepository
             ->with('sekolah')
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%")
-                  ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                  ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                  ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }))
             ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
             ->orderBy('nama')
@@ -61,9 +63,9 @@ class PesertaRepository
         return $this->model
             ->where('sekolah_id', $sekolahId)
             ->when($search, fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
+                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
             }))
             ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
             ->when($jurusan, fn ($q) => $q->where('jurusan', $jurusan))
@@ -175,23 +177,25 @@ class PesertaRepository
      */
     public function deleteAllBySekolah(?string $sekolahId = null): int
     {
-        if ($sekolahId) {
-            $pesertaIds = $this->model->where('sekolah_id', $sekolahId)->pluck('id');
+        return DB::transaction(function () use ($sekolahId) {
+            if ($sekolahId) {
+                $pesertaIds = $this->model->where('sekolah_id', $sekolahId)->pluck('id');
+                $jumlah = $pesertaIds->count();
+                SesiPeserta::whereIn('peserta_id', $pesertaIds)
+                    ->whereNotIn('status', ['login', 'mengerjakan'])
+                    ->delete();
+                $this->model->where('sekolah_id', $sekolahId)->delete();
+                return $jumlah;
+            }
+
+            $pesertaIds = $this->model->pluck('id');
             $jumlah = $pesertaIds->count();
             SesiPeserta::whereIn('peserta_id', $pesertaIds)
                 ->whereNotIn('status', ['login', 'mengerjakan'])
                 ->delete();
-            $this->model->where('sekolah_id', $sekolahId)->delete();
+            $this->model->newQuery()->delete();
             return $jumlah;
-        }
-
-        $pesertaIds = $this->model->pluck('id');
-        $jumlah = $pesertaIds->count();
-        SesiPeserta::whereIn('peserta_id', $pesertaIds)
-            ->whereNotIn('status', ['login', 'mengerjakan'])
-            ->delete();
-        $this->model->newQuery()->delete();
-        return $jumlah;
+        });
     }
 
     /**
@@ -208,8 +212,8 @@ class PesertaRepository
         if (!empty($filters['q'])) {
             $search = $filters['q'];
             $query->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%");
+                $q->where('nama', 'like', SearchHelper::containsLike($search))
+                  ->orWhere('nis', 'like', SearchHelper::containsLike($search));
             });
         }
 

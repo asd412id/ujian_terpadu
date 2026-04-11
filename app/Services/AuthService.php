@@ -66,7 +66,7 @@ class AuthService
         // Find peserta by NIS, NISN, or username_ujian
         $peserta = $this->repository->findPesertaByCredentials($username);
 
-        if (!$peserta || !Hash::check($password, $peserta->password_ujian)) {
+        if (!$peserta || !$peserta->password_ujian || !Hash::check($password, $peserta->password_ujian)) {
             throw ValidationException::withMessages([
                 'username' => 'NIS/NISN/Username atau password tidak valid.',
             ]);

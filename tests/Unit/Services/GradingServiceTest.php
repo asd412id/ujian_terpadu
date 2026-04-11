@@ -8,6 +8,7 @@ use Mockery\MockInterface;
 use App\Services\GradingService;
 use App\Services\PenilaianService;
 use App\Repositories\GradingRepository;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
 class GradingServiceTest extends TestCase
@@ -55,7 +56,7 @@ class GradingServiceTest extends TestCase
     public function test_get_essay_jawaban_delegates_to_repository(): void
     {
         $sesiId = 'sesi-1';
-        $expected = collect(['jawaban1', 'jawaban2']);
+        $expected = new Collection(['jawaban1', 'jawaban2']);
 
         $this->repository
             ->shouldReceive('getEssayBySesi')
@@ -75,7 +76,7 @@ class GradingServiceTest extends TestCase
             ->shouldReceive('getEssayBySesi')
             ->once()
             ->with($sesiId)
-            ->andReturn(collect([]));
+            ->andReturn(new Collection([]));
 
         $result = $this->service->getEssayJawaban($sesiId);
         $this->assertCount(0, $result);
@@ -85,24 +86,32 @@ class GradingServiceTest extends TestCase
 
     public function test_grade_jawaban_throws_when_score_above_100(): void
     {
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
         $this->expectException(ValidationException::class);
         $this->service->gradeJawaban('jawaban-1', 150);
     }
 
     public function test_grade_jawaban_throws_when_score_below_0(): void
     {
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
         $this->expectException(ValidationException::class);
         $this->service->gradeJawaban('jawaban-1', -5);
     }
 
     public function test_grade_jawaban_throws_when_score_is_101(): void
     {
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
         $this->expectException(ValidationException::class);
         $this->service->gradeJawaban('jawaban-1', 101);
     }
 
     public function test_grade_jawaban_throws_with_correct_message_for_invalid_score(): void
     {
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
         try {
             $this->service->gradeJawaban('jawaban-1', 150);
             $this->fail('Expected ValidationException was not thrown');
@@ -114,38 +123,45 @@ class GradingServiceTest extends TestCase
 
     public function test_grade_jawaban_does_not_throw_for_score_0(): void
     {
-        // Score 0 is valid — should NOT throw ValidationException.
-        // Will fail on JawabanPeserta::findOrFail (DB not available), not on validation.
-        try {
-            $this->service->gradeJawaban('jawaban-1', 0);
-        } catch (ValidationException $e) {
-            $this->fail('Should not throw ValidationException for score 0');
-        } catch (\Exception $e) {
-            // Expected: model not found or DB error — that's OK
-            $this->assertNotInstanceOf(ValidationException::class, $e);
-        }
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
+        $this->repository->shouldReceive('updateNilai')->once();
+        $jawaban->shouldReceive('getAttribute')->with('sesiPeserta')->andReturn(null);
+        $jawaban->shouldReceive('fresh')->andReturn($jawaban);
+        // Should NOT throw ValidationException
+        $this->service->gradeJawaban('jawaban-1', 0);
+        $this->assertTrue(true);
     }
 
     public function test_grade_jawaban_does_not_throw_for_score_100(): void
     {
-        try {
-            $this->service->gradeJawaban('jawaban-1', 100);
-        } catch (ValidationException $e) {
-            $this->fail('Should not throw ValidationException for score 100');
-        } catch (\Exception $e) {
-            $this->assertNotInstanceOf(ValidationException::class, $e);
-        }
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
+        $this->repository->shouldReceive('updateNilai')->once();
+        $jawaban->shouldReceive('getAttribute')->with('sesiPeserta')->andReturn(null);
+        $jawaban->shouldReceive('fresh')->andReturn($jawaban);
+        $this->service->gradeJawaban('jawaban-1', 100);
+        $this->assertTrue(true);
     }
 
     public function test_grade_jawaban_does_not_throw_for_score_50_5(): void
     {
-        try {
-            $this->service->gradeJawaban('jawaban-1', 50.5);
-        } catch (ValidationException $e) {
-            $this->fail('Should not throw ValidationException for score 50.5');
-        } catch (\Exception $e) {
-            $this->assertNotInstanceOf(ValidationException::class, $e);
-        }
+        $jawaban = $this->mockJawabanWithBobot(100);
+        $this->repository->shouldReceive('findJawabanOrFail')->with('jawaban-1')->andReturn($jawaban);
+        $this->repository->shouldReceive('updateNilai')->once();
+        $jawaban->shouldReceive('getAttribute')->with('sesiPeserta')->andReturn(null);
+        $jawaban->shouldReceive('fresh')->andReturn($jawaban);
+        $this->service->gradeJawaban('jawaban-1', 50.5);
+        $this->assertTrue(true);
+    }
+
+    private function mockJawabanWithBobot(int $bobot): MockInterface
+    {
+        $soal = (object) ['bobot' => $bobot];
+        $jawaban = Mockery::mock(\App\Models\JawabanPeserta::class)->makePartial();
+        $jawaban->shouldReceive('load')->with('soal')->andReturnSelf();
+        $jawaban->shouldReceive('getAttribute')->with('soal')->andReturn($soal);
+        return $jawaban;
     }
 
     // ── getGradingStats ────────────────────────────────────────

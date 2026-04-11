@@ -7,6 +7,7 @@ use App\Models\Soal;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Support\SearchHelper;
 
 class SoalAssignmentService
 {
@@ -140,7 +141,7 @@ class SoalAssignmentService
         int $perPage = 20
     ): mixed {
         return Soal::with(['kategori', 'pembuat'])
-            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where('pertanyaan', 'like', SearchHelper::containsLike($search)))
             ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
             ->where('is_active', true)
             ->latest()
