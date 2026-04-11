@@ -49,13 +49,4 @@ class AuthRepository
         return $user->update(['last_login_at' => now()]);
     }
 
-    /**
-     * Find peserta by API token.
-     */
-    public function findPesertaByApiToken(string $token): ?Peserta
-    {
-        return Peserta::where('api_token', $token)
-            ->where('is_active', true)
-            ->first();
-    }
 }

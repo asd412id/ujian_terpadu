@@ -214,7 +214,7 @@ class LaporanService
         $topBenarBySoal = $this->repository->getBenarCountsBySoal($topIds);
         $bottomBenarBySoal = $this->repository->getBenarCountsBySoal($bottomIds);
 
-        $pgSoalIds = $paket->soal->whereIn('tipe_soal', ['pilihan_ganda', 'pilihan_ganda_kompleks'])->pluck('id');
+        $pgSoalIds = $paket->soal->whereIn('tipe_soal', ['pg', 'pg_kompleks'])->pluck('id');
         $distractorCounts = $this->repository->getDistractorCounts($sesiPesertaIds, $pgSoalIds);
 
         $analisis = [];
@@ -255,7 +255,7 @@ class LaporanService
             $discrimination = $topCount > 0 ? round(($topBenar - $bottomBenar) / $topCount, 3) : 0;
 
             $distractors = [];
-            if (in_array($soal->tipe_soal, ['pilihan_ganda', 'pilihan_ganda_kompleks'])) {
+            if (in_array($soal->tipe_soal, ['pg', 'pg_kompleks'])) {
                 $soalDistractors = $distractorCounts[$soal->id] ?? [];
                 foreach ($soal->opsiJawaban as $opsi) {
                     $chosen = $soalDistractors[$opsi->label] ?? 0;

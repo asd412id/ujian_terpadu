@@ -58,9 +58,15 @@ class JawabanController extends Controller
     /**
      * Cek status ujian dan waktu tersisa (server-authoritative)
      */
-    public function status(string $token): JsonResponse
+    public function status(Request $request, string $token): JsonResponse
     {
         abort_unless(strlen($token) === 64 && ctype_alnum($token), 404);
+
+        // Verify the requesting client owns this token (prevent IDOR)
+        $authenticatedSp = $request->attributes->get('sesiPeserta');
+        if ($authenticatedSp && $authenticatedSp->token_ujian !== $token) {
+            abort(403, 'Token mismatch.');
+        }
 
         $result = $this->jawabanService->getStatusByToken($token);
 

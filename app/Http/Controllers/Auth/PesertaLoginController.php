@@ -36,8 +36,14 @@ class PesertaLoginController extends Controller
         try {
             $request->session()->regenerate();
         } catch (\Throwable $e) {
+            // Session regeneration failed — force full invalidation to prevent session fixation
+            \Illuminate\Support\Facades\Auth::guard('peserta')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
+            report($e);
+            return redirect()->route('ujian.login')
+                ->with('error', 'Terjadi kesalahan sesi. Silakan login ulang.');
         }
         $request->session()->put('device_token', $result['device_token']);
 

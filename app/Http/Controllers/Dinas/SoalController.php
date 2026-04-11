@@ -278,9 +278,10 @@ class SoalController extends Controller
             $query->where('kategori_id', $request->kategori);
         }
 
-        $soalList = $query->limit(500)->get();
+        $soalList = $query->paginate(50)->withQueryString();
+        $startNumber = ($soalList->currentPage() - 1) * $soalList->perPage();
 
-        return view('dinas.soal.preview-all', compact('soalList', 'kategori', 'soalCounts'));
+        return view('dinas.soal.preview-all', compact('soalList', 'kategori', 'soalCounts', 'startNumber'));
     }
 
     public function showImport()

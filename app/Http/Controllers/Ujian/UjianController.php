@@ -131,10 +131,18 @@ class UjianController extends Controller
         // If form fallback includes answers, sync them first via JawabanService
         if ($request->filled('answers_json')) {
             try {
-                $answers = json_decode($request->input('answers_json'), true);
-                if (is_array($answers) && count($answers) > 0) {
-                    $this->jawabanService
-                        ->syncOfflineAnswers($sesiPeserta->token_ujian, $answers, [], true);
+                $raw = $request->input('answers_json');
+                // Guard: answers_json must be valid JSON string with reasonable size
+                if (!is_string($raw) || strlen($raw) > 524288) {
+                    Log::warning('answers_json rejected: invalid type or too large', [
+                        'sesi_peserta' => $sesiPeserta->id,
+                    ]);
+                } else {
+                    $answers = json_decode($raw, true);
+                    if (is_array($answers) && count($answers) > 0 && count($answers) <= 200) {
+                        $this->jawabanService
+                            ->syncOfflineAnswers($sesiPeserta->token_ujian, $answers, [], true);
+                    }
                 }
             } catch (\Exception $e) {
                 Log::warning('Final sync failed during submit', [

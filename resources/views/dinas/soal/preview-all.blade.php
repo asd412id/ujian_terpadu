@@ -20,7 +20,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
             <h1 class="text-xl font-bold text-gray-900">Preview Semua Soal</h1>
-            <p class="text-sm text-gray-500 mt-1">{{ $soalList->count() }} soal ditampilkan</p>
+            <p class="text-sm text-gray-500 mt-1">{{ $soalList->total() }} soal total &middot; Halaman {{ $soalList->currentPage() }} dari {{ $soalList->lastPage() }}</p>
         </div>
         <div class="flex items-center gap-2">
             @if(request('kategori') && $soalList->count() > 0)
@@ -60,6 +60,11 @@
         @endif
     </form>
 
+    {{-- Pagination Top --}}
+    @if($soalList->hasPages())
+    <div>{{ $soalList->links('components.pagination') }}</div>
+    @endif
+
     {{-- Navigasi Soal (floating) --}}
     <button @click="showNav = !showNav"
             class="fixed bottom-6 right-6 z-40 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors print:hidden"
@@ -75,10 +80,10 @@
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Navigasi Soal</h3>
         <div class="space-y-1">
             @foreach($soalList as $idx => $s)
-            <a href="#soal-{{ $idx + 1 }}"
+            <a href="#soal-{{ $startNumber + $idx + 1 }}"
                @click="showNav = false"
                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-blue-50 transition-colors group">
-                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-700 flex items-center justify-center font-bold text-xs">{{ $idx + 1 }}</span>
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-700 flex items-center justify-center font-bold text-xs">{{ $startNumber + $idx + 1 }}</span>
                 <span class="truncate text-gray-700">{{ \App\Support\HtmlDisplay::plainText($s->pertanyaan) }}</span>
             </a>
             @endforeach
@@ -87,12 +92,12 @@
 
     {{-- Soal List --}}
     @forelse($soalList as $idx => $soal)
-    <div id="soal-{{ $idx + 1 }}" class="scroll-mt-20 mb-5">
+    <div id="soal-{{ $startNumber + $idx + 1 }}" class="scroll-mt-20 mb-5">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {{-- Soal Header --}}
             <div class="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
                 <div class="flex items-center gap-3">
-                    <span class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">{{ $idx + 1 }}</span>
+                    <span class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">{{ $startNumber + $idx + 1 }}</span>
                     <div class="flex items-center gap-2 flex-wrap">
                         @php
                             $tipeLabel = [
@@ -236,6 +241,11 @@
         <x-empty-state icon="document" title="Tidak ada soal ditemukan" subtitle="Coba ubah filter pencarian Anda." />
     </div>
     @endforelse
+
+    {{-- Pagination Bottom --}}
+    @if($soalList->hasPages())
+    <div>{{ $soalList->links('components.pagination') }}</div>
+    @endif
 
     {{-- Back to top --}}
     @if($soalList->count() > 5)

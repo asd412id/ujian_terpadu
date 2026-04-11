@@ -90,22 +90,4 @@ class AuthService
     {
         Auth::guard($guard)->logout();
     }
-
-    /**
-     * Validate a peserta token for API authentication.
-     *
-     * @throws ValidationException
-     */
-    public function validatePesertaToken(string $token): mixed
-    {
-        $peserta = $this->repository->findPesertaByApiToken($token);
-
-        if (!$peserta) {
-            throw ValidationException::withMessages([
-                'token' => 'Token tidak valid atau akun tidak aktif.',
-            ]);
-        }
-
-        return $peserta;
-    }
 }

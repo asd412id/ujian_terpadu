@@ -258,16 +258,4 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('void', $returnType->getName());
     }
 
-    // ── validatePesertaToken ───────────────────────────────────
-    // Uses Peserta model directly.
-
-    public function test_validate_peserta_token_signature(): void
-    {
-        $reflection = new \ReflectionMethod($this->service, 'validatePesertaToken');
-        $params = $reflection->getParameters();
-
-        $this->assertCount(1, $params);
-        $this->assertEquals('token', $params[0]->getName());
-        $this->assertEquals('string', $params[0]->getType()->getName());
-    }
 }

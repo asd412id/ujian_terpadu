@@ -34,13 +34,16 @@ class Peserta extends Authenticatable
         // (DB cascadeOnDelete won't fire on soft-delete since row stays in table)
         static::deleting(function (Peserta $peserta) {
             // Only clean up sesi_peserta that are NOT in active exam status
-            $peserta->sesiPeserta()
+            $cleanupIds = $peserta->sesiPeserta()
                 ->whereNotIn('status', ['login', 'mengerjakan'])
-                ->each(function ($sp) {
-                    $sp->jawaban()->delete();
-                    $sp->logAktivitas()->delete();
-                    $sp->delete();
-                });
+                ->pluck('id');
+
+            if ($cleanupIds->isEmpty()) return;
+
+            // Bulk delete related records using subquery (no N+1)
+            \App\Models\JawabanPeserta::whereIn('sesi_peserta_id', $cleanupIds)->delete();
+            \App\Models\LogAktivitasUjian::whereIn('sesi_peserta_id', $cleanupIds)->delete();
+            \App\Models\SesiPeserta::whereIn('id', $cleanupIds)->delete();
         });
     }
 
@@ -70,10 +73,16 @@ class Peserta extends Authenticatable
             $base = strtoupper(Str::random(8));
         }
 
-        // Pastikan unik — tambah suffix jika perlu
+        // Pastikan unik — tambah suffix jika perlu (max 100 attempts)
         $username = $base;
         $counter  = 1;
+        $maxAttempts = 100;
         while (static::where('username_ujian', $username)->exists()) {
+            if ($counter >= $maxAttempts) {
+                // Fallback to random suffix to guarantee termination
+                $username = $base . strtoupper(Str::random(6));
+                break;
+            }
             $username = $base . $counter;
             $counter++;
         }

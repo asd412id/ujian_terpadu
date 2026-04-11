@@ -6,6 +6,7 @@ use App\Models\SesiPeserta;
 use App\Services\PenilaianService;
 use App\Services\RedisExamService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -13,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class HitungNilaiJob implements ShouldQueue
+class HitungNilaiJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -21,11 +22,20 @@ class HitungNilaiJob implements ShouldQueue
 
     public int $backoff = 5;
 
+    /** Unique lock held for max 30 seconds — prevents duplicate scoring */
+    public int $uniqueFor = 30;
+
     public function __construct(
         protected string $sesiPesertaId,
         protected string $reason = 'submit',
     ) {
         $this->onQueue('default');
+    }
+
+    /** Scope uniqueness to the specific sesi_peserta being scored */
+    public function uniqueId(): string
+    {
+        return $this->sesiPesertaId;
     }
 
     public function handle(PenilaianService $penilaianService, RedisExamService $redisExam): void
