@@ -41,14 +41,17 @@ function ujianApp() {
         _saveSequence:   0,
         _onlineSyncTimer: null,
 
-        // Timer
+        // Timer (monotonic, server-authoritative)
         sisaWaktu:       0,
         durasiDetik:     0,
         mulaiAtTimestamp: null,
         waktuSelesaiSesi: null,
         timerInterval:   null,
         serverTimestamp: null,
-        _timerDeadlineAt: null,
+        _perfAnchor:     null,           // performance.now() at last server sync
+        _perfAnchorWallMs: null,         // Date.now() at last server sync (sleep detection)
+        _serverRemainAtAnchor: 0,        // remaining seconds at last server sync
+        _serverTimeOffsetMs: 0,          // server time - client time in ms
         showDurasiToast: false,
         durasiToastMsg:  '',
 
@@ -116,8 +119,8 @@ function ujianApp() {
                 }
             }
 
-            // Sync timer dengan server
-            this.startTimer(cfg.mulaiAt, cfg.durasiMenit);
+            // Sync timer dengan server (monotonic, server-authoritative)
+            this.startTimer();
 
             // Auto-save interval
             setInterval(() => this.autoSync(), cfg.autoSaveInterval * 1000);
@@ -156,15 +159,30 @@ function ujianApp() {
         // ===== SESI STATUS POLLING =====
         _statusCheckInterval: null,
         _forceSubmitted: false,
+        _statusCheckInFlight: false,
 
         startStatusPolling() {
             const cfg = window.UJIAN_CONFIG;
             if (!cfg.statusUrl) return;
 
-            this._statusCheckInterval = setInterval(() => this.checkSesiStatus(), 30000);
+            // Adaptive polling: 10s in last 5 minutes, 15s otherwise
+            const pollMs = () => this.sisaWaktu <= 300 ? 10000 : 15000;
+            const scheduleNext = () => {
+                if (this._forceSubmitted || this.sisaWaktu <= 0) return;
+                this._statusCheckInterval = setTimeout(() => {
+                    this.checkSesiStatus().finally(() => scheduleNext());
+                }, pollMs());
+            };
+            scheduleNext();
         },
 
         async checkSesiStatus() {
+            if (this._forceSubmitted || this.isSubmitting || this._statusCheckInFlight) return;
+            this._statusCheckInFlight = true;
+            try { return await this._doCheckSesiStatus(); } finally { this._statusCheckInFlight = false; }
+        },
+
+        async _doCheckSesiStatus() {
             if (this._forceSubmitted || this.isSubmitting) return;
 
             const cfg = window.UJIAN_CONFIG;
@@ -185,7 +203,7 @@ function ujianApp() {
                 if (data.sesi_status && data.sesi_status !== 'berlangsung') {
                     dbg('[StatusPoll] Sesi status:', data.sesi_status, '- force submitting...');
                     this._forceSubmitted = true;
-                    clearInterval(this._statusCheckInterval);
+                    clearTimeout(this._statusCheckInterval);
                     await this.doSubmit();
                     return;
                 }
@@ -194,18 +212,15 @@ function ujianApp() {
                 if (data.status && ['submit', 'dinilai'].includes(data.status)) {
                     dbg('[StatusPoll] Peserta status:', data.status, '- redirecting...');
                     this._forceSubmitted = true;
-                    clearInterval(this._statusCheckInterval);
+                    clearTimeout(this._statusCheckInterval);
                     this.markIntentionalFullscreenExit();
                     window.location.href = '/ujian/' + cfg.sesiPesertaId + '/selesai';
                     return;
                 }
 
-                // Sync remaining time from server (drift correction)
+                // Always re-anchor timer from server (monotonic sync)
                 if (data.remaining_seconds !== undefined && data.remaining_seconds >= 0) {
-                    const drift = Math.abs(this.sisaWaktu - data.remaining_seconds);
-                    if (drift > 1) {
-                        this.syncTimerFromServer(data.remaining_seconds, data.server_timestamp ?? null);
-                    }
+                    this.syncTimerFromServer(data.remaining_seconds, data.server_timestamp ?? null);
                 }
 
                 // Sync sesi waktu_selesai from server (may be set/changed by admin mid-exam)
@@ -252,7 +267,7 @@ function ujianApp() {
                     if (this.violationCount >= this.maxViolations && !this._forceSubmitted) {
                         dbg('[StatusPoll] Server violation count exceeded, force submitting...');
                         this._forceSubmitted = true;
-                        clearInterval(this._statusCheckInterval);
+                        clearTimeout(this._statusCheckInterval);
                         this.violationMessage = 'Anda telah melakukan pelanggaran sebanyak ' + this.maxViolations + ' kali. Ujian akan otomatis dikumpulkan.';
                         this.showViolationOverlay = true;
                         setTimeout(() => {
@@ -734,26 +749,63 @@ function ujianApp() {
             }
         },
 
-        // ===== TIMER (SERVER-AUTHORITATIVE) =====
+        // ===== TIMER (MONOTONIC, SERVER-AUTHORITATIVE) =====
+        // Uses performance.now() between syncs so device clock changes cannot
+        // add/remove exam time. Server remaining_seconds is the single source
+        // of truth, re-anchored on every poll.
         syncTimerFromServer(remainingSeconds, serverTimestamp = null) {
             const safeRemaining = Math.max(0, Number(remainingSeconds) || 0);
-            this.serverTimestamp = serverTimestamp ?? this.serverTimestamp;
+            if (serverTimestamp) {
+                this.serverTimestamp = serverTimestamp;
+                this._serverTimeOffsetMs = (serverTimestamp * 1000) - Date.now();
+            }
+            this._perfAnchor = performance.now();
+            this._perfAnchorWallMs = Date.now();
+            this._serverRemainAtAnchor = safeRemaining;
             this.sisaWaktu = safeRemaining;
-            this._timerDeadlineAt = Date.now() + (safeRemaining * 1000);
         },
 
-        startTimer(mulaiAtTimestamp, durasiMenit) {
+        // Server-adjusted wall clock (ms) — immune to local clock changes
+        _getServerNowMs() {
+            return Date.now() + this._serverTimeOffsetMs;
+        },
+
+        startTimer() {
             this.syncTimerFromServer(this.sisaWaktu, this.serverTimestamp);
 
             const tick = () => {
-                if (this._timerDeadlineAt === null) {
+                if (this._perfAnchor === null) {
                     this.syncTimerFromServer(this.sisaWaktu, this.serverTimestamp);
                 }
 
-                this.sisaWaktu = Math.max(0, Math.ceil((this._timerDeadlineAt - Date.now()) / 1000));
+                // Elapsed since last server sync using monotonic clock
+                let elapsedSec = (performance.now() - this._perfAnchor) / 1000;
+
+                // Sleep detection: if wall clock drifted >2s beyond monotonic,
+                // device likely slept — use wall-clock elapsed as fallback
+                if (this._perfAnchorWallMs !== null) {
+                    const wallElapsedMs = Date.now() - this._perfAnchorWallMs;
+                    const monoElapsedMs = performance.now() - this._perfAnchor;
+                    if ((wallElapsedMs - monoElapsedMs) > 2000) {
+                        elapsedSec = wallElapsedMs / 1000;
+                    }
+                }
+
+                let remaining = Math.max(0, Math.ceil(this._serverRemainAtAnchor - elapsedSec));
+
+                // Also cap by sesi end time (waktuSelesaiSesi) using monotonic anchor
+                if (this.waktuSelesaiSesi) {
+                    const anchorServerSec = (this._perfAnchorWallMs + this._serverTimeOffsetMs) / 1000;
+                    const serverNowSec = anchorServerSec + elapsedSec;
+                    const sisaBySesi = Math.max(0, Math.ceil(this.waktuSelesaiSesi - serverNowSec));
+                    remaining = Math.min(remaining, sisaBySesi);
+                }
+
+                this.sisaWaktu = remaining;
 
                 if (this.sisaWaktu <= 0) {
                     clearInterval(this.timerInterval);
+                    this.timerInterval = null;
                     this.autoSubmit();
                 }
             };
@@ -1461,6 +1513,11 @@ function ujianApp() {
 
         // ===== ANTI-CHEAT: LOGGING =====
         onVisibilityChange() {
+            // Re-sync timer immediately when page becomes visible (handles sleep/suspend)
+            if (!document.hidden) {
+                this.checkSesiStatus();
+            }
+
             if (this.antiCurangDisabled) return;
             if (document.hidden) {
                 // Suppress false positive during orientation change on mobile
