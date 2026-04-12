@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Repositories\JawabanRepository;
 use App\Traits\ParsesJawaban;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -381,7 +382,7 @@ class RedisExamService
                 'jawaban_pasangan'=> isset($row['jawaban_pasangan']) ? json_encode($row['jawaban_pasangan']) : null,
                 'is_terjawab'     => $row['is_terjawab'] ?? false,
                 'idempotency_key' => $row['idempotency_key'] ?? null,
-                'waktu_jawab'     => $row['waktu_jawab'] ?? $now,
+                'waktu_jawab'     => isset($row['waktu_jawab']) ? Carbon::parse($row['waktu_jawab']) : $now,
                 'updated_at'      => $now,
             ];
         }
