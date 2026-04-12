@@ -163,6 +163,8 @@ class SesiUjianService
             if ($sp->sesi_id) {
                 Cache::forget("sesi_live_{$sp->sesi_id}");
             }
+            Cache::forget("lobby_available:{$sp->peserta_id}");
+            Cache::forget("lobby_history:{$sp->peserta_id}");
 
             // 6. Log aktivitas reset
             $this->repository->logAktivitas([

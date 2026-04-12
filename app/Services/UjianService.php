@@ -56,7 +56,8 @@ class UjianService
 
         // Set status mengerjakan + catat waktu mulai (use lock to prevent race condition)
         if ($wasFreshStart) {
-            // Safety cleanup: remove stale Redis buffers from other sesi milik peserta ini
+            // Safety cleanup: remove stale Redis buffers for this session and other sessions of the same peserta
+            $this->redisExam->cleanupSession($sesiPeserta->id);
             $this->redisExam->cleanupByPeserta($pesertaId, $sesiPeserta->id);
 
             $this->sesiUjianRepository->startSesiPesertaWithLock($sesiPeserta->id, [

@@ -70,6 +70,18 @@ class UjianControllerTest extends TestCase
         $response->assertDontSee('ujian-skip-init-fullscreen');
     }
 
+    public function test_konfirmasi_allows_terdaftar_status_to_start_exam(): void
+    {
+        $setup = $this->createUjianSetup();
+        $setup['sp']->update(['status' => 'terdaftar']);
+
+        $response = $this->actingAs($setup['peserta'], 'peserta')
+            ->get(route('ujian.konfirmasi', $setup['sp']));
+
+        $response->assertOk();
+        $response->assertViewIs('ujian.konfirmasi');
+    }
+
     public function test_mengerjakan_starts_ujian_and_sets_status(): void
     {
         $setup = $this->createUjianSetup();
@@ -87,6 +99,23 @@ class UjianControllerTest extends TestCase
         $this->assertEquals('mengerjakan', $setup['sp']->status);
         $this->assertNotNull($setup['sp']->mulai_at);
         $this->assertNotNull($setup['sp']->token_ujian);
+    }
+
+    public function test_mengerjakan_allows_terdaftar_status_and_generates_token(): void
+    {
+        $setup = $this->createUjianSetup();
+        $setup['sp']->update(['status' => 'terdaftar', 'token_ujian' => null, 'mulai_at' => null]);
+
+        $response = $this->actingAs($setup['peserta'], 'peserta')
+            ->get(route('ujian.mengerjakan', $setup['sp']));
+
+        $response->assertOk();
+        $response->assertViewIs('ujian.soal');
+
+        $setup['sp']->refresh();
+        $this->assertEquals('mengerjakan', $setup['sp']->status);
+        $this->assertNotNull($setup['sp']->token_ujian);
+        $this->assertNotNull($setup['sp']->mulai_at);
     }
 
     public function test_submitted_konfirmasi_redirects_to_selesai(): void
