@@ -369,7 +369,7 @@ class RedisExamService
 
         // Convert answers hash to upsert rows
         $upsertRows = [];
-        $now = now();
+        $now = now()->format('Y-m-d H:i:s');
         foreach ($answersRaw as $soalId => $json) {
             $row = json_decode($json, true);
             if (!$row) continue;
@@ -382,7 +382,7 @@ class RedisExamService
                 'jawaban_pasangan'=> isset($row['jawaban_pasangan']) ? json_encode($row['jawaban_pasangan']) : null,
                 'is_terjawab'     => $row['is_terjawab'] ?? false,
                 'idempotency_key' => $row['idempotency_key'] ?? null,
-                'waktu_jawab'     => isset($row['waktu_jawab']) ? Carbon::parse($row['waktu_jawab']) : $now,
+                'waktu_jawab'     => isset($row['waktu_jawab']) ? Carbon::parse($row['waktu_jawab'])->format('Y-m-d H:i:s') : $now,
                 'updated_at'      => $now,
             ];
         }
