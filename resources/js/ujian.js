@@ -1078,7 +1078,7 @@ function ujianApp() {
                 await db.exam_state.put({
                     sesiPesertaId: cfg.sesiPesertaId,
                     currentIndex:  this.currentIndex,
-                    tandaiList:    this.tandaiList,
+                    tandaiList:    [...this.tandaiList],
                     sesiToken:     cfg.sesiToken,
                     lastSyncAt:    Date.now(),
                 });
@@ -1187,7 +1187,7 @@ function ujianApp() {
                         sesi_token: cfg.sesiToken,
                         answers,
                         soal_ditandai: this.tandaiList.length,
-                        tandai_list: this.tandaiList,
+                        tandai_list: [...this.tandaiList],
                     }),
                 });
 
@@ -1494,9 +1494,9 @@ function ujianApp() {
                 await db.exam_state.put({
                     sesiPesertaId:  cfg.sesiPesertaId,
                     currentIndex:   this.currentIndex,
-                    tandaiList:     this.tandaiList,
+                    tandaiList:     [...this.tandaiList],
                     pendingSubmit:  true,
-                    pendingSubmitPayload: Array.isArray(answersSnapshot) ? answersSnapshot : [],
+                    pendingSubmitPayload: Array.isArray(answersSnapshot) ? [...answersSnapshot] : [],
                     pendingSubmitCount: answersSnapshot.length,
                     pendingSubmitQueuedAt: Date.now(),
                     sesiToken:      cfg.sesiToken,

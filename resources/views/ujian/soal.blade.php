@@ -25,7 +25,7 @@
             }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" integrity="sha384-Wuix6BuhrWbjDBs24bXrMhDj2GFOS/qma0Jn5OblMjZOBbsLxVNKiFJ7MfLhbZ1t" crossorigin="anonymous" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async defer></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
