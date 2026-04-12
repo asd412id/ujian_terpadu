@@ -9,6 +9,11 @@ touch /app/storage/logs/laravel.log
 
 # --- Run migrations (only if RUN_MIGRATIONS=true, prevents race condition in replicas) ---
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+    # Acquire advisory lock to prevent concurrent migrations from multiple containers
+    LOCK_FILE="/app/storage/.migration_lock"
+    exec 200>"$LOCK_FILE"
+    if flock -n 200; then
+        echo "[entrypoint] Acquired migration lock."
     # --- Generate APP_KEY if empty (only migrator writes .env to avoid race) ---
     if ! grep -q '^APP_KEY=base64:' /app/.env 2>/dev/null; then
         echo "[entrypoint] Generating APP_KEY..."
@@ -54,6 +59,15 @@ if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     echo "[entrypoint] Caching config & routes..."
     php artisan config:cache --no-interaction
     php artisan route:cache --no-interaction
+
+        flock -u 200
+        echo "[entrypoint] Released migration lock."
+    else
+        echo "[entrypoint] Another container is running migrations, waiting..."
+        flock 200
+        echo "[entrypoint] Migration lock released by other container, continuing."
+        flock -u 200
+    fi
 else
     echo "[entrypoint] Skipping migrations (RUN_MIGRATIONS=${RUN_MIGRATIONS:-false})"
     # Wait for database to be reachable (migrations running in app-migrator container)

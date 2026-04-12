@@ -9,11 +9,11 @@ use Illuminate\Encryption\Encrypter;
 class ReencryptPasswords extends Command
 {
     protected $signature = 'peserta:reencrypt-passwords
-                            {old_key : The old APP_KEY (base64:... format) used to encrypt existing password_plain values}
+                            {old_key : The old APP_KEY (base64:... format) used to encrypt existing password_encrypted values}
                             {--chunk=500 : Number of records to process per batch}
                             {--dry-run : Preview without making changes}';
 
-    protected $description = 'Re-encrypt all peserta password_plain values from an old APP_KEY to the current APP_KEY';
+    protected $description = 'Re-encrypt all peserta password_encrypted values from an old APP_KEY to the current APP_KEY';
 
     public function handle(): int
     {
@@ -34,8 +34,8 @@ class ReencryptPasswords extends Command
         $isDryRun = $this->option('dry-run');
         $chunkSize = (int) $this->option('chunk');
 
-        $total = Peserta::whereNotNull('password_plain')->where('password_plain', '!=', '')->count();
-        $this->info("Found {$total} peserta with password_plain values.");
+        $total = Peserta::whereNotNull('password_encrypted')->where('password_encrypted', '!=', '')->count();
+        $this->info("Found {$total} peserta with password_encrypted values.");
 
         if ($total === 0) {
             $this->warn('Nothing to re-encrypt.');
@@ -47,9 +47,9 @@ class ReencryptPasswords extends Command
         }
 
         // First, test decryption with the old key on a sample
-        $sample = Peserta::whereNotNull('password_plain')->where('password_plain', '!=', '')->first();
+        $sample = Peserta::whereNotNull('password_encrypted')->where('password_encrypted', '!=', '')->first();
         try {
-            $plain = $oldEncrypter->decrypt($sample->password_plain);
+            $plain = $oldEncrypter->decrypt($sample->password_encrypted);
             $this->info("Sample decrypt OK: {$sample->username_ujian} → password length " . strlen($plain));
         } catch (\Exception $e) {
             $this->error("Old key cannot decrypt sample record ({$sample->username_ujian}): {$e->getMessage()}");
@@ -59,7 +59,7 @@ class ReencryptPasswords extends Command
 
         // Also test that current key can already decrypt (skip if so)
         try {
-            decrypt($sample->password_plain);
+            decrypt($sample->password_encrypted);
             $this->warn('Current APP_KEY can already decrypt passwords. Re-encryption may not be needed.');
             if (!$this->confirm('Continue anyway?')) {
                 return self::SUCCESS;
@@ -76,8 +76,8 @@ class ReencryptPasswords extends Command
         $failed = 0;
         $errors = [];
 
-        Peserta::whereNotNull('password_plain')
-            ->where('password_plain', '!=', '')
+        Peserta::whereNotNull('password_encrypted')
+            ->where('password_encrypted', '!=', '')
             ->chunkById($chunkSize, function ($pesertaChunk) use (
                 $oldEncrypter, $isDryRun, &$success, &$skipped, &$failed, &$errors, $bar
             ) {
@@ -85,7 +85,7 @@ class ReencryptPasswords extends Command
                     try {
                         // Try current key first — already re-encrypted?
                         try {
-                            decrypt($peserta->password_plain);
+                            decrypt($peserta->password_encrypted);
                             $skipped++;
                             $bar->advance();
                             continue;
@@ -94,11 +94,11 @@ class ReencryptPasswords extends Command
                         }
 
                         // Decrypt with old key
-                        $plain = $oldEncrypter->decrypt($peserta->password_plain);
+                        $plain = $oldEncrypter->decrypt($peserta->password_encrypted);
 
                         if (!$isDryRun) {
                             // Re-encrypt with current key and update
-                            $peserta->password_plain = encrypt($plain);
+                            $peserta->password_encrypted = encrypt($plain);
                             $peserta->timestamps = false;
                             $peserta->save();
                         }

@@ -159,7 +159,7 @@ class ImportPesertaJobTest extends TestCase
         $this->assertNotNull($peserta);
         $this->assertNotNull($peserta->username_ujian);
         $this->assertNotNull($peserta->password_ujian);
-        $this->assertNotNull($peserta->password_plain);
+        $this->assertNotNull($peserta->password_encrypted);
     }
 
     // =========================================================

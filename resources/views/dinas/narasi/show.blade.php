@@ -88,9 +88,9 @@
                         @if($soal->opsiJawaban->count() > 0)
                         <div class="mt-2 grid grid-cols-2 gap-1">
                             @foreach($soal->opsiJawaban as $opsi)
-                            <div class="text-xs {{ $opsi->is_correct ? 'text-green-700 font-semibold' : 'text-gray-500' }}">
+                            <div class="text-xs {{ $opsi->is_benar ? 'text-green-700 font-semibold' : 'text-gray-500' }}">
                                 {{ $opsi->label }}. {{ \App\Support\HtmlDisplay::plainText($opsi->teks, 50) }}
-                                @if($opsi->is_correct) ✓ @endif
+                                @if($opsi->is_benar) ✓ @endif
                             </div>
                             @endforeach
                         </div>

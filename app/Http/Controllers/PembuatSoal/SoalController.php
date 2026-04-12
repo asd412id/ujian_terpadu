@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\PembuatSoal;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Dinas\SoalController as DinasSoalController;
+use App\Services\SoalTemplateService;
 use App\Models\ImportJob;
 use App\Models\NarasiSoal;
 use App\Models\Soal;
@@ -516,11 +516,11 @@ class SoalController extends Controller
 
     public function templateWord()
     {
-        return app(DinasSoalController::class)->templateWord();
+        return app(SoalTemplateService::class)->templateWord();
     }
 
     public function templateZip()
     {
-        return app(DinasSoalController::class)->templateZip();
+        return app(SoalTemplateService::class)->templateZip();
     }
 }

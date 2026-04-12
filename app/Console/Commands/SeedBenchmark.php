@@ -189,7 +189,7 @@ class SeedBenchmark extends Command
 
             $batchSize = 500;
             $passwordHash = Hash::make('bench123');
-            $passwordPlain = encrypt('bench123');
+            $passwordEncrypted = encrypt('bench123');
 
             for ($batch = 0; $batch < ceil($jumlahPeserta / $batchSize); $batch++) {
                 $pesertaBatch = [];
@@ -214,7 +214,7 @@ class SeedBenchmark extends Command
                         'tempat_lahir'   => 'Benchmark City',
                         'username_ujian' => 'bench' . str_pad($num, 5, '0', STR_PAD_LEFT),
                         'password_ujian' => $passwordHash,
-                        'password_plain' => $passwordPlain,
+                        'password_encrypted' => $passwordEncrypted,
                         'is_active'      => true,
                         'created_at'     => now(),
                         'updated_at'     => now(),
@@ -328,7 +328,7 @@ class SeedBenchmark extends Command
             User::where('name', 'like', self::BENCHMARK_PREFIX . '%')->delete();
 
             $this->info('Menghapus sekolah...');
-            Sekolah::whereIn('id', $sekolahIds)->delete();
+            Sekolah::withTrashed()->whereIn('id', $sekolahIds)->forceDelete();
 
             $this->info('Menghapus dinas...');
             DinasPendidikan::where('nama', 'like', self::BENCHMARK_PREFIX . '%')->delete();

@@ -162,7 +162,7 @@ class PesertaServiceTest extends TestCase
                     && $arg['nis'] === '12345'
                     && $arg['username_ujian'] === '12345'
                     && $arg['password_ujian'] === 'hashed-password'
-                    && isset($arg['password_plain'])
+                    && isset($arg['password_encrypted'])
                     && $arg['is_active'] === true;
             })
             ->andReturn($createdPeserta);
@@ -193,7 +193,7 @@ class PesertaServiceTest extends TestCase
             ->withArgs(function ($arg) {
                 return $arg['username_ujian'] === 'jane123'
                     && $arg['password_ujian'] === 'hashed-mypassword'
-                    && isset($arg['password_plain']);
+                    && isset($arg['password_encrypted']);
             })
             ->andReturn($createdPeserta);
 
@@ -266,7 +266,7 @@ class PesertaServiceTest extends TestCase
         $this->service->create($data);
 
         $this->assertEquals('hashed', $captured['password_ujian']);
-        $this->assertNotNull($captured['password_plain']);
+        $this->assertNotNull($captured['password_encrypted']);
     }
 
     // ── update ─────────────────────────────────────────────────
@@ -301,7 +301,7 @@ class PesertaServiceTest extends TestCase
                 return $p === $peserta
                     && $d['nama'] === 'Updated'
                     && $d['password_ujian'] === 'hashed-newpass'
-                    && isset($d['password_plain']);
+                    && isset($d['password_encrypted']);
             })
             ->andReturn(true);
 
@@ -336,7 +336,7 @@ class PesertaServiceTest extends TestCase
             ->withArgs(function ($p, $d) {
                 return $d['nama'] === 'Updated'
                     && !isset($d['password_ujian'])
-                    && !isset($d['password_plain']);
+                    && !isset($d['password_encrypted']);
             })
             ->andReturn(true);
 
@@ -380,7 +380,7 @@ class PesertaServiceTest extends TestCase
         $this->service->update($id, $data);
 
         $this->assertArrayNotHasKey('password_ujian', $captured);
-        $this->assertArrayNotHasKey('password_plain', $captured);
+        $this->assertArrayNotHasKey('password_encrypted', $captured);
     }
 
     // ── delete ─────────────────────────────────────────────────

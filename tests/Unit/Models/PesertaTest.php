@@ -25,7 +25,7 @@ class PesertaTest extends TestCase
         $expected = [
             'sekolah_id', 'nisn', 'nis', 'nama', 'kelas', 'jurusan',
             'jenis_kelamin', 'tanggal_lahir', 'tempat_lahir', 'foto',
-            'username_ujian', 'password_ujian', 'password_plain', 'is_active',
+            'username_ujian', 'password_ujian', 'password_encrypted', 'is_active',
             'device_token',
         ];
         $this->assertEquals($expected, $peserta->getFillable());
@@ -48,7 +48,7 @@ class PesertaTest extends TestCase
         $peserta = Peserta::factory()->create();
         $array = $peserta->toArray();
         $this->assertArrayNotHasKey('password_ujian', $array);
-        $this->assertArrayNotHasKey('password_plain', $array);
+        $this->assertArrayNotHasKey('password_encrypted', $array);
     }
 
     public function test_sekolah_relationship(): void

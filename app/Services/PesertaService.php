@@ -87,11 +87,11 @@ class PesertaService
         if (empty($data['password_ujian'])) {
             $plainPassword = Str::random(6);
             $data['password_ujian'] = Hash::make($plainPassword);
-            $data['password_plain'] = encrypt($plainPassword);
+            $data['password_encrypted'] = encrypt($plainPassword);
         } else {
             $plainPassword = $data['password_ujian'];
             $data['password_ujian'] = Hash::make($plainPassword);
-            $data['password_plain'] = encrypt($plainPassword);
+            $data['password_encrypted'] = encrypt($plainPassword);
         }
 
         $data['is_active'] = $data['is_active'] ?? true;
@@ -114,9 +114,9 @@ class PesertaService
         if (!empty($data['password_ujian'])) {
             $plainPassword = $data['password_ujian'];
             $data['password_ujian'] = Hash::make($plainPassword);
-            $data['password_plain'] = encrypt($plainPassword);
+            $data['password_encrypted'] = encrypt($plainPassword);
         } else {
-            unset($data['password_ujian'], $data['password_plain']);
+            unset($data['password_ujian'], $data['password_encrypted']);
         }
 
         $this->repository->update($peserta, $data);
@@ -205,7 +205,7 @@ class PesertaService
                         'sekolah_id'     => $sekolahId,
                         'username_ujian' => preg_replace('/\s+/', '', $row['username'] ?? $nisn ?? $nis ?? Str::random(8)),
                         'password_ujian' => Hash::make($plainPassword),
-                        'password_plain' => encrypt($plainPassword),
+                        'password_encrypted' => encrypt($plainPassword),
                         'is_active'      => true,
                     ];
 
@@ -242,7 +242,7 @@ class PesertaService
         $plainPassword = Str::random(6);
         $this->repository->update($peserta, [
             'password_ujian' => Hash::make($plainPassword),
-            'password_plain' => encrypt($plainPassword),
+            'password_encrypted' => encrypt($plainPassword),
         ]);
 
         return [
@@ -266,7 +266,7 @@ class PesertaService
             $sekolahId
         );
         $data['password_ujian'] = Hash::make($password);
-        $data['password_plain'] = encrypt($password);
+        $data['password_encrypted'] = encrypt($password);
         $data['is_active'] = $data['is_active'] ?? true;
 
         return $this->repository->create($data);
@@ -295,9 +295,9 @@ class PesertaService
         // Update password only when provided; otherwise keep existing hash/plaintext
         if ($plainPassword) {
             $data['password_ujian'] = Hash::make($plainPassword);
-            $data['password_plain'] = encrypt($plainPassword);
+            $data['password_encrypted'] = encrypt($plainPassword);
         } else {
-            unset($data['password_ujian'], $data['password_plain']);
+            unset($data['password_ujian'], $data['password_encrypted']);
         }
 
         $this->repository->update($peserta, $data);

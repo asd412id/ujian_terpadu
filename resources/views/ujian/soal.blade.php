@@ -25,7 +25,7 @@
             }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" integrity="sha384-Wuix6BuhrWbjDBs24bXrMhDj2GFOS/qma0Jn5OblMjZOBbsLxVNKiFJ7MfLhbZ1t" crossorigin="anonymous" async defer></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -335,7 +335,7 @@
                             <div class="card p-5">
                                 <label class="form-label">Jawaban Essay:</label>
                                 <textarea rows="6"
-                                          :value="getJawabanTeks('{{ $soal['id'] }}')"
+                                          x-effect="$el.value = getJawabanTeks('{{ $soal['id'] }}')"
                                           @input.debounce.500ms="saveEssay('{{ $soal['id'] }}', $event.target.value)"
                                           class="form-input resize-none"
                                           placeholder="Tuliskan jawaban Anda secara lengkap..."></textarea>

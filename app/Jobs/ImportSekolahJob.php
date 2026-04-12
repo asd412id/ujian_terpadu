@@ -138,7 +138,7 @@ class ImportSekolahJob implements ShouldQueue
                                     $counter++;
                                 }
 
-                                $rawPassword = $parsed['password'] ?? $npsn ?: 'sekolah123';
+                                $rawPassword = $parsed['password'] ?? $npsn ?: Str::random(12);
 
                                 User::create([
                                     'name'                 => "Operator {$data['nama']}",

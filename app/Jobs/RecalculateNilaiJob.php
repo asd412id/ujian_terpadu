@@ -111,7 +111,7 @@ class RecalculateNilaiJob implements ShouldQueue
                 // Update progress every chunk
                 Cache::put($cacheKey, [
                     'status'  => 'processing',
-                    'total'   => Cache::get($cacheKey)['total'] ?? 0,
+                    'total'   => $total,
                     'updated' => $updated,
                     'changed' => $changed,
                 ], 3600);

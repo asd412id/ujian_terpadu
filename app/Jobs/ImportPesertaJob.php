@@ -128,6 +128,7 @@ class ImportPesertaJob implements ShouldQueue
             $success = 0;
 
             $chunks = array_chunk($rows, self::CHUNK_SIZE, true);
+            $processedSoFar = 0;
 
             foreach ($chunks as $chunk) {
                 $insertBatch = [];
@@ -173,7 +174,7 @@ class ImportPesertaJob implements ShouldQueue
                             'tanggal_lahir'  => $parsed['tanggal_lahir'],
                             'username_ujian' => $username,
                             'password_ujian' => Hash::make($password, ['rounds' => 10]),
-                            'password_plain' => encrypt($password),
+                            'password_encrypted' => encrypt($password),
                             'is_active'      => true,
                             'created_at'     => $now,
                             'updated_at'     => $now,
@@ -218,8 +219,8 @@ class ImportPesertaJob implements ShouldQueue
                 $errors = array_merge($errors, $chunkErrors);
 
                 // Update progress per chunk
-                $lastIndex = array_key_last($chunk);
-                $this->importJob->update(['processed_rows' => $lastIndex + 1]);
+                $processedSoFar = ($processedSoFar ?? 0) + count($chunk);
+                $this->importJob->update(['processed_rows' => $processedSoFar]);
             }
 
             $this->importJob->update([

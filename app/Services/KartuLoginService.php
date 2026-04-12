@@ -31,7 +31,7 @@ class KartuLoginService
     {
         return $this->repository->getActiveBySekolah($sekolahId)
             ->map(function ($peserta) {
-                $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
+                $peserta->password_kartu = $this->decryptPassword($peserta->password_encrypted);
                 return $peserta;
             });
     }
@@ -43,7 +43,7 @@ class KartuLoginService
     {
         return $this->repository->getByIds($pesertaIds)
             ->map(function ($peserta) {
-                $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
+                $peserta->password_kartu = $this->decryptPassword($peserta->password_encrypted);
                 return $peserta;
             });
     }
@@ -54,7 +54,7 @@ class KartuLoginService
     public function getKartuPeserta(string $pesertaId): array
     {
         $peserta = $this->repository->findOrFail($pesertaId);
-        $passwordKartu = $this->decryptPassword($peserta->password_plain);
+        $passwordKartu = $this->decryptPassword($peserta->password_encrypted);
 
         return compact('peserta', 'passwordKartu');
     }
@@ -68,7 +68,7 @@ class KartuLoginService
 
         $pesertaList = $sesi->sesiPeserta->map(function ($sp) {
             $peserta = $sp->peserta;
-            $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
+            $peserta->password_kartu = $this->decryptPassword($peserta->password_encrypted);
             return $peserta;
         });
 
@@ -120,13 +120,13 @@ class KartuLoginService
             ->orderBy('nama')
             ->get()
             ->map(function ($peserta) {
-                $peserta->password_kartu = $this->decryptPassword($peserta->password_plain);
+                $peserta->password_kartu = $this->decryptPassword($peserta->password_encrypted);
                 return $peserta;
             });
     }
 
     /**
-     * Safely decrypt password_plain with fallback on failure.
+     * Safely decrypt password_encrypted with fallback on failure.
      */
     protected function decryptPassword(?string $encrypted): string
     {

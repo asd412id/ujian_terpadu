@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sekolah extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'sekolah';
 
@@ -24,9 +25,32 @@ class Sekolah extends Model
 
     protected static function booted(): void
     {
-        // Ketika sekolah dihapus, hapus juga semua user operator (admin_sekolah) yang terkait
+        // Soft-delete: cascade deactivate peserta & clean up operator users
         static::deleting(function (Sekolah $sekolah) {
-            $sekolah->users()->where('role', User::ROLE_ADMIN_SEKOLAH)->delete();
+            if ($sekolah->isForceDeleting()) {
+                // Hard delete: cascade everything
+                $sekolah->peserta()->withTrashed()->forceDelete();
+                $sekolah->users()->where('role', User::ROLE_ADMIN_SEKOLAH)->forceDelete();
+            } else {
+                // Soft delete: soft-delete peserta, hard-delete operator users
+                $sekolah->peserta()->delete();
+                $sekolah->users()->where('role', User::ROLE_ADMIN_SEKOLAH)->delete();
+            }
+        });
+
+        // Capture deleted_at before restore nulls it (for cascade filter)
+        static::restoring(function (Sekolah $sekolah) {
+            $sekolah->_restoringDeletedAt = $sekolah->deleted_at;
+        });
+
+        // Restore peserta that were soft-deleted at/after the sekolah was deleted
+        static::restored(function (Sekolah $sekolah) {
+            $deletedAt = $sekolah->_restoringDeletedAt ?? now()->subMinute();
+            unset($sekolah->_restoringDeletedAt);
+
+            $sekolah->peserta()->onlyTrashed()
+                ->where('deleted_at', '>=', $deletedAt)
+                ->restore();
         });
     }
 

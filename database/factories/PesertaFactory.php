@@ -28,7 +28,7 @@ class PesertaFactory extends Factory
             'foto'           => null,
             'username_ujian' => fake()->unique()->numerify('peserta-######'),
             'password_ujian' => Hash::make($password),
-            'password_plain' => encrypt($password),
+            'password_encrypted' => encrypt($password),
             'is_active'      => true,
         ];
     }

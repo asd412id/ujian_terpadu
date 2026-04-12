@@ -13,7 +13,7 @@
 # Memory Budget (32GB):
 #   nginx:        256 MB
 #   app ×8:     6144 MB (8 × 768 MB, each 6 workers = 48 total)
-#   horizon:    1024 MB  (custom php.ini: OPcache 64M, JIT 32M)
+#   horizon:    1024 MB  (custom php.ini: mem 512M, OPcache 64M, JIT 32M)
 #   scheduler:   256 MB  (custom php.ini: OPcache 32M, JIT off)
 #   mariadb:    4096 MB  (innodb_buffer_pool_size 2.5G for 7K users)
 #   redis:      1536 MB  (maxmemory 1024mb)

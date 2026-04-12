@@ -50,7 +50,7 @@ class KartuLoginControllerTest extends TestCase
         $user = $this->sekolahUser();
         $peserta = Peserta::factory()->create([
             'sekolah_id'   => $user->sekolah_id,
-            'password_plain' => encrypt('TEST1234'),
+            'password_encrypted' => encrypt('TEST1234'),
         ]);
 
         $response = $this->actingAs($user)->get(route('sekolah.kartu.show', $peserta));

@@ -42,7 +42,7 @@ Route::get('/', function () {
 // =============================================================
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
-    Route::post('/login', [LoginController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
+    Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 });
 Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
@@ -62,7 +62,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 Route::prefix('ujian')->name('ujian.')->group(function () {
     Route::middleware('guest:peserta')->group(function () {
         Route::get('/login', [PesertaLoginController::class, 'showLogin'])->name('login');
-        Route::post('/login', [PesertaLoginController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
+        Route::post('/login', [PesertaLoginController::class, 'login'])->name('login.post');
     });
     Route::post('/logout', [PesertaLoginController::class, 'logout'])
         ->middleware('peserta')
@@ -83,7 +83,7 @@ Route::prefix('ujian')->name('ujian.')->group(function () {
 // =============================================================
 // API — Offline Sync (token-based, no CSRF)
 // =============================================================
-Route::prefix('api/ujian')->name('api.ujian.')->middleware(['verify.ujian.token', 'throttle:120,1'])->group(function () {
+Route::prefix('api/ujian')->name('api.ujian.')->middleware(['verify.ujian.token'])->group(function () {
     Route::post('/sync-jawaban', [JawabanController::class, 'syncOffline'])->name('sync');
     Route::get('/status/{token}', [JawabanController::class, 'status'])->name('status');
     Route::post('/submit/{token}', [JawabanController::class, 'submitApi'])->name('submit');
