@@ -88,8 +88,49 @@ class UjianService
             return $this->getSoalForPeserta($paket, $sesiPeserta);
         });
 
-        // Get existing answers
+        // Get existing answers from DB, then merge any Redis-buffered answers
+        // that haven't been flushed yet (FlushJawabanToDbJob runs every ~5s).
         $jawabanExisting = $this->jawabanRepository->getBySessionKeyedBySoal($sesiPeserta->id);
+
+        if ($this->redisExam->isAvailable() && $this->redisExam->hasBufferedData($sesiPeserta->id)) {
+            try {
+                $redisData = $this->redisExam->getSessionDataForFlush($sesiPeserta->id);
+                foreach ($redisData['upsert_rows'] as $row) {
+                    $soalId = $row['soal_id'];
+                    if (!$jawabanExisting->has($soalId)) {
+                        // Create a temporary model so the controller's map() works
+                        $jawabanExisting[$soalId] = new \App\Models\JawabanPeserta([
+                            'sesi_peserta_id' => $sesiPeserta->id,
+                            'soal_id'         => $soalId,
+                            'jawaban_pg'      => $row['jawaban_pg'],
+                            'jawaban_teks'    => $row['jawaban_teks'] ?? null,
+                            'jawaban_pasangan'=> $row['jawaban_pasangan'],
+                            'is_terjawab'     => $row['is_terjawab'] ?? false,
+                            'is_ditandai'     => in_array($soalId, $redisData['tandai_list']),
+                        ]);
+                    } else {
+                        // Redis has a newer version — update the existing model
+                        $existing = $jawabanExisting[$soalId];
+                        $existing->jawaban_pg       = $row['jawaban_pg'];
+                        $existing->jawaban_teks     = $row['jawaban_teks'] ?? null;
+                        $existing->jawaban_pasangan = $row['jawaban_pasangan'];
+                        $existing->is_terjawab      = $row['is_terjawab'] ?? false;
+                    }
+                }
+                // Merge tandai flags from Redis
+                foreach ($redisData['tandai_list'] as $tandaiSoalId) {
+                    if ($jawabanExisting->has($tandaiSoalId)) {
+                        $jawabanExisting[$tandaiSoalId]->is_ditandai = true;
+                    }
+                }
+            } catch (\Exception $e) {
+                // Redis read failed — proceed with DB-only data
+                \Illuminate\Support\Facades\Log::warning('[UjianService] Redis merge failed on reload', [
+                    'error' => $e->getMessage(),
+                    'sesi_peserta_id' => $sesiPeserta->id,
+                ]);
+            }
+        }
 
         $sisaWaktu = $sesiPeserta->sisa_waktu_detik;
 

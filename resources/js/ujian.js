@@ -640,25 +640,11 @@ function ujianApp() {
                 console.warn('[Restore] IndexedDB read failed, using server data only:', e.message);
             }
 
-            // Detect exam reset: server has no answers but IDB has old data.
-            // Only wipe if ALL local answers were already synced (i.e. from a
-            // previous server session that was genuinely reset).  When unsynced
-            // answers exist the student simply hasn't synced yet — preserve them.
-            const serverAnswerCount = cfg.jawabanExisting?.length ?? 0;
-            const hasUnsyncedAnswers = localAnswers.some(a => !a.synced);
-            const hasPendingSubmit = Boolean(state?.pendingSubmit)
-                || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0)
-                || (Array.isArray(state?.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
-            if (localAnswers.length > 0 && serverAnswerCount === 0 && !hasPendingSubmit && !hasUnsyncedAnswers) {
-                dbg(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} synced-only — exam was reset, clearing IDB`);
-                try {
-                    await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId).delete();
-                    await db.exam_state.delete(sesiPesertaId);
-                } catch (e) {
-                    console.warn('[Restore] IDB cleanup failed:', e.message);
-                }
-                localAnswers = [];
-            }
+            // NOTE: Stale-data-cleanup removed. The server now merges
+            // Redis-buffered answers into jawabanExisting, so server data is
+            // always authoritative. IDB is only an offline cache — never wipe
+            // it based on server answer count (race conditions with Redis
+            // flush made this heuristic unreliable).
 
             // Seed from server data first (jawabanExisting), then overlay IndexedDB
             if (cfg.jawabanExisting?.length > 0) {
