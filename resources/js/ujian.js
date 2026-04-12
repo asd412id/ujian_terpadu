@@ -641,13 +641,16 @@ function ujianApp() {
             }
 
             // Detect exam reset: server has no answers but IDB has old data.
-            // Do not wipe the current session if a pending submit snapshot still exists.
+            // Only wipe if ALL local answers were already synced (i.e. from a
+            // previous server session that was genuinely reset).  When unsynced
+            // answers exist the student simply hasn't synced yet — preserve them.
             const serverAnswerCount = cfg.jawabanExisting?.length ?? 0;
+            const hasUnsyncedAnswers = localAnswers.some(a => !a.synced);
             const hasPendingSubmit = Boolean(state?.pendingSubmit)
                 || (typeof state?.pendingSubmitCount === 'number' && state.pendingSubmitCount > 0)
                 || (Array.isArray(state?.pendingSubmitPayload) && state.pendingSubmitPayload.length > 0);
-            if (localAnswers.length > 0 && serverAnswerCount === 0 && !hasPendingSubmit) {
-                dbg(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} — exam was reset, clearing IDB`);
+            if (localAnswers.length > 0 && serverAnswerCount === 0 && !hasPendingSubmit && !hasUnsyncedAnswers) {
+                dbg(`[Restore] Server has 0 answers but IDB has ${localAnswers.length} synced-only — exam was reset, clearing IDB`);
                 try {
                     await db.exam_answers.where('sesiPesertaId').equals(sesiPesertaId).delete();
                     await db.exam_state.delete(sesiPesertaId);
