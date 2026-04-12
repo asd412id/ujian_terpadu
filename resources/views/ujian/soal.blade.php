@@ -798,5 +798,31 @@
         </div>
     </div>
 
+    {{-- ========== SESSION RESET OVERLAY ========== --}}
+    <div x-show="showResetOverlay" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+         style="background: rgba(30, 64, 175, 0.92);">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-center">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-9 h-9 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-blue-800 mb-3">Sesi Direset</h3>
+            <p class="text-gray-700 text-sm leading-relaxed mb-5" x-text="resetMessage"></p>
+            <div class="flex items-center justify-center gap-2 text-blue-600">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <span class="text-sm font-medium">Mengalihkan ke lobby...</span>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

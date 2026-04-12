@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SesiPeserta;
 use App\Repositories\JawabanRepository;
 use App\Traits\ParsesJawaban;
 use Illuminate\Support\Carbon;
@@ -459,6 +460,9 @@ class RedisExamService
         try {
             $this->flushSessionToDb($spId, $data, $repository);
             $this->markFlushed($spId);
+            // Clean up all Redis keys after successful flush — data is safely in DB.
+            // Prevents stale answers from being re-loaded on exam reset/retake.
+            $this->cleanupSession($spId);
             return true;
         } catch (\Exception $e) {
             Log::error('[RedisExam] forceFlush failed', [
@@ -492,6 +496,26 @@ class RedisExamService
             });
         } catch (\Exception) {
             // Already cleaned or Redis down — acceptable
+        }
+    }
+
+    /**
+     * Cleanup all Redis keys for every sesi_peserta that belongs to one peserta.
+     * Optionally excludes one current sesi_peserta id.
+     */
+    public function cleanupByPeserta(string $pesertaId, ?string $excludeSpId = null): void
+    {
+        $spIds = SesiPeserta::query()
+            ->where('peserta_id', $pesertaId)
+            ->when($excludeSpId, fn ($q) => $q->where('id', '!=', $excludeSpId))
+            ->pluck('id');
+
+        if ($spIds->isEmpty()) {
+            return;
+        }
+
+        foreach ($spIds as $spId) {
+            $this->cleanupSession((string) $spId);
         }
     }
 

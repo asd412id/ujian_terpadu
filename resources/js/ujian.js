@@ -84,6 +84,8 @@ function ujianApp() {
         showStartFullscreenOverlay: false,
         startFullscreenMessage: '',
         _navigateOverride: null,
+        showResetOverlay: false,
+        resetMessage: '',
 
         get soalTerjawab() {
             return Object.values(this.answers).filter(a => a.terjawab).length;
@@ -195,7 +197,12 @@ function ujianApp() {
                     },
                 });
 
-                if (!res.ok) return;
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        this._handleSessionReset();
+                    }
+                    return;
+                }
 
                 const data = await res.json();
 
@@ -280,6 +287,26 @@ function ujianApp() {
             } catch (err) {
                 console.warn('[StatusPoll] Check failed:', err.message);
             }
+        },
+
+        _handleSessionReset() {
+            if (this._resetRedirecting) return;
+            this._resetRedirecting = true;
+
+            // Stop all timers and sync loops
+            this._forceSubmitted = true;
+            clearTimeout(this._statusCheckInterval);
+            clearTimeout(this._syncTimer);
+            clearTimeout(this._retryTimer);
+            clearInterval(this.timerInterval);
+
+            this.markIntentionalFullscreenExit(30000);
+            this.resetMessage = 'Sesi ujian Anda telah direset oleh admin. Anda akan dialihkan ke halaman lobby.';
+            this.showResetOverlay = true;
+
+            setTimeout(() => {
+                window.location.href = '/ujian/lobby';
+            }, 3000);
         },
 
         // ===== ANTI-CHEAT SYSTEM =====
@@ -1226,6 +1253,10 @@ function ujianApp() {
                         console.warn('[Sync] 422 persistent, waiting for next auto-sync');
                         this._syncRetries = 0;
                     }
+                } else if (res.status === 401) {
+                    // Session reset by admin — token invalidated
+                    this._handleSessionReset();
+                    return;
                 } else if (res.status === 429) {
                     // Rate limited — retry after longer delay
                     console.warn('[Sync] Rate limited (429), backing off...');

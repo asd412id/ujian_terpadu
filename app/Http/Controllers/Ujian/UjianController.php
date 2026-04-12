@@ -30,6 +30,12 @@ class UjianController extends Controller
             return redirect()->route('ujian.selesai', $sesiPeserta);
         }
 
+        // If admin reset this session, redirect to lobby instead of allowing re-start
+        if ($sesiPeserta->status === 'terdaftar') {
+            return redirect()->route('ujian.lobby')
+                ->with('info', 'Sesi ujian Anda telah direset oleh admin. Silakan mulai ulang dari daftar ujian.');
+        }
+
         if ($sesiPeserta->status === 'mengerjakan') {
             return redirect()->route('ujian.mengerjakan', $sesiPeserta);
         }
@@ -68,6 +74,14 @@ class UjianController extends Controller
     {
         /** @var \App\Models\Peserta $peserta */
         $peserta = Auth::guard('peserta')->user();
+
+        abort_unless($sesiPeserta->peserta_id === $peserta->id, 403);
+
+        // If admin reset this session back to terdaftar, redirect to lobby
+        if ($sesiPeserta->status === 'terdaftar') {
+            return redirect()->route('ujian.lobby')
+                ->with('info', 'Sesi ujian Anda telah direset oleh admin. Silakan mulai ulang dari daftar ujian.');
+        }
 
         $result = $this->ujianService->startUjian(
             sesiPesertaId: $sesiPeserta->id,

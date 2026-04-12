@@ -53,11 +53,12 @@ class FlushJawabanToDbJob implements ShouldQueue
         foreach (array_chunk($dirtyIds, self::CHUNK_SIZE) as $chunk) {
             foreach ($chunk as $spId) {
                 try {
-                    // Skip sessions that have already been submitted/scored
-                    // (forceFlush already handled them during submit transition)
+                    // Skip sessions that are no longer active:
+                    // - submit/dinilai: forceFlush already handled them
+                    // - terdaftar: admin reset cleared DB answers, must not re-flush stale Redis data
                     $status = DB::table('sesi_peserta')->where('id', $spId)->value('status');
-                    if (in_array($status, ['submit', 'dinilai'], true)) {
-                        $redisExam->markFlushed($spId);
+                    if (in_array($status, ['submit', 'dinilai', 'terdaftar'], true)) {
+                        $redisExam->cleanupSession($spId);
                         $skipped++;
                         continue;
                     }
