@@ -70,7 +70,7 @@
         {{-- Pertanyaan --}}
         <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <p class="text-xs text-blue-500 font-medium uppercase tracking-wide mb-2">Pertanyaan</p>
-            <div class="text-sm text-gray-800 ck-content mathjax-process">
+            <div class="text-sm text-gray-800 prose-content mathjax-process">
                 {!! \App\Support\HtmlDisplay::render($jawaban->soal->pertanyaan) !!}
             </div>
             @if($jawaban->soal->gambar_soal && !str_contains($jawaban->soal->pertanyaan ?? '', '<img '))
@@ -89,7 +89,7 @@
         @if($jawaban->soal->pembahasan)
         <div class="bg-green-50 border border-green-100 rounded-xl p-4">
             <p class="text-xs text-green-600 font-medium uppercase tracking-wide mb-2">Panduan Penilaian</p>
-            <p class="text-sm text-gray-700 formatted-content ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($jawaban->soal->pembahasan) !!}</p>
+            <p class="text-sm text-gray-700 formatted-content prose-content mathjax-process">{!! \App\Support\HtmlDisplay::render($jawaban->soal->pembahasan) !!}</p>
         </div>
         @endif
 

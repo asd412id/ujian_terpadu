@@ -326,17 +326,18 @@
 }
 
 /* ========================================
-   CKEditor Content Display Overrides
-   (applied to .ck-content on display pages)
+   CKEditor / Rich-Content Display Overrides
+   .ck-content  = inside CKEditor (editing mode)
+   .prose-content = read-only display (exam pages etc.)
    ======================================== */
 
 /* Tighter spacing for exam context */
-.ck-content p { margin: 0.25em 0; }
-.formatted-content.ck-content p { margin-top: 0; margin-bottom: 0; }
-.ck-content img { border-radius: 0.375rem; }
+:is(.ck-content, .prose-content) p { margin: 0.25em 0; }
+.formatted-content:is(.ck-content, .prose-content) p { margin-top: 0; margin-bottom: 0; }
+:is(.ck-content, .prose-content) img { border-radius: 0.375rem; }
 
 /* Inline code styling in both editor and display */
-.ck-content code {
+:is(.ck-content, .prose-content) code {
     background: #f3f4f6;
     border: 1px solid #e5e7eb;
     border-radius: 3px;

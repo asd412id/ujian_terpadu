@@ -635,14 +635,14 @@
                                     <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     <h3 class="text-sm font-semibold text-indigo-700" x-text="'Narasi: ' + previewData.narasi.judul"></h3>
                                 </div>
-                                <div class="formatted-content ck-content text-sm text-gray-800 mathjax-process" x-safe-html="previewData.narasi.konten"></div>
+                                <div class="formatted-content prose-content text-sm text-gray-800 mathjax-process" x-safe-html="previewData.narasi.konten"></div>
                             </div>
                         </template>
 
                         {{-- Pertanyaan --}}
                         <div>
                             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pertanyaan</h3>
-                            <div class="text-sm text-gray-800 ck-content mathjax-process" x-safe-html="previewData.pertanyaan"></div>
+                            <div class="text-sm text-gray-800 prose-content mathjax-process" x-safe-html="previewData.pertanyaan"></div>
                             <template x-if="previewData.gambar_soal">
                                 <img :src="previewData.gambar_soal" class="mt-3 max-h-64 rounded-lg border">
                             </template>
@@ -675,7 +675,7 @@
                                                       x-text="opsi.label"></span>
                                             </template>
                                             <div class="flex-1">
-                                                <p class="text-sm text-gray-800 ck-content mathjax-process" x-show="opsi.teks" x-safe-html="opsi.teks"></p>
+                                                <p class="text-sm text-gray-800 prose-content mathjax-process" x-show="opsi.teks" x-safe-html="opsi.teks"></p>
                                                 <template x-if="opsi.gambar">
                                                     <img :src="opsi.gambar" class="max-h-32 rounded border" :class="opsi.teks ? 'mt-2' : ''">
                                                 </template>
@@ -724,7 +724,7 @@
                                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                             <span class="flex-shrink-0 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold" x-text="String.fromCharCode(97 + opsiIdx) + '.'"></span>
                                             <div class="flex-1">
-                                                <span class="text-sm text-gray-800 ck-content mathjax-process" x-safe-html="opsi.teks"></span>
+                                                <span class="text-sm text-gray-800 prose-content mathjax-process" x-safe-html="opsi.teks"></span>
                                                 <template x-if="opsi.gambar"><img :src="opsi.gambar" class="mt-1 max-h-16 rounded border"></template>
                                             </div>
                                             <span x-show="opsi.is_benar" class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">BENAR</span>
@@ -740,7 +740,7 @@
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Kunci Jawaban</h3>
                                 <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.kunci_jawaban || '—'"></div>
+                                    <div class="text-sm text-gray-800 prose-content mathjax-process whitespace-pre-line" x-safe-html="previewData.kunci_jawaban || '—'"></div>
                                 </div>
                             </div>
                         </template>
@@ -750,7 +750,7 @@
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Pembahasan</h3>
                                 <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                    <div class="text-sm text-gray-800 ck-content mathjax-process whitespace-pre-line" x-safe-html="previewData.pembahasan"></div>
+                                    <div class="text-sm text-gray-800 prose-content mathjax-process whitespace-pre-line" x-safe-html="previewData.pembahasan"></div>
                                 </div>
                             </div>
                         </template>

@@ -132,7 +132,7 @@
                 @endif
 
                 {{-- Pertanyaan --}}
-                <div class="formatted-content ck-content text-gray-800 mathjax-process">
+                <div class="formatted-content prose-content text-gray-800 mathjax-process">
                     {!! \App\Support\HtmlDisplay::render($soal->pertanyaan) !!}
                 </div>
 
@@ -166,7 +166,7 @@
                         @endif
                         <div class="flex-1 min-w-0">
                             @if($opsi->teks)
-                            <span class="formatted-content text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi->teks) !!}</span>
+                            <span class="formatted-content text-sm text-gray-800 prose-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi->teks) !!}</span>
                             @endif
                             @if($opsi->gambar)
                             <img src="{{ asset('storage/' . $opsi->gambar) }}" alt="Gambar opsi {{ $opsi->label }}" class="{{ $opsi->teks ? 'mt-1' : '' }} max-h-24 rounded border">
@@ -214,7 +214,7 @@
                     <div class="flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
                         <span class="flex-shrink-0 h-6 w-auto min-w-[1.75rem] px-1.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ chr(96 + $loop->iteration) }}.</span>
                         <div class="flex-1">
-                            <span class="formatted-content text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi->teks) !!}</span>
+                            <span class="formatted-content text-sm text-gray-800 prose-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi->teks) !!}</span>
                         </div>
                         @if($opsi->is_benar)
                         <span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">BENAR</span>
@@ -230,7 +230,7 @@
                 @if(in_array($soal->tipe_soal, ['isian', 'essay']))
                 <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Kunci Jawaban</p>
-                    <div class="formatted-content text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($soal->kunci_jawaban ?? '—') !!}</div>
+                    <div class="formatted-content text-sm text-gray-800 prose-content mathjax-process">{!! \App\Support\HtmlDisplay::render($soal->kunci_jawaban ?? '—') !!}</div>
                 </div>
                 @endif
             </div>

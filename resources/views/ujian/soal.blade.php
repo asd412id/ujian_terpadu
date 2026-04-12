@@ -249,7 +249,7 @@
                             </div>
                             @endif
 
-                            <div class="formatted-content ck-content text-gray-800 leading-relaxed mathjax-process">
+                            <div class="formatted-content prose-content text-gray-800 leading-relaxed mathjax-process">
                                 {!! \App\Support\HtmlDisplay::render($soal['pertanyaan'] ?? null) !!}
                             </div>
 
@@ -295,7 +295,7 @@
                                 @endif
                                 <div class="flex-1 min-w-0">
                                     @if($opsi['teks'])
-                                    <span class="formatted-content text-sm text-gray-800 ck-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</span>
+                                    <span class="formatted-content text-sm text-gray-800 prose-content mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</span>
                                     @endif
                                     @if($opsi['gambar'])
                                     <img src="{{ asset('storage/'.$opsi['gambar']) }}"
@@ -422,7 +422,7 @@
                                             <span class="flex-shrink-0 mt-0.5 h-7 w-auto min-w-[1.75rem] px-1.5 rounded-full flex items-center justify-center text-xs font-bold"
                                                   :class="getBenarSalah('{{ $soal['id'] }}', '{{ $opsi['label'] }}') !== null ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'">{{ chr(96 + $loop->iteration) }}.</span>
                                             <div class="flex-1 min-w-0">
-                                                <p class="formatted-content text-sm text-gray-800 ck-content leading-relaxed mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</p>
+                                                <p class="formatted-content text-sm text-gray-800 prose-content leading-relaxed mathjax-process">{!! \App\Support\HtmlDisplay::render($opsi['teks']) !!}</p>
                                                 @if(!empty($opsi['gambar']))
                                                 <img src="{{ asset('storage/'.$opsi['gambar']) }}" class="mt-1 max-h-20 object-contain rounded border" alt="">
                                                 @endif
