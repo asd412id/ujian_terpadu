@@ -148,82 +148,9 @@ class LaporanRepository
      */
     public function getHasilUjianFiltered(array $filters = []): LengthAwarePaginator
     {
-        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
+        $query = SesiPeserta::with(['peserta' => fn ($q) => $q->withTrashed(), 'peserta.sekolah', 'sesi.paket'])
             ->whereIn('status', ['submit', 'dinilai']);
 
-        if (!empty($filters['sekolah_id'])) {
-            $query->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $filters['sekolah_id']));
-        }
-
-        if (!empty($filters['kelas'])) {
-            $query->whereHas('peserta', fn ($q) => $q->where('kelas', $filters['kelas']));
-        }
-
-        if (!empty($filters['paket_id'])) {
-            $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
-        }
-
-        if (!empty($filters['sesi_id'])) {
-            $query->where('sesi_id', $filters['sesi_id']);
-        }
-
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->whereHas('peserta', fn ($q) => $q->where(function ($q) use ($search) {
-                $q->where('nama', 'like', SearchHelper::containsLike($search))
-                    ->orWhere('nis', 'like', SearchHelper::containsLike($search))
-                    ->orWhere('nisn', 'like', SearchHelper::containsLike($search));
-            }));
-        }
-
-        if (!empty($filters['status'])) {
-            $query->where(function ($q) use ($filters) {
-                match ($filters['status']) {
-                    'sangat_baik' => $q->where('nilai_akhir', '>=', 86),
-                    'baik' => $q->where('nilai_akhir', '>=', 71)->where('nilai_akhir', '<', 86),
-                    'cukup' => $q->where('nilai_akhir', '>=', 56)->where('nilai_akhir', '<', 71),
-                    'kurang' => $q->where('nilai_akhir', '>=', 41)->where('nilai_akhir', '<', 56),
-                    'sangat_kurang' => $q->where(function ($q) {
-                        $q->where('nilai_akhir', '<', 41)->orWhereNull('nilai_akhir');
-                    }),
-                    default => null,
-                };
-            });
-        }
-
-        $perPage = min((int) ($filters['per_page'] ?? 30), 200);
-        return $query->latest('updated_at')->paginate($perPage);
-    }
-
-    /**
-     * Get paginated hasil ujian for a specific sekolah.
-     */
-    public function getHasilUjianFilteredBySekolah(string $sekolahId, array $filters = []): LengthAwarePaginator
-    {
-        $jenjang = $this->getSekolahJenjang($sekolahId);
-
-        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
-            ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->whereHas('sesi.paket', function ($q) use ($sekolahId, $jenjang) {
-                $q->where('tampilkan_hasil', true)
-                  ->where(function ($q2) use ($sekolahId, $jenjang) {
-                      $q2->where('sekolah_id', $sekolahId)
-                         ->orWhere(function ($q3) use ($jenjang) {
-                             $q3->whereNull('sekolah_id');
-                             if ($jenjang) {
-                                 $q3->where(fn ($q4) => $q4->where('jenjang', $jenjang)->orWhere('jenjang', 'SEMUA'));
-                             }
-                         });
-                  });
-            })
-            ->whereHas('sesi', function ($q) use ($sekolahId) {
-                $q->where('status', 'selesai')
-                  ->orWhereDoesntHave('sesiPeserta', function ($q2) use ($sekolahId) {
-                      $q2->whereNotIn('status', ['submit', 'dinilai'])
-                         ->whereHas('peserta', fn ($q3) => $q3->where('sekolah_id', $sekolahId));
-                  });
-            })
-            ->whereIn('status', ['submit', 'dinilai']);
 
         if (!empty($filters['paket_id'])) {
             $query->whereHas('sesi', fn ($q) => $q->where('paket_id', $filters['paket_id']));
@@ -500,7 +427,7 @@ class LaporanRepository
             });
         }
 
-        $query->latest('updated_at')->chunkById($chunkSize, $callback);
+        $query->orderBy('id')->chunk($chunkSize, $callback);
     }
 
     /**
@@ -510,8 +437,8 @@ class LaporanRepository
     {
         $jenjang = $this->getSekolahJenjang($sekolahId);
 
-        $query = SesiPeserta::with(['peserta.sekolah', 'sesi.paket'])
-            ->whereHas('peserta', fn ($q) => $q->where('sekolah_id', $sekolahId))
+        $query = SesiPeserta::with(['peserta' => fn ($q) => $q->withTrashed(), 'peserta.sekolah', 'sesi.paket'])
+            ->whereHas('peserta', fn ($q) => $q->withTrashed()->where('sekolah_id', $sekolahId))
             ->whereHas('sesi.paket', function ($q) use ($sekolahId, $jenjang) {
                 $q->where('tampilkan_hasil', true)
                   ->where(function ($q2) use ($sekolahId, $jenjang) {
@@ -569,7 +496,7 @@ class LaporanRepository
             });
         }
 
-        $query->latest('updated_at')->chunkById($chunkSize, $callback);
+        $query->orderBy('id')->chunk($chunkSize, $callback);
     }
 
     /**

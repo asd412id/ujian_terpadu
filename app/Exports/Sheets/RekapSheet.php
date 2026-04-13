@@ -59,6 +59,11 @@ class RekapSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
             $rows[] = ['Status Dominan', NilaiStatus::label($this->rekap['rata_rata'])];
         }
 
+        if (!empty($this->rekap['catatan'])) {
+            $rows[] = [];
+            $rows[] = ['CATATAN: ' . $this->rekap['catatan']];
+        }
+
         return $rows;
     }
 

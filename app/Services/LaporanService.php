@@ -129,6 +129,8 @@ class LaporanService
 
         return [
             'hasil'      => $hasilData,
+            'truncated'  => count($hasilData) >= $maxRows,
+            'maxRows'    => $maxRows,
             'perSoal'    => $perSoalData,
             'rekap'      => $this->repository->buildRekap($filters),
             'filters'    => $filterNames,
@@ -187,6 +189,8 @@ class LaporanService
 
         return [
             'hasil'      => $hasilData,
+            'truncated'  => count($hasilData) >= $maxRows,
+            'maxRows'    => $maxRows,
             'perSoal'    => $perSoalData,
             'rekap'      => $this->repository->buildRekapBySekolah($sekolahId, $filters),
             'filters'    => $filterNames,

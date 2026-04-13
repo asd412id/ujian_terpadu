@@ -49,6 +49,10 @@ class LaporanController extends Controller
             return back()->with('warning', 'Tidak ada data untuk di-export.');
         }
 
+        if (!empty($exportData['truncated'])) {
+            $exportData['rekap']['catatan'] = 'Data dibatasi maksimal ' . number_format($exportData['maxRows']) . ' baris. Gunakan filter untuk mempersempit hasil.';
+        }
+
         $filename = 'laporan_ujian_' . now()->format('Ymd_His') . '.xlsx';
 
         return (new LaporanUjianExport(
