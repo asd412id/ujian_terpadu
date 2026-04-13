@@ -28,10 +28,10 @@
 #   horizon:     0.30                      horizon:     0.80
 #   scheduler:   0.10                      scheduler:   0.20
 #   mariadb:     1.00                      mariadb:     2.00
-#   redis:       0.25                      redis:       0.50
+#   redis:       0.50                      redis:       2.00  (4 io-threads)
 #   tunnel ×2:   0.05 × 2 = 0.10           tunnel ×2:   0.10 × 2 = 0.20
 #   ─────────────                          ─────────────
-#   Total: 5.10 (leaves 2.90 for OS)       Total: 9.70 (1.2x overcommit, safe)
+#   Total: 5.35 (leaves 2.65 for OS)       Total: 11.20 (1.4x overcommit, safe)
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -291,6 +291,7 @@ services:
       --timeout 300
       --tcp-keepalive 60
       --io-threads 4
+      --io-threads-do-reads yes
       --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
       - redis_data:/data
@@ -305,10 +306,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.50"
+          cpus: "2.00"
           memory: 1536M
         reservations:
-          cpus: "0.25"
+          cpus: "0.50"
           memory: 512M
 
 volumes:
