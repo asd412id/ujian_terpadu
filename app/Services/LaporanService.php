@@ -82,13 +82,9 @@ class LaporanService
     public function exportHasil(array $filters = []): array
     {
         $hasilData = [];
-        $maxRows = 10000;
 
-        $this->repository->chunkHasilForExport($filters, 500, function ($chunk) use (&$hasilData, $maxRows) {
+        $this->repository->chunkHasilForExport($filters, 500, function ($chunk) use (&$hasilData) {
             foreach ($chunk as $sp) {
-                if (count($hasilData) >= $maxRows) {
-                    return false;
-                }
                 $hasilData[] = [
                     'nama_peserta'   => $sp->peserta->nama ?? '-',
                     'nis'            => $sp->peserta->nis ?? '-',
@@ -110,7 +106,6 @@ class LaporanService
                     'submit_at'      => $sp->submit_at?->format('Y-m-d H:i:s') ?? '-',
                 ];
             }
-            // Free Eloquent models after mapping to plain arrays
             unset($chunk);
         });
 
@@ -128,12 +123,10 @@ class LaporanService
         }
 
         return [
-            'hasil'      => $hasilData,
-            'truncated'  => count($hasilData) >= $maxRows,
-            'maxRows'    => $maxRows,
-            'perSoal'    => $perSoalData,
-            'rekap'      => $this->repository->buildRekap($filters),
-            'filters'    => $filterNames,
+            'hasil'   => $hasilData,
+            'perSoal' => $perSoalData,
+            'rekap'   => $this->repository->buildRekap($filters),
+            'filters' => $filterNames,
         ];
     }
 
@@ -144,13 +137,9 @@ class LaporanService
     {
         $filters['sekolah_id'] = $sekolahId;
         $hasilData = [];
-        $maxRows = 10000;
 
-        $this->repository->chunkHasilForExportBySekolah($sekolahId, $filters, 500, function ($chunk) use (&$hasilData, $maxRows) {
+        $this->repository->chunkHasilForExportBySekolah($sekolahId, $filters, 500, function ($chunk) use (&$hasilData) {
             foreach ($chunk as $sp) {
-                if (count($hasilData) >= $maxRows) {
-                    return false;
-                }
                 $hasilData[] = [
                     'nama_peserta'   => $sp->peserta->nama ?? '-',
                     'nis'            => $sp->peserta->nis ?? '-',
@@ -188,12 +177,10 @@ class LaporanService
         }
 
         return [
-            'hasil'      => $hasilData,
-            'truncated'  => count($hasilData) >= $maxRows,
-            'maxRows'    => $maxRows,
-            'perSoal'    => $perSoalData,
-            'rekap'      => $this->repository->buildRekapBySekolah($sekolahId, $filters),
-            'filters'    => $filterNames,
+            'hasil'   => $hasilData,
+            'perSoal' => $perSoalData,
+            'rekap'   => $this->repository->buildRekapBySekolah($sekolahId, $filters),
+            'filters' => $filterNames,
         ];
     }
 

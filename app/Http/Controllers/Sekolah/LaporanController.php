@@ -38,7 +38,7 @@ class LaporanController extends Controller
         $sekolah = $this->getSekolah();
         abort_unless($sekolah, 403, 'Anda tidak memiliki akses ke laporan ini.');
 
-        ini_set('memory_limit', '256M');
+        ini_set('memory_limit', '512M');
         set_time_limit(300);
 
         $filters = $request->only(['paket_id', 'search', 'status', 'kelas', 'sesi_id']);
@@ -47,10 +47,6 @@ class LaporanController extends Controller
 
         if (empty($exportData['hasil'])) {
             return back()->with('warning', 'Tidak ada data untuk di-export.');
-        }
-
-        if (!empty($exportData['truncated'])) {
-            $exportData['rekap']['catatan'] = 'Data dibatasi maksimal ' . number_format($exportData['maxRows']) . ' baris. Gunakan filter untuk mempersempit hasil.';
         }
 
         $filename = 'laporan_ujian_' . now()->format('Ymd_His') . '.xlsx';
