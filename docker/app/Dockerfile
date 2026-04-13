@@ -15,7 +15,7 @@ FROM node:20-alpine AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY vite.config.js ./
+COPY vite.config.js vite-plugin-mathjax.js ./
 COPY resources ./resources
 # Tailwind v4 @source scans blade views + vendor pagination views
 COPY --from=composer-deps /app/vendor/laravel/framework/src/Illuminate/Pagination/resources ./vendor/laravel/framework/src/Illuminate/Pagination/resources

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
+import { copyMathJax } from './vite-plugin-mathjax.js';
 
 export default defineConfig({
     plugins: [
@@ -9,6 +10,7 @@ export default defineConfig({
             refresh: true,
         }),
         tailwindcss(),
+        copyMathJax(),
     ],
     build: {
         rollupOptions: {

@@ -1,7 +1,7 @@
 // Service Worker — Ujian Terpadu
 // Strategy: CacheFirst untuk assets, NetworkFirst untuk halaman, BackgroundSync untuk jawaban
 
-const CACHE_VERSION    = 'v1';
+const CACHE_VERSION    = 'v3';
 const STATIC_CACHE     = `ujian-static-${CACHE_VERSION}`;
 const IMAGE_CACHE      = `ujian-images-${CACHE_VERSION}`;
 const PAGE_CACHE       = `ujian-pages-${CACHE_VERSION}`;
@@ -11,6 +11,8 @@ const SYNC_QUEUE_TAG   = 'jawaban-sync';
 const PRECACHE_URLS = [
     '/offline',
     '/images/icon-192.png',
+    '/build/mathjax/tex-mml-chtml.js',
+    '/build/mathjax/output/chtml/fonts/tex.js',
 ];
 
 // ===== INSTALL =====

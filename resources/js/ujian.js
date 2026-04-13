@@ -148,6 +148,13 @@ function ujianApp() {
                 });
             }
 
+            // Typeset MathJax for the initially visible soal
+            this.$nextTick(() => {
+                if (window.MathJax?.typesetPromise) {
+                    window.MathJax.typesetPromise().catch(() => {});
+                }
+            });
+
             // Always warn on page unload (UX protection, not anti-cheat)
             window.addEventListener('beforeunload', (e) => {
                 if (!this.isSubmitting) {
@@ -855,6 +862,12 @@ function ujianApp() {
             this.saveState();
             // Scroll to top
             document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+            // Re-typeset MathJax for newly visible soal (Alpine x-show)
+            this.$nextTick(() => {
+                if (window.MathJax?.typesetPromise) {
+                    window.MathJax.typesetPromise().catch(() => {});
+                }
+            });
         },
         nextSoal() { if (this.currentIndex < this.totalSoal - 1) this.goToSoal(this.currentIndex + 1); },
         prevSoal() { if (this.currentIndex > 0) this.goToSoal(this.currentIndex - 1); },

@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700,800&display=swap" rel="stylesheet">
 
-    {{-- MathJax for math formulas --}}
+    {{-- MathJax for math formulas (self-hosted for offline support) --}}
     <script>
         window.MathJax = {
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
@@ -27,7 +27,7 @@
             }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async defer></script>
+    <script src="/build/mathjax/tex-mml-chtml.js" async defer></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 

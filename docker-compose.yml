@@ -21,17 +21,22 @@
 #   ─────────────
 #   Total: ~13824 MB (leaves ~18GB for OS + Docker overhead)
 #
-# CPU Budget (8 vCPU) — optimized to avoid contention at peak:
+# CPU Budget (8 vCPU) — tuned to prevent contention at 2000+ concurrent:
 #   Reservations (guaranteed):             Limits (burst max):
 #   nginx:       0.15                      nginx:       0.40
-#   app ×8:      0.40 × 8 = 3.20           app ×8:      0.70 × 8 = 5.60
+#   app ×8:      0.50 × 8 = 4.00           app ×8:      0.80 × 8 = 6.40
 #   horizon:     0.30                      horizon:     0.80
 #   scheduler:   0.10                      scheduler:   0.20
 #   mariadb:     1.00                      mariadb:     2.00
-#   redis:       0.50                      redis:       2.00  (4 io-threads)
+#   redis:       0.25                      redis:       1.00  (2 io-threads)
 #   tunnel ×2:   0.05 × 2 = 0.10           tunnel ×2:   0.10 × 2 = 0.20
 #   ─────────────                          ─────────────
-#   Total: 5.35 (leaves 2.65 for OS)       Total: 11.20 (1.4x overcommit, safe)
+#   Total: 5.90 (leaves 2.10 for OS)       Total: 11.00 (1.375x overcommit)
+#
+# NOTE: Redis is single-threaded for commands — io-threads only parse
+# network I/O. Setting Redis CPU limit too high (e.g. 2.0) causes CPU
+# contention with app replicas under peak load (all cores >90%).
+# 1.0 limit + 2 io-threads is sufficient for 7000+ concurrent users.
 #
 # No ports exposed — all traffic goes through Cloudflare Tunnel.
 # =================================================================
@@ -100,10 +105,10 @@ services:
       replicas: ${APP_REPLICAS:-8}
       resources:
         limits:
-          cpus: "0.70"
+          cpus: "0.80"
           memory: 768M
         reservations:
-          cpus: "0.40"
+          cpus: "0.50"
           memory: 384M
 
   # --- App Migrator (one-shot: runs migrations then exits) ---
@@ -290,7 +295,7 @@ services:
       --tcp-backlog 511
       --timeout 300
       --tcp-keepalive 60
-      --io-threads 4
+      --io-threads 2
       --io-threads-do-reads yes
       --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
@@ -306,10 +311,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.00"
+          cpus: "1.00"
           memory: 1536M
         reservations:
-          cpus: "0.50"
+          cpus: "0.25"
           memory: 512M
 
 volumes:

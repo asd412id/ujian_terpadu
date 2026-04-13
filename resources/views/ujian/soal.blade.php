@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap" rel="stylesheet">
 
-    {{-- MathJax --}}
+    {{-- MathJax (self-hosted for offline exam support) --}}
     <script>
         window.MathJax = {
             tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
@@ -25,7 +25,7 @@
             }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async defer></script>
+    <script src="/build/mathjax/tex-mml-chtml.js" async defer></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -226,7 +226,7 @@
                                 </svg>
                                 <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">{{ $soal['narasi']['judul'] ?? 'Teks Bacaan' }}</span>
                             </div>
-                            <div class="formatted-content prose prose-sm max-w-none text-gray-800">
+                            <div class="formatted-content prose prose-sm max-w-none text-gray-800 mathjax-process">
                                 @if(!empty($soal['narasi']['gambar']))
                                 <div class="mb-3 rounded-lg overflow-hidden border border-indigo-200">
                                     <img src="{{ asset('storage/'.$soal['narasi']['gambar']) }}" alt="Gambar Narasi" class="max-h-60 w-auto">

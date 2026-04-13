@@ -12,7 +12,8 @@
         "alpinejs": "^3.14.0",
         "ckeditor5": "^47.6.1",
         "dexie": "^4.0.8",
-        "dompurify": "^3.3.3"
+        "dompurify": "^3.3.3",
+        "mathjax": "^3.2.2"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
