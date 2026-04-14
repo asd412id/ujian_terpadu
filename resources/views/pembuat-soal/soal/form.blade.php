@@ -93,6 +93,7 @@
                             </div>
                             <input type="hidden" :name="`opsi[${idx}][teks]`" x-ref="hiddenInput">
                         </div>
+                        <input type="hidden" :name="`opsi[${idx}][gambar_existing]`" :value="opsi.gambar || ''">
                         {{-- Hapus opsi --}}
                         <button type="button" @click="removeOpsi(idx)"
                                 x-show="opsiList.length > 2"
@@ -234,6 +235,7 @@
                                 </div>
                                 <input type="hidden" :name="`pernyataan_bs[${idx}][teks]`" x-ref="hiddenInput">
                             </div>
+                            <input type="hidden" :name="`pernyataan_bs[${idx}][gambar_existing]`" :value="item.gambar || ''">
                             <div class="flex items-center gap-3">
                                 <span class="text-xs text-gray-500 font-medium">Kunci:</span>
                                 <label class="flex items-center gap-1.5 cursor-pointer">
@@ -485,14 +487,14 @@
 
 @php
     $opsiListData = isset($soal) && $soal->opsiJawaban->count()
-        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
-        : [['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false], ['teks' => '', 'benar' => false]];
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar])->toArray()
+        : [['teks' => '', 'benar' => false, 'gambar' => null], ['teks' => '', 'benar' => false, 'gambar' => null], ['teks' => '', 'benar' => false, 'gambar' => null], ['teks' => '', 'benar' => false, 'gambar' => null]];
     $pasanganListData = isset($soal) && $soal->pasangan->count()
         ? $soal->pasangan->map(fn($p) => ['kiri' => $p->kiri_teks, 'kanan' => $p->kanan_teks, 'kiri_gambar' => $p->kiri_gambar, 'kanan_gambar' => $p->kanan_gambar, 'kiri_preview' => null, 'kanan_preview' => null])->toArray()
         : [['kiri' => '', 'kanan' => '', 'kiri_gambar' => null, 'kanan_gambar' => null, 'kiri_preview' => null, 'kanan_preview' => null], ['kiri' => '', 'kanan' => '', 'kiri_gambar' => null, 'kanan_gambar' => null, 'kiri_preview' => null, 'kanan_preview' => null]];
     $pernyataanBsData = isset($soal) && $soal->tipe_soal === 'benar_salah' && $soal->opsiJawaban->count()
-        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar])->toArray()
-        : [['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true], ['teks' => '', 'benar' => true]];
+        ? $soal->opsiJawaban->map(fn($o) => ['teks' => $o->teks, 'benar' => (bool)$o->is_benar, 'gambar' => $o->gambar])->toArray()
+        : [['teks' => '', 'benar' => true, 'gambar' => null], ['teks' => '', 'benar' => true, 'gambar' => null], ['teks' => '', 'benar' => true, 'gambar' => null]];
     $jenisMap = ['pg'=>'pilihan_ganda','pg_kompleks'=>'pilihan_ganda_kompleks','benar_salah'=>'benar_salah','menjodohkan'=>'menjodohkan','isian'=>'isian','essay'=>'essay'];
     $currentJenis = old('jenis_soal', isset($soal) ? ($jenisMap[$soal->tipe_soal] ?? 'pilihan_ganda') : 'pilihan_ganda');
 @endphp
@@ -549,7 +551,7 @@ function soalForm() {
         },
 
         addOpsi() {
-            if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false });
+            if (this.opsiList.length < 6) this.opsiList.push({ teks: '', benar: false, gambar: null });
         },
         removeOpsi(idx) {
             this.opsiList.splice(idx, 1);
@@ -580,7 +582,7 @@ function soalForm() {
             this.pasanganList[idx][side + '_gambar'] = null;
         },
         addPernyataanBs() {
-            this.pernyataanBsList.push({ teks: '', benar: true });
+            this.pernyataanBsList.push({ teks: '', benar: true, gambar: null });
         },
         removePernyataanBs(idx) {
             this.pernyataanBsList.splice(idx, 1);

@@ -38,7 +38,7 @@ return [
             'AutoFormat.RemoveEmpty'   => false,
             'URI.AllowedSchemes'       => ['http' => true, 'https' => true],
             'URI.Host'                 => env('APP_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
-            'URI.MungeResources'       => true,
+            'URI.MungeResources'       => false,
         ],
         'test'    => [
             'Attr.EnableID' => 'true',

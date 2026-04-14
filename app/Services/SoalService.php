@@ -381,8 +381,8 @@ class SoalService
 
             $this->repository->update($soal, $data);
 
-            // Clean up old images from opsi/pasangan before re-saving
-            $this->deleteOpsiAndPasanganImages($soal);
+            // Collect old image paths before clearing opsi/pasangan
+            $oldImagePaths = $this->collectOpsiAndPasanganImagePaths($soal);
 
             // Clear existing and re-save
             $this->repository->deleteOpsiJawaban($soal);
@@ -398,7 +398,14 @@ class SoalService
                 $this->saveKunciJawaban($soal, $request);
             }
 
-            return $soal->fresh(['opsiJawaban', 'pasangan', 'kategori']);
+            // Reload to get newly saved opsi/pasangan
+            $soal = $soal->fresh(['opsiJawaban', 'pasangan', 'kategori']);
+
+            // Delete only orphaned images (old paths no longer referenced)
+            $newImagePaths = $this->collectOpsiAndPasanganImagePaths($soal);
+            $this->deleteOrphanedImages($oldImagePaths, $newImagePaths);
+
+            return $soal;
         });
     }
 
@@ -453,27 +460,64 @@ class SoalService
         return trim($html);
     }
 
-    private function deleteOpsiAndPasanganImages(Soal $soal): void
+    /**
+     * Collect all image paths from opsi jawaban and pasangan.
+     * Used to diff old vs new paths and only delete orphaned images.
+     *
+     * @return string[]
+     */
+    private function collectOpsiAndPasanganImagePaths(Soal $soal): array
     {
-        $disk = Storage::disk('public');
+        $paths = [];
 
         foreach ($soal->opsiJawaban as $opsi) {
             if ($opsi->gambar) {
-                $disk->delete($opsi->gambar);
+                $paths[] = $opsi->gambar;
             }
-            // Delete inline images in opsi teks HTML
             foreach ($this->extractStoragePaths($opsi->teks) as $path) {
-                $disk->delete($path);
+                $paths[] = $path;
             }
         }
 
         foreach ($soal->pasangan as $pas) {
             if ($pas->kiri_gambar) {
-                $disk->delete($pas->kiri_gambar);
+                $paths[] = $pas->kiri_gambar;
             }
             if ($pas->kanan_gambar) {
-                $disk->delete($pas->kanan_gambar);
+                $paths[] = $pas->kanan_gambar;
             }
+        }
+
+        return array_unique($paths);
+    }
+
+    /**
+     * Delete only orphaned images: paths present in old set but absent in new set.
+     */
+    private function deleteOrphanedImages(array $oldPaths, array $newPaths): void
+    {
+        $orphaned = array_diff($oldPaths, $newPaths);
+
+        if (empty($orphaned)) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        foreach ($orphaned as $path) {
+            $disk->delete($path);
+        }
+    }
+
+    /**
+     * Delete ALL images from opsi and pasangan (used for permanent deletion).
+     */
+    private function deleteOpsiAndPasanganImages(Soal $soal): void
+    {
+        $paths = $this->collectOpsiAndPasanganImagePaths($soal);
+        $disk = Storage::disk('public');
+
+        foreach ($paths as $path) {
+            $disk->delete($path);
         }
     }
 
