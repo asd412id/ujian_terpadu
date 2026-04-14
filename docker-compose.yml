@@ -16,10 +16,10 @@
 #   horizon:    1024 MB  (custom php.ini: mem 512M, OPcache 64M, JIT 32M)
 #   scheduler:   256 MB  (custom php.ini: OPcache 32M, JIT off)
 #   mariadb:    4096 MB  (innodb_buffer_pool_size 2.5G for 7K users)
-#   redis:      1536 MB  (maxmemory 1024mb)
+#   redis:      2560 MB  (maxmemory 2048mb)
 #   tunnel ×2:   512 MB  (2 × 256 MB, GOMEMLIMIT=180MiB each)
 #   ─────────────
-#   Total: ~13824 MB (leaves ~18GB for OS + Docker overhead)
+#   Total: ~14848 MB (leaves ~17GB for OS + Docker overhead)
 #
 # CPU Budget (8 vCPU) — tuned to prevent contention at 2000+ concurrent:
 #   Reservations (guaranteed):             Limits (burst max):
@@ -288,7 +288,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 1024mb
+      --maxmemory 2048mb
       --maxmemory-policy volatile-lru
       --save 900 1
       --save 300 10
@@ -312,10 +312,10 @@ services:
       resources:
         limits:
           cpus: "1.00"
-          memory: 1536M
+          memory: 2560M
         reservations:
           cpus: "0.25"
-          memory: 512M
+          memory: 1024M
 
 volumes:
   mariadb_data:

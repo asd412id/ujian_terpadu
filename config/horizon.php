@@ -112,9 +112,9 @@ return [
     */
 
     'trim' => [
-        'recent' => 60,
-        'pending' => 60,
-        'completed' => 60,
+        'recent' => 15,
+        'pending' => 15,
+        'completed' => 15,
         'recent_failed' => 10080,
         'failed' => 10080,
         'monitored' => 10080,
@@ -132,7 +132,7 @@ return [
     */
 
     'silenced' => [
-        // App\Jobs\ExampleJob::class,
+        App\Jobs\FlushJawabanToDbJob::class,
     ],
 
     'silenced_tags' => [

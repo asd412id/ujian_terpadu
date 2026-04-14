@@ -28,7 +28,7 @@ class FlushJawabanToDbJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 30;
+    public int $timeout = 55;
 
     private const CHUNK_SIZE = 50;
 
@@ -51,13 +51,19 @@ class FlushJawabanToDbJob implements ShouldQueue
 
         // Process in chunks to limit memory and DB pressure
         foreach (array_chunk($dirtyIds, self::CHUNK_SIZE) as $chunk) {
+            // Batch-fetch statuses for the entire chunk (1 query instead of N)
+            $statuses = DB::table('sesi_peserta')
+                ->whereIn('id', $chunk)
+                ->pluck('status', 'id')
+                ->all();
+
             foreach ($chunk as $spId) {
                 try {
                     // Skip sessions that are no longer active:
                     // - submit/dinilai: forceFlush already handled them
                     // - terdaftar: admin reset cleared DB answers, must not re-flush stale Redis data
-                    $status = DB::table('sesi_peserta')->where('id', $spId)->value('status');
-                    if (in_array($status, ['submit', 'dinilai', 'terdaftar'], true)) {
+                    $status = $statuses[$spId] ?? null;
+                    if ($status === null || in_array($status, ['submit', 'dinilai', 'terdaftar'], true)) {
                         $redisExam->cleanupSession($spId);
                         $skipped++;
                         continue;
